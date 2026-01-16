@@ -1,16 +1,21 @@
 """
 FastAPI 应用主入口
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import engine, Base
+from app.schemas.response import error_response
+
+# 导入路由
+from app.api.v1 import auth, signups, bookings
 
 # 创建 FastAPI 应用
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="基于 FastAPI 的社团统一管理系统",
+    description="基于 FastAPI 的社团统一管理系统 - 支持 RBAC 权限控制",
 )
 
 # 配置 CORS
@@ -29,6 +34,7 @@ async def startup_event():
     # 创建所有数据库表
     Base.metadata.create_all(bind=engine)
     print(f"✅ {settings.APP_NAME} v{settings.APP_VERSION} 启动成功！")
+    print(f"📚 API 文档: http://localhost:8000/docs")
 
 
 @app.on_event("shutdown")
@@ -37,26 +43,62 @@ async def shutdown_event():
     print(f"👋 {settings.APP_NAME} 已关闭")
 
 
+# ==================== 全局异常处理 ====================
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """全局异常处理，统一返回格式"""
+    return JSONResponse(
+        status_code=500,
+        content=error_response(500, f"服务器内部错误: {str(exc)}")
+    )
+
+
+# ==================== 路由注册 ====================
+
+# 认证路由
+app.include_router(
+    auth.router,
+    prefix="/api/v1/auth",
+    tags=["🔐 认证"]
+)
+
+# 报名系统路由（场景 A：公开接口）
+app.include_router(
+    signups.router,
+    prefix="/api/v1/signups",
+    tags=["📝 报名系统（公开）"]
+)
+
+# 会议室预约路由（场景 B：内部接口 + 场景 C：管理接口）
+app.include_router(
+    bookings.router,
+    prefix="/api/v1/bookings",
+    tags=["🏢 会议室预约"]
+)
+
+
+# ==================== 基础路由 ====================
+
+
 @app.get("/")
 async def root():
     """根路径"""
     return {
         "message": f"欢迎使用{settings.APP_NAME}",
         "version": settings.APP_VERSION,
-        "docs": "/docs"
+        "docs": "/docs",
+        "features": [
+            "✅ JWT 身份认证",
+            "✅ RBAC 权限控制",
+            "✅ 用户注册与登录",
+            "✅ 会议室预约系统",
+            "✅ 灵活报名系统"
+        ]
     }
 
 
 @app.get("/health")
 async def health_check():
     """健康检查"""
-    return {"status": "healthy"}
-
-
-# TODO: 引入路由
-# from app.api.v1 import auth, users, rooms, bookings, signups
-# app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
-# app.include_router(users.router, prefix="/api/v1/users", tags=["用户"])
-# app.include_router(rooms.router, prefix="/api/v1/rooms", tags=["会议室"])
-# app.include_router(bookings.router, prefix="/api/v1/bookings", tags=["预约"])
-# app.include_router(signups.router, prefix="/api/v1/signups", tags=["报名"])
+    return {"status": "healthy", "version": settings.APP_VERSION}
