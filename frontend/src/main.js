@@ -6,6 +6,11 @@ import App from './App.vue'
 import router from './router'
 import pinia from './store'
 
+// 引入全局样式（Tailwind CSS + 自定义样式）
+import './assets/styles/global.css'
+// 引入 animate.css 动画库
+import 'animate.css'
+
 const app = createApp(App)
 
 // 注册所有 Element Plus 图标
