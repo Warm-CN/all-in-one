@@ -91,7 +91,7 @@
                 </div>
                 <div class="flex items-end gap-3">
                     <h2 class="text-3xl font-black text-gray-800 tracking-tight">空闲中</h2>
-                    <span class="text-sm font-medium text-gray-400 mb-1.5 bg-gray-100 px-2 py-0.5 rounded-md">第一会议室 A101</span>
+                    <span class="text-sm font-medium text-gray-400 mb-1.5 bg-gray-100 px-2 py-0.5 rounded-md">北三会议室</span>
                 </div>
                 <div class="mt-4 flex gap-3">
                     <el-button type="primary" class="!rounded-xl !px-6 !h-9 !font-bold !shadow-md shadow-indigo-100/50" @click="router.push('/rooms')">立即预约</el-button>

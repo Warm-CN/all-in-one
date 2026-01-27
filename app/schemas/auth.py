@@ -50,6 +50,7 @@ class RegisterRequest(BaseModel):
     phone: Optional[str] = Field(None, description="手机号")
     email: Optional[str] = Field(None, description="邮箱")
     department: Optional[str] = Field(None, description="部门")
+    position: Optional[str] = Field(None, description="职位")
     
     
 class PasswordResetRequest(BaseModel):

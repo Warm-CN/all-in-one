@@ -7,8 +7,8 @@
            <el-icon :size="20"><Monitor /></el-icon>
         </div>
         <div>
-           <h1 class="text-lg font-bold text-gray-800">第一会议室 A101</h1>
-           <p class="text-xs text-gray-500">最大容量 50人 · 支持投影仪 · 白板</p>
+           <h1 class="text-lg font-bold text-gray-800">北三会议室</h1>
+           <p class="text-xs text-gray-500">密码锁密码为：812604</p>
         </div>
       </div>
       

@@ -57,7 +57,7 @@ const routes = [
             {
                 path: 'contacts',
                 name: 'Contacts',
-                component: () => import('@/views/Placeholder.vue'),
+                component: () => import('@/views/Contacts.vue'),
                 meta: { title: '通讯录', requiresAuth: true }
             },
             {

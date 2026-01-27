@@ -112,6 +112,7 @@ async def register(
         phone=register_data.phone,
         email=register_data.email,
         department=register_data.department,
+        position=register_data.position,
         role='member',  # 默认为成员
         status='pending'  # 待审核
     )

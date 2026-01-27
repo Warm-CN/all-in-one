@@ -193,7 +193,7 @@
                     @click="toggleFlip" 
                     class="text-slate-400 hover:text-slate-600 text-base font-medium flex items-center gap-2 transition-colors px-4 py-2 rounded-xl hover:bg-slate-100"
                   >
-                    <el-icon><Back /></el-icon> 取消返回
+                    <el-icon><Back /></el-icon> 返回
                   </button>
 
                   <el-button 
@@ -293,8 +293,11 @@ const handleLogin = async () => {
 }
 
 const handleRegister = async () => {
-  if (!registerForm.studentId || !registerForm.name || !registerForm.password) {
-    ElMessage.warning('请填写完整的必填信息')
+  // 验证所有必填字段
+  if (!registerForm.studentId || !registerForm.name || !registerForm.phone || 
+      !registerForm.email || !registerForm.department || !registerForm.position || 
+      !registerForm.password) {
+    ElMessage.warning('请填写完整所有信息')
     return
   }
   
