@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.dependencies import get_current_active_user, require_admin
 from app.core.config import settings
-from app.models.user import User, UserRole, UserStatus
+from app.models.user import User
 from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
@@ -49,15 +49,15 @@ async def login(
         return error_response(401, "学号或密码错误")
     
     # 检查用户状态
-    if user.status == UserStatus.PENDING:
+    if user.status == 'pending':
         return error_response(403, "账号待审核，请联系管理员")
-    elif user.status == UserStatus.INACTIVE:
+    elif user.status in ['rejected', 'disabled']:
         return error_response(403, "账号已停用，请联系管理员")
     
     # 生成 JWT Token
     token_data = {
         "sub": str(user.id),  # 用户ID
-        "role": user.role.value,  # 用户角色
+        "role": user.role,  # 用户角色
         "student_id": user.student_id  # 学号（可选，方便调试）
     }
     access_token = create_access_token(data=token_data)
@@ -106,14 +106,14 @@ async def register(
     
     # 创建新用户
     new_user = User(
-        real_name=register_data.real_name,
+        full_name=register_data.full_name,
         student_id=register_data.student_id,
         password_hash=get_password_hash(register_data.password),
         phone=register_data.phone,
         email=register_data.email,
         department=register_data.department,
-        role=UserRole.VISITOR,  # 默认为访客
-        status=UserStatus.PENDING  # 待审核
+        role='member',  # 默认为成员
+        status='pending'  # 待审核
     )
     
     db.add(new_user)
@@ -188,7 +188,7 @@ async def reset_user_password(
     db.commit()
     
     return success_response(
-        msg=f"已重置用户 {target_user.real_name}({target_user.student_id}) 的密码"
+        msg=f"已重置用户 {target_user.full_name}({target_user.student_id}) 的密码"
     )
 
 
@@ -217,5 +217,5 @@ async def approve_user(
     
     return success_response(
         data=UserInfo.from_orm(target_user).dict(),
-        msg=f"已激活用户 {target_user.real_name}"
+        msg=f"已激活用户 {target_user.full_name}"
     )

@@ -22,27 +22,32 @@ class TokenResponse(BaseModel):
 class UserInfo(BaseModel):
     """用户信息"""
     id: int
-    real_name: str
+    full_name: str
+    real_name: Optional[str] = None  # 前端兼容字段
     student_id: str
-    phone: str
+    phone: Optional[str] = None
     email: Optional[str] = None
     department: Optional[str] = None
     position: Optional[str] = None
-    birthday: Optional[date] = None
     role: str
     status: str
-    avatar: Optional[str] = None
     
     class Config:
         from_attributes = True
+        
+    def dict(self, **kwargs):
+        """重写dict方法，确保real_name和full_name同步"""
+        data = super().dict(**kwargs)
+        data['real_name'] = data.get('full_name')
+        return data
 
 
 class RegisterRequest(BaseModel):
     """注册请求"""
-    real_name: str = Field(..., min_length=2, max_length=50, description="真实姓名")
+    full_name: str = Field(..., min_length=2, max_length=50, description="真实姓名")
     student_id: str = Field(..., min_length=5, max_length=20, description="学号")
     password: str = Field(..., min_length=6, max_length=50, description="密码")
-    phone: str = Field(..., pattern=r"^1[3-9]\d{9}$", description="手机号")
+    phone: Optional[str] = Field(None, description="手机号")
     email: Optional[str] = Field(None, description="邮箱")
     department: Optional[str] = Field(None, description="部门")
     

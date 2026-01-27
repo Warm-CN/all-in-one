@@ -12,106 +12,150 @@
         </div>
       </div>
       
-      <div class="flex items-center gap-3">
-         <el-button-group>
-            <el-button :icon="ArrowLeft" circle size="small" @click="changeDate(-1)" />
-            <el-date-picker
+      <div class="flex items-center gap-2">
+         <el-button :icon="ArrowLeft" circle size="default" @click="changeDate(-1)" />
+         <el-date-picker
               v-model="currentDate"
               type="date"
               placeholder="选择日期"
               format="YYYY年MM月DD日"
               value-format="YYYY-MM-DD"
               :clearable="false"
-              class="!w-[160px] mx-2"
+              class="!w-[160px]"
               @change="fetchData"
             />
-            <el-button :icon="ArrowRight" circle size="small" @click="changeDate(1)" />
-         </el-button-group>
-         <el-button type="primary" plain size="small" @click="goToToday">今天</el-button>
+         <el-button :icon="ArrowRight" circle size="default" @click="changeDate(1)" />
+         <el-button type="primary" text bg size="default" @click="goToToday" class="!ml-1">今天</el-button>
       </div>
     </div>
 
     <!-- 主体内容 -->
     <div class="flex flex-1 gap-5 min-h-0 overflow-hidden">
        <!-- 左侧：预约列表视图 (65%) -->
-       <div class="w-[65%] bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden relative group">
-          <div class="p-4 border-b border-gray-50 flex items-center justify-between bg-white z-10 sticky top-0">
-             <span class="font-bold text-gray-700">今日预约列表</span>
-             <div class="flex items-center gap-4 text-xs">
-                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-indigo-100 border border-indigo-200"></span>他人预约</div>
-                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-md bg-emerald-100 border border-emerald-200"></span>我的预约</div>
-             </div>
-          </div>
+       <div class="w-[65%] flex flex-col gap-4 min-h-0">
+          
+          <!-- 上半部分：今日预约列表 -->
+          <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden relative group">
+              <div class="p-4 border-b border-gray-50 flex items-center justify-between bg-white z-10 sticky top-0">
+                 <span class="font-bold text-gray-700 flex items-center gap-2">
+                    <el-icon class="text-indigo-500"><Calendar /></el-icon> 今日预约列表
+                    <span class="text-xs font-normal text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{{ bookings.length }}</span>
+                 </span>
+                 <div class="flex items-center gap-4 text-xs">
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>全部</div>
+                 </div>
+              </div>
 
-          <div class="flex-1 overflow-y-auto custom-scrollbar p-5">
-             <div v-if="bookings.length === 0" class="flex flex-col items-center justify-center h-64 text-gray-400">
-                <el-icon :size="48" class="mb-3 opacity-20"><Calendar /></el-icon>
-                <p>该日期暂无预约记录</p>
-             </div>
+              <div class="flex-1 overflow-y-auto custom-scrollbar p-5">
+                 <div v-if="bookings.length === 0" class="flex flex-col items-center justify-center h-48 text-gray-400">
+                    <el-icon :size="48" class="mb-3 opacity-20"><Calendar /></el-icon>
+                    <p class="text-sm">该日期暂无预约记录</p>
+                 </div>
 
-             <div v-else class="space-y-3">
-                <div v-for="booking in bookings" :key="booking.id"
-                     class="flex items-center justify-between p-4 rounded-xl border transition-all hover:shadow-md group/card"
-                     :class="isMyBooking(booking) ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/10'"
-                >
-                   <div class="flex items-center gap-6">
-                      <!-- 时间信息 -->
-                      <div class="flex flex-col items-center min-w-[100px] border-r border-gray-100 pr-6">
-                         <span class="text-lg font-bold font-mono text-gray-700">{{ booking.start_time }}</span>
-                         <div class="w-0.5 h-3 bg-gray-200 my-1 rounded-full"></div>
-                         <span class="text-sm font-medium text-gray-400 font-mono">{{ booking.end_time }}</span>
-                      </div>
+                 <div v-else class="space-y-3">
+                    <div v-for="booking in bookings" :key="booking.id"
+                         class="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white transition-all hover:shadow-sm hover:border-indigo-100 relative group/card overflow-hidden">
+                       <!-- 左侧装饰条 -->
+                       <div class="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-l-xl opacity-0 group-hover/card:opacity-100 transition-opacity"></div>
+                       
+                       <div class="flex items-center gap-4 pl-2">
+                          <!-- 时间 -->
+                          <div class="flex items-center gap-2 text-sm font-bold font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded-lg">
+                             <span>{{ booking.start_time }}</span>
+                             <span class="text-gray-300">→</span>
+                             <span>{{ booking.end_time }}</span>
+                          </div>
 
-                      <!-- 用户信息 -->
-                      <div class="flex flex-col gap-1">
-                         <div class="flex items-center gap-2">
-                             <el-avatar :size="28" :class="isMyBooking(booking) ? '!bg-emerald-100 !text-emerald-600' : '!bg-indigo-100 !text-indigo-600'" class="!text-xs font-bold">
+                          <!-- 用户 -->
+                          <div class="flex items-center gap-2">
+                             <el-avatar :size="24" class="!bg-indigo-100 !text-indigo-600 !text-[10px] font-bold">
                                 {{ booking.user_name ? booking.user_name.charAt(0) : 'U' }}
                              </el-avatar>
-                             <span class="font-bold text-gray-800">{{ booking.user_name }}</span>
-                             <span class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500">{{ booking.user_dept || '部门' }}</span>
-                         </div>
-                         <div class="text-sm text-gray-500 flex items-center gap-2">
-                            <span v-if="booking.remarks" class="truncate max-w-[300px]">{{ booking.remarks }}</span>
-                            <span v-else class="italic text-gray-300 text-xs">暂无备注</span>
-                         </div>
-                      </div>
-                   </div>
+                             <span class="font-bold text-gray-700 text-sm">{{ booking.user_name }}</span>
+                             <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{{ booking.user_dept }}</span>
+                          </div>
+                       </div>
+                       
+                       <!-- 备注 -->
+                       <div class="text-xs text-gray-400 truncate max-w-[200px] flex items-center justify-end">
+                           {{ booking.remarks || '无备注' }}
+                       </div>
+                    </div>
+                 </div>
+              </div>
+          </div>
 
-                   <!-- 操作按钮 -->
-                   <div class="flex items-center gap-3">
-                      <div class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">{{ booking.num_people }}人</div>
-                      
-                      <el-popconfirm 
-                          v-if="isMyBooking(booking)"
+          <!-- 下半部分：我的预约 -->
+          <div class="h-[280px] shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden relative border-t-4 border-t-emerald-400/20">
+              <div class="p-4 border-b border-gray-50 flex items-center justify-between bg-white z-10 sticky top-0">
+                 <span class="font-bold text-gray-800 flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div> 我的预约
+                 </span>
+                 <span class="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-1 rounded">未来预约列表</span>
+              </div>
+
+              <div class="flex-1 overflow-y-auto custom-scrollbar p-5">
+                 <div v-if="myBookings.length === 0" class="flex flex-col items-center justify-center h-full text-gray-400">
+                    <p class="text-sm">暂无未来预约</p>
+                 </div>
+                 
+                 <div v-else class="space-y-3">
+                    <div v-for="booking in myBookings" :key="booking.id"
+                         class="flex items-center justify-between p-3.5 rounded-xl border border-emerald-100 bg-emerald-50/30 transition-all hover:bg-emerald-50/60 group/my">
+                       
+                       <div class="flex items-center gap-4">
+                          <div class="flex flex-col items-center min-w-[70px] border-r border-emerald-100 pr-3 mr-1">
+                             <div class="text-[10px] text-emerald-500 font-bold bg-white px-1.5 rounded-full mb-1 border border-emerald-100 whitespace-nowrap">
+                                {{ dayjs(booking.booking_date).format('MM-DD') }}
+                             </div>
+                             <span class="text-base font-bold text-emerald-700 font-mono leading-none">{{ booking.start_time }}</span>
+                             <span class="text-[10px] text-emerald-500/80 font-mono mt-0.5">至 {{ booking.end_time }}</span>
+                          </div>
+                          
+                          <div class="flex flex-col gap-0.5">
+                             <span class="text-sm font-bold text-gray-700">{{ booking.remarks || '无备注' }}</span>
+                             <span class="text-xs text-gray-400">{{ booking.num_people }} 人参与</span>
+                             <span v-if="dayjs(booking.booking_date).isSame(dayjs(currentDate), 'day')" class="text-[10px] text-indigo-500 bg-indigo-50 px-1 rounded w-fit mt-0.5">当前选中日期</span>
+                          </div>
+                       </div>
+
+                       <el-popconfirm 
                           title="确认取消此预约?" 
                           @confirm="handleCancel(booking.id)"
-                          width="200"
+                          width="240"
                           confirm-button-text="确认取消"
                           cancel-button-text="暂不"
                           confirm-button-type="danger"
+                          icon-color="red"
                       >
                         <template #reference>
-                            <el-button type="danger" plain circle size="small" class="opacity-0 group-hover/card:opacity-100 transition-opacity">
-                                <el-icon><Delete /></el-icon>
+                            <el-button type="danger" plain size="small" class="!px-3 !rounded-lg hover:!bg-red-50 hover:!text-red-600 transition-colors">
+                                取消
                             </el-button>
                         </template>
                       </el-popconfirm>
-                   </div>
-                </div>
-             </div>
+                    </div>
+                 </div>
+              </div>
           </div>
+
        </div>
 
        <!-- 右侧：预约表单 (35%) -->
        <div class="w-[35%] flex flex-col gap-5">
-           <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1 flex flex-col">
+           <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1 flex flex-col relative overflow-hidden">
+              <div v-if="isPastDate" class="absolute inset-0 bg-gray-50/80 z-20 flex flex-col items-center justify-center backdrop-blur-[1px]">
+                  <el-icon :size="48" class="text-gray-300 mb-2"><CircleCloseFilled /></el-icon>
+                  <p class="text-gray-500 font-bold">无法在过去日期进行预约</p>
+                  <el-button type="primary" link @click="goToToday" class="mt-2">返回今天</el-button>
+              </div>
+
               <h2 class="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
                  <span class="w-1 h-5 bg-indigo-600 rounded-full"></span>
                  预约申请
               </h2>
 
-              <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="flex-1 flex flex-col" :disabled="loading">
+              <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="flex-1 flex flex-col" :disabled="loading || isPastDate">
                  <el-form-item label="预约日期">
                     <div class="w-full px-3 py-2 bg-gray-50 rounded-lg text-gray-500 text-sm font-bold border border-gray-200">
                         {{ currentDateFormatted }}
@@ -166,11 +210,11 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Monitor, ArrowLeft, ArrowRight, Delete, Calendar } from '@element-plus/icons-vue'
+import { Monitor, ArrowLeft, ArrowRight, Delete, Calendar, CircleCloseFilled } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import isBetween from 'dayjs/plugin/isBetween'
 import { ElMessage } from 'element-plus'
-import { getBookings, createBooking, cancelBooking } from '@/api/booking'
+import { getBookings, createBooking, cancelBooking, getMyBookings } from '@/api/booking'
 import { useUserStore } from '@/store/user'
 
 dayjs.extend(isBetween)
@@ -178,6 +222,7 @@ dayjs.extend(isBetween)
 const userStore = useUserStore()
 const currentDate = ref(dayjs().format('YYYY-MM-DD'))
 const bookings = ref([])
+const myBookings = ref([])
 const loading = ref(false)
 const submitting = ref(false)
 const formRef = ref(null)
@@ -208,7 +253,12 @@ const isToday = computed(() => {
     return currentDate.value === dayjs().format('YYYY-MM-DD')
 })
 
-// 检查是否是我的预约
+// 是否为过去的日期
+const isPastDate = computed(() => {
+    return dayjs(currentDate.value).isBefore(dayjs(), 'day')
+})
+
+// 检查是否是我的预约 (用于今日列表高亮)
 const isMyBooking = (booking) => {
     return booking.user_id === userStore.userInfo?.id || userStore.userRole === 'admin'
 }
@@ -239,7 +289,22 @@ const fetchData = async () => {
     }
 }
 
+const fetchMyBookings = async () => {
+    try {
+        const res = await getMyBookings(true) // true for upcoming
+        if (res.code === 200) {
+            myBookings.value = res.data
+        }
+    } catch (err) {
+        console.error(err)
+    }
+}
+
 const submitBooking = async () => {
+    if (isPastDate.value) {
+        ElMessage.warning('不能预约过去的日期')
+        return
+    }
     if (!formRef.value) return
     await formRef.value.validate(async (valid) => {
         if (valid) {
@@ -254,6 +319,7 @@ const submitBooking = async () => {
                     ElMessage.success('预约成功')
                     form.value = { start_time: '', end_time: '', num_people: 1, remarks: '' } // 重置表单
                     fetchData()
+                    fetchMyBookings()
                 } else {
                     ElMessage.error(res.msg || '预约失败')
                 }
@@ -272,6 +338,7 @@ const handleCancel = async (id) => {
         if (res.code === 200) {
             ElMessage.success('已取消预约')
             fetchData()
+            fetchMyBookings()
         } else {
             ElMessage.error(res.msg || '取消失败')
         }
@@ -282,6 +349,7 @@ const handleCancel = async (id) => {
 
 onMounted(() => {
     fetchData()
+    fetchMyBookings()
 })
 </script>
 

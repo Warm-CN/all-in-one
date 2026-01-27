@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
 from app.models.room_booking import RoomBooking
 from app.models.user import User
-from app.schemas.booking import BookingCreate, BookingResponse
+from app.schemas.room_booking import BookingCreate, BookingResponse
 from app.schemas.response import success_response, error_response
 
 router = APIRouter(prefix="/api/bookings", tags=["会议室预约"])
@@ -87,7 +87,7 @@ async def get_bookings(
             "end_time": booking.end_time.strftime("%H:%M"),
             "num_people": booking.num_people,
             "remarks": booking.remarks,
-            "user_name": booking.user.real_name if booking.user else None,
+            "user_name": booking.user.full_name if booking.user else None,
             "user_dept": booking.user.department if booking.user else None,
             "created_at": booking.created_at.isoformat()
         })
@@ -179,18 +179,33 @@ async def delete_booking(
 
 @router.get("/my", response_model=dict, summary="获取我的预约列表")
 async def get_my_bookings(
+    upcoming: bool = False,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """
     获取当前用户的所有预约记录
+    - upcoming: 是否仅获取未来（含今天）的预约
     """
-    bookings = db.query(RoomBooking).filter(
+    query = db.query(RoomBooking).filter(
         RoomBooking.user_id == current_user.id
-    ).order_by(
-        RoomBooking.booking_date.desc(),
-        RoomBooking.start_time.desc()
-    ).all()
+    )
+
+    if upcoming:
+        query = query.filter(RoomBooking.booking_date >= date.today())
+        # 未来预约按时间正序排列（最近的在前面）
+        query = query.order_by(
+            RoomBooking.booking_date.asc(),
+            RoomBooking.start_time.asc()
+        )
+    else:
+        # 历史预约按时间倒序排列
+        query = query.order_by(
+            RoomBooking.booking_date.desc(),
+            RoomBooking.start_time.desc()
+        )
+
+    bookings = query.all()
     
     data = []
     for booking in bookings:

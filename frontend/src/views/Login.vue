@@ -221,6 +221,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Monitor, Document, Suitcase, Back } from '@element-plus/icons-vue'
+import { register } from '@/api/auth'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -293,16 +294,49 @@ const handleLogin = async () => {
   }
 }
 
-const handleRegister = () => {
+const handleRegister = async () => {
   if (!registerForm.studentId || !registerForm.name || !registerForm.password) {
     ElMessage.warning('请填写完整的必填信息')
     return
   }
-  // 模拟注册
-  ElMessage.success('申请提交成功，请等待审核')
-  setTimeout(() => {
-    toggleFlip()
-  }, 1000)
+  
+  loading.value = true
+  try {
+    const res = await register({
+      student_id: registerForm.studentId,
+      full_name: registerForm.name,
+      phone: registerForm.phone,
+      email: registerForm.email,
+      department: registerForm.department,
+      position: registerForm.position,
+      password: registerForm.password
+    })
+    
+    if (res.code === 200) {
+      ElMessage.success('注册申请已提交，请等待管理员审核')
+      // 清空表单
+      Object.assign(registerForm, {
+        studentId: '',
+        name: '',
+        phone: '',
+        email: '',
+        department: '',
+        position: '',
+        password: ''
+      })
+      // 翻转回登录页
+      setTimeout(() => {
+        toggleFlip()
+      }, 1500)
+    } else {
+      ElMessage.error(res.msg || '注册失败')
+    }
+  } catch (error) {
+    console.error('注册错误:', error)
+    ElMessage.error('注册失败，请稍后重试')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

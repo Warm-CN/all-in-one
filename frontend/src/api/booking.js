@@ -40,10 +40,12 @@ export function cancelBooking(id) {
 
 /**
  * 获取我的预约
+ * @param {boolean} upcoming - 是否仅获取未来预约
  */
-export function getMyBookings() {
+export function getMyBookings(upcoming = false) {
     return request({
         url: '/api/bookings/my',
-        method: 'get'
+        method: 'get',
+        params: { upcoming }
     })
 }

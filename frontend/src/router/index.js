@@ -63,7 +63,7 @@ const routes = [
             {
                 path: 'users',
                 name: 'Users',
-                component: () => import('@/views/Placeholder.vue'),
+                component: () => import('@/views/UserManagement.vue'),
                 meta: { title: '成员管理', requiresAuth: true }
             },
             {

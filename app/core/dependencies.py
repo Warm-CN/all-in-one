@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.models.user import User, UserRole, UserStatus
+from app.models.user import User
 
 # HTTP Bearer Token 认证
 security = HTTPBearer()
@@ -84,10 +84,10 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
     Raises:
         HTTPException: 403 - 账号未激活或已停用
     """
-    if current_user.status != UserStatus.ACTIVE:
+    if current_user.status != 'active':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"账号状态异常：{current_user.status.value}，请联系管理员"
+            detail=f"账号状态异常：{current_user.status}，请联系管理员"
         )
     return current_user
 
@@ -123,7 +123,7 @@ class RoleChecker:
         Raises:
             HTTPException: 403 - 权限不足
         """
-        user_role = current_user.role.value.lower()
+        user_role = current_user.role.lower()
         
         if user_role not in self.allowed_roles:
             raise HTTPException(

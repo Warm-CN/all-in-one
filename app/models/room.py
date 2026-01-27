@@ -18,8 +18,5 @@ class Room(BaseModel):
     description = Column(Text, nullable=True, comment="会议室描述")
     image_url = Column(String(255), nullable=True, comment="会议室图片")
     
-    # 关系
-    bookings = relationship("Booking", back_populates="room", cascade="all, delete-orphan")
-    
     def __repr__(self):
         return f"<Room {self.name} at {self.location}>"

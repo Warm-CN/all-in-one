@@ -31,7 +31,7 @@ class Application(BaseModel):
     review_notes = Column(Text, nullable=True, comment="审核备注")
     
     # 关系
-    user = relationship("User", back_populates="applications")
+    user = relationship("User", backref="applications")
     signup_config = relationship("SignupConfig", back_populates="applications")
     
     def __repr__(self):

@@ -1,0 +1,467 @@
+<template>
+  <div class="h-full flex flex-col bg-gray-50">
+    <!-- 主体内容 -->
+    <div class="flex-1 p-6 overflow-auto">
+      <el-tabs v-model="activeTab" class="custom-tabs">
+        <!-- 入社审批 -->
+        <el-tab-pane label="入社审批" name="approval">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-6">
+              <div class="flex items-center gap-2">
+                <span class="text-base font-bold text-gray-700">待审核用户</span>
+                <el-tag type="warning" size="small" round>{{ pendingUsers.length }}</el-tag>
+              </div>
+              <el-button 
+                type="primary" 
+                :disabled="selectedPendingIds.length === 0"
+                @click="batchApprove"
+                class="!rounded-xl"
+              >
+                批量通过 ({{ selectedPendingIds.length }})
+              </el-button>
+            </div>
+
+            <el-table 
+              :data="pendingUsers" 
+              @selection-change="handleSelectionChange"
+              class="custom-table"
+              style="width: 100%"
+            >
+              <el-table-column type="selection" width="55" />
+              <el-table-column prop="real_name" label="姓名" min-width="100" />
+              <el-table-column prop="student_id" label="学号" min-width="120" />
+              <el-table-column prop="phone" label="手机号" min-width="130" />
+              <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
+              <el-table-column prop="department" label="部门" min-width="120" />
+              <el-table-column label="申请时间" min-width="160">
+                <template #default="{ row }">
+                  {{ formatDate(row.created_at) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="200" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="success" size="small" @click="approveUser(row.id)" class="!rounded-lg">
+                    通过
+                  </el-button>
+                  <el-button type="danger" size="small" plain @click="rejectUser(row.id)" class="!rounded-lg">
+                    拒绝
+                  </el-button>
+                </template>
+              </el-table-column>
+              <template #empty>
+                <div class="text-center py-8 text-gray-400">
+                  <el-icon :size="48" class="mb-3"><CircleCheck /></el-icon>
+                  <p>暂无待审核用户</p>
+                </div>
+              </template>
+            </el-table>
+          </div>
+        </el-tab-pane>
+
+        <!-- 成员维护 -->
+        <el-tab-pane label="成员维护" name="members">
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <!-- 搜索和筛选 -->
+            <div class="flex items-center gap-4 mb-6">
+              <el-input
+                v-model="searchKeyword"
+                placeholder="搜索姓名或学号..."
+                clearable
+                @clear="fetchMembers"
+                @keyup.enter="fetchMembers"
+                class="!w-80"
+              >
+                <template #prefix>
+                  <el-icon><Search /></el-icon>
+                </template>
+              </el-input>
+              
+              <el-select
+                v-model="selectedDepartment"
+                placeholder="选择部门"
+                clearable
+                @change="fetchMembers"
+                class="!w-48"
+              >
+                <el-option label="全部部门" value="" />
+                <el-option label="科创部" value="科创部" />
+                <el-option label="新媒体" value="新媒体" />
+                <el-option label="宣传部" value="宣传部" />
+                <el-option label="组织部" value="组织部" />
+                <el-option label="外联部" value="外联部" />
+                <el-option label="常委" value="常委" />
+              </el-select>
+
+              <el-button type="primary" @click="fetchMembers" class="!rounded-xl">
+                <el-icon class="mr-1"><Search /></el-icon>
+                查询
+              </el-button>
+            </div>
+
+            <!-- 成员列表 -->
+            <el-table :data="activeMembers" class="custom-table" style="width: 100%">
+              <el-table-column prop="real_name" label="姓名" min-width="100" />
+              <el-table-column prop="student_id" label="学号" min-width="120" />
+              <el-table-column prop="department" label="部门" min-width="120" />
+              <el-table-column prop="position" label="职位" min-width="120">
+                <template #default="{ row }">
+                  {{ row.position || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="角色" width="100">
+                <template #default="{ row }">
+                  <el-tag v-if="row.role === 'admin'" type="danger" size="small" round>Admin</el-tag>
+                  <el-tag v-else type="success" size="small" round>Member</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="phone" label="手机号" min-width="130" />
+              <el-table-column label="操作" width="320" fixed="right">
+                <template #default="{ row }">
+                  <el-button 
+                    type="warning" 
+                    size="small" 
+                    plain
+                    @click="showResetPasswordDialog(row)"
+                    class="!rounded-lg"
+                  >
+                    重置密码
+                  </el-button>
+                  <el-button 
+                    v-if="row.role !== 'admin'"
+                    type="primary" 
+                    size="small"
+                    @click="promoteToAdmin(row)"
+                    class="!rounded-lg"
+                  >
+                    设为管理员
+                  </el-button>
+                  <el-popconfirm
+                    title="确认移出该成员？"
+                    @confirm="removeUser(row.id)"
+                    width="200"
+                  >
+                    <template #reference>
+                      <el-button type="danger" size="small" plain class="!rounded-lg">
+                        移出社团
+                      </el-button>
+                    </template>
+                  </el-popconfirm>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div v-if="activeMembers.length === 0" class="text-center py-16 text-gray-400">
+              <el-icon :size="48" class="mb-3"><UserFilled /></el-icon>
+              <p>暂无成员</p>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
+
+    <!-- 重置密码弹窗 -->
+    <el-dialog
+      v-model="resetPasswordDialogVisible"
+      title="重置密码"
+      width="400px"
+      :close-on-click-modal="false"
+      class="custom-dialog"
+    >
+      <div class="text-center py-6">
+        <el-icon :size="64" color="#faad14" class="mb-4"><Warning /></el-icon>
+        <p class="text-base text-gray-700 mb-2">确认重置以下用户的密码？</p>
+        <p class="text-lg font-bold text-gray-800 mb-4">{{ currentUser?.real_name }} ({{ currentUser?.student_id }})</p>
+        <el-alert type="warning" :closable="false" show-icon>
+          <template #default>
+            <p class="text-sm">密码将被重置为初始密码：<span class="font-mono font-bold">123456</span></p>
+          </template>
+        </el-alert>
+      </div>
+      <template #footer>
+        <div class="flex gap-3 justify-center">
+          <el-button @click="resetPasswordDialogVisible = false" class="!rounded-xl">取消</el-button>
+          <el-button type="primary" @click="confirmResetPassword" class="!rounded-xl">确认重置</el-button>
+        </div>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { User, Search, CircleCheck, UserFilled, Warning } from '@element-plus/icons-vue'
+import request from '@/utils/request'
+import dayjs from 'dayjs'
+
+const activeTab = ref('approval')
+const pendingUsers = ref([])
+const activeMembers = ref([])
+const selectedPendingIds = ref([])
+const searchKeyword = ref('')
+const selectedDepartment = ref('')
+const resetPasswordDialogVisible = ref(false)
+const currentUser = ref(null)
+
+// 格式化日期
+const formatDate = (dateStr) => {
+  return dayjs(dateStr).format('YYYY-MM-DD HH:mm')
+}
+
+// 获取待审核用户
+const fetchPendingUsers = async () => {
+  try {
+    const res = await request({
+      url: '/api/admin/users/pending',
+      method: 'get'
+    })
+    if (res.code === 200) {
+      pendingUsers.value = res.data
+    }
+  } catch (err) {
+    ElMessage.error('获取待审核用户失败')
+  }
+}
+
+// 获取成员列表
+const fetchMembers = async () => {
+  try {
+    const res = await request({
+      url: '/api/admin/users',
+      method: 'get',
+      params: {
+        status: 'active',
+        keyword: searchKeyword.value || undefined,
+        department: selectedDepartment.value || undefined
+      }
+    })
+    if (res.code === 200) {
+      activeMembers.value = res.data
+    }
+  } catch (err) {
+    ElMessage.error('获取成员列表失败')
+  }
+}
+
+// 多选变化
+const handleSelectionChange = (selection) => {
+  selectedPendingIds.value = selection.map(item => item.id)
+}
+
+// 批量通过
+const batchApprove = async () => {
+  try {
+    const res = await request({
+      url: '/api/admin/users/approve',
+      method: 'post',
+      data: selectedPendingIds.value
+    })
+    if (res.code === 200) {
+      ElMessage.success(res.msg)
+      selectedPendingIds.value = []
+      fetchPendingUsers()
+      fetchMembers()
+    }
+  } catch (err) {
+    ElMessage.error('批量审核失败')
+  }
+}
+
+// 单个通过
+const approveUser = async (userId) => {
+  try {
+    const res = await request({
+      url: `/api/admin/users/approve/${userId}`,
+      method: 'post'
+    })
+    if (res.code === 200) {
+      ElMessage.success(res.msg)
+      fetchPendingUsers()
+      fetchMembers()
+    }
+  } catch (err) {
+    ElMessage.error('审核失败')
+  }
+}
+
+// 拒绝
+const rejectUser = async (userId) => {
+  try {
+    await ElMessageBox.confirm('确认拒绝该用户的入社申请？', '提示', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    const res = await request({
+      url: `/api/admin/users/reject/${userId}`,
+      method: 'post'
+    })
+    if (res.code === 200) {
+      ElMessage.success(res.msg)
+      fetchPendingUsers()
+    }
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+// 显示重置密码弹窗
+const showResetPasswordDialog = (user) => {
+  currentUser.value = user
+  resetPasswordDialogVisible.value = true
+}
+
+// 确认重置密码
+const confirmResetPassword = async () => {
+  try {
+    const res = await request({
+      url: '/api/admin/users/reset-password',
+      method: 'post',
+      params: { user_id: currentUser.value.id }
+    })
+    if (res.code === 200) {
+      ElMessage.success(res.msg)
+      resetPasswordDialogVisible.value = false
+    }
+  } catch (err) {
+    ElMessage.error('重置密码失败')
+  }
+}
+
+// 提升为管理员
+const promoteToAdmin = async (user) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认将 ${user.real_name} 提升为管理员？`,
+      '提示',
+      {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    const res = await request({
+      url: '/api/admin/users/promote',
+      method: 'post',
+      params: { user_id: user.id }
+    })
+    if (res.code === 200) {
+      ElMessage.success(res.msg)
+      fetchMembers()
+    }
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+// 移出社团
+const removeUser = async (userId) => {
+  try {
+    const res = await request({
+      url: `/api/admin/users/${userId}`,
+      method: 'delete'
+    })
+    if (res.code === 200) {
+      ElMessage.success(res.msg)
+      fetchMembers()
+    }
+  } catch (err) {
+    ElMessage.error('操作失败')
+  }
+}
+
+onMounted(() => {
+  fetchPendingUsers()
+  fetchMembers()
+})
+</script>
+
+<style scoped>
+/* 自定义 Tabs */
+:deep(.el-tabs__header) {
+  margin: 0;
+  border: none;
+}
+
+:deep(.el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+:deep(.el-tabs__item) {
+  font-size: 15px;
+  font-weight: 600;
+  color: #94a3b8;
+  padding: 0 24px;
+  height: 48px;
+  line-height: 48px;
+}
+
+:deep(.el-tabs__item.is-active) {
+  color: #4f46e5;
+}
+
+:deep(.el-tabs__active-bar) {
+  height: 3px;
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  border-radius: 3px 3px 0 0;
+}
+
+/* 自定义表格 */
+:deep(.el-table) {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+}
+
+:deep(.el-table td.el-table__cell) {
+  border: none;
+  padding: 16px 0;
+}
+
+:deep(.el-table__body tr:hover > td) {
+  background-color: #f8fafc !important;
+}
+
+:deep(.el-table__row) {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* 自定义弹窗 */
+:deep(.el-dialog) {
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.el-dialog__header) {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+:deep(.el-dialog__title) {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+:deep(.el-dialog__body) {
+  padding: 0 24px;
+}
+
+:deep(.el-dialog__footer) {
+  padding: 20px 24px;
+  border-top: 1px solid #f1f5f9;
+}
+</style>

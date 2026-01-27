@@ -48,26 +48,26 @@
             </template>
 
             <template #date-cell="{ data }">
-               <div :class="['w-full h-full flex flex-col justify-start items-center transition-all duration-300 rounded-xl py-1 border border-transparent hover:border-indigo-100 hover:bg-slate-50 relative group/cell', 
+               <div :class="['absolute inset-1.5 flex flex-col justify-start items-center overflow-hidden transition-all duration-300 rounded-xl py-1 border border-transparent hover:border-indigo-100 hover:bg-slate-50 relative group/cell', 
                   isSameDay(data.day, calendarValue) ? '!bg-indigo-50/40' : '']">
                   <!-- 日期数字 -->
-                  <div class="flex justify-center items-center h-8 w-full mb-0.5">
+                  <div class="flex justify-center items-center h-8 w-full mb-0.5 shrink-0">
                      <span :class="['text-[14px] font-bold font-mono w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-300', 
-                        isToday(data.day) ? 'bg-indigo-600 text-white shadow-md shadow-indigo-300' : 'text-gray-600']">
+                        isToday(data.day) ? 'bg-indigo-600 text-white shadow-md shadow-indigo-300' : (data.type === 'current-month' ? 'text-gray-600' : 'text-gray-300 opacity-50')]">
                        {{ data.day.split('-')[2] }}
                      </span>
                   </div>
                   
                   <!-- 日程标记点 -->
-                  <div class="w-full px-1 flex flex-col gap-0.5 items-center">
+                  <div class="w-full px-1 flex flex-col gap-0.5 items-center flex-1 min-h-0 overflow-hidden">
                      <template v-for="(event, index) in getEvents(data.day)" :key="index">
                         <el-tooltip :content="event.title" placement="top" :hide-after="0">
                            <div v-if="event.type === 'tag'" 
-                                :class="['w-full py-[2px] rounded-[3px] text-[9px] truncate text-center font-bold leading-none opacity-90 shadow-[0_1px_1px_rgba(0,0,0,0.03)] border border-transparent/50 scale-95 origin-center', event.colorClass]">
+                                :class="['w-full py-[2px] rounded-[3px] text-[9px] truncate text-center font-bold leading-none opacity-90 shadow-[0_1px_1px_rgba(0,0,0,0.03)] border border-transparent/50 scale-95 origin-center shrink-0', event.colorClass]">
                               {{ event.title }}
                            </div>
                            <div v-else 
-                                class="w-1.5 h-1.5 rounded-full ring-2 ring-white mt-0.5" :class="event.dotColor"></div>
+                                class="w-1.5 h-1.5 rounded-full ring-2 ring-white mt-0.5 shrink-0" :class="event.dotColor"></div>
                         </el-tooltip>
                      </template>
                   </div>
@@ -85,21 +85,16 @@
             <div class="absolute -right-8 -top-8 w-40 h-40 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
 
             <!-- 当前状态大卡片 -->
-            <div class="relative z-10 mb-6 bg-white/40 backdrop-blur-sm rounded-2xl border border-gray-100 p-5">
+            <div class="relative z-10 mb-6 bg-white/40 backdrop-blur-sm rounded-2xl border border-gray-100 p-5 overflow-hidden">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Current Status</span>
-                    <span class="relative flex h-2.5 w-2.5">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </span>
                 </div>
                 <div class="flex items-end gap-3">
                     <h2 class="text-3xl font-black text-gray-800 tracking-tight">空闲中</h2>
                     <span class="text-sm font-medium text-gray-400 mb-1.5 bg-gray-100 px-2 py-0.5 rounded-md">第一会议室 A101</span>
                 </div>
                 <div class="mt-4 flex gap-3">
-                    <el-button type="primary" class="!rounded-xl !px-6 !h-9 !font-bold !shadow-md shadow-indigo-100/50">立即预约</el-button>
-                    <el-button plain class="!rounded-xl !px-4 !h-9 !bg-white/80 !border-gray-200">详情</el-button>
+                    <el-button type="primary" class="!rounded-xl !px-6 !h-9 !font-bold !shadow-md shadow-indigo-100/50" @click="router.push('/rooms')">立即预约</el-button>
                 </div>
             </div>
 
@@ -179,6 +174,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { Monitor, User, Trophy, Calendar, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
@@ -187,6 +183,7 @@ import { getBookings } from '@/api/booking'
 
 dayjs.locale('zh-cn')
 
+const router = useRouter()
 const userStore = useUserStore()
 const calendarValue = ref(new Date())
 const roomSlots = ref([])
@@ -214,6 +211,12 @@ const currentWeekday = computed(() => dayjs().format('dddd'))
 // 判断是否是今天
 const isToday = (dateStr) => {
     return dayjs(dateStr).isSame(dayjs(), 'day')
+}
+
+// 判断是否是当月第一天或最后一天
+const isMonthBoundary = (dateStr) => {
+    const d = dayjs(dateStr)
+    return d.date() === 1 || d.date() === d.daysInMonth()
 }
 
 // 模拟日历事件数据
@@ -277,7 +280,6 @@ const developers = ref([
 }
 
 :deep(.el-calendar__header) {
-  /* 恢复默认显示，但移除所有 padding/margin 和 边框 */
   display: block; 
   padding: 0 0 16px 0;
   border-bottom: none;
@@ -288,13 +290,14 @@ const developers = ref([
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: visible; /* 防止内容被切割 */
+  overflow: hidden; /* 防止溢出 */
 }
 
 :deep(.el-calendar-table) {
+  width: 100%;
   height: 100%;
-  flex: 1;
-  table-layout: fixed; 
+  table-layout: fixed;
+  border-collapse: collapse; /* 关键：合并边框模型，更有利于高度计算 */
 }
 
 :deep(.el-calendar-table thead th) {
@@ -305,40 +308,34 @@ const developers = ref([
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   text-align: center;
+  border: none; /* 移除表头边框 */
+}
+
+/* 强制每行高度一致 */
+:deep(.el-calendar-table tr) {
+  height: 16.666%; /* 假设6行展示，强制均分 */
+}
+
+:deep(.el-calendar-table tr:first-child td) {
+   border-top: none;
 }
 
 :deep(.el-calendar-table td) {
   border: none;
-  text-align: center; /* 确保内容居中 */
-  vertical-align: top;
-}
-
-
-:deep(.el-calendar__body) {
   padding: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-:deep(.el-calendar-table) {
-  flex: 1;
-  height: 100%;
-}
-
-:deep(.el-calendar-table td) {
-  border: none !important; 
+  vertical-align: top;
+  position: relative;
 }
 
 :deep(.el-calendar-table .el-calendar-day) {
-  height: 100%; 
-  padding: 2px;
-  display: flex;
-  flex-direction: column;
+  height: 100% !important; /* 强制填满 td */
+  min-height: 0 !important; /* 覆盖默认最小高度 */
+  padding: 0;
+  position: relative;
+  z-index: 1;
 }
 
-/* 移除默认选中背景，由 slot 内部控制 */
+/* 移除默认选中背景 */
 :deep(.el-calendar-table td.is-selected) {
   background-color: transparent;
 }
