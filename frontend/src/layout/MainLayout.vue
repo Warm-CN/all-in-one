@@ -2,8 +2,8 @@
   <el-container class="h-screen w-full bg-[#F8FAFC]">
     <!-- 侧边栏 -->
     <el-aside
-      width="240px"
-      class="h-full bg-white border-r border-gray-100 transition-all duration-300 flex flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+      width="260px"
+      class="h-full bg-white border-r border-gray-100 transition-all duration-300 flex flex-col z-20 shadow-[2px_0_12px_rgba(0,0,0,0.01)]"
     >
       <!-- Logo 区域 -->
       <div class="h-16 flex items-center justify-center border-b border-gray-50/50">
@@ -12,7 +12,7 @@
             <el-icon :size="20"><ElementPlus /></el-icon>
           </div>
           <span class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 tracking-tight">
-            全能小助手
+            无协ALL IN ONE
           </span>
         </div>
       </div>
@@ -24,38 +24,66 @@
           class="border-none w-full !bg-transparent py-4 px-3"
           router
         >
-          <el-menu-item index="/home" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200">
+          <!-- 首页概览 -->
+          <div class="px-4 py-2 mb-2 text-xs font-semibold text-gray-400 opacity-60">首页</div>
+          <el-menu-item index="/home" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
             <el-icon class="group-hover:text-indigo-600 transition-colors"><HomeFilled /></el-icon>
             <span class="group-hover:text-indigo-600 font-medium group-[.is-active]:text-indigo-600">首页概览</span>
           </el-menu-item>
 
-          <div class="px-4 py-2 mt-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            业务管理
-          </div>
+          <!-- 协会资源 (所有人可见) -->
+          <div class="px-4 py-2 mt-4 mb-2 text-xs font-semibold text-gray-400 opacity-60">协会资源</div>
 
-          <el-menu-item index="/rooms" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200">
+          <el-menu-item index="/rooms" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
             <el-icon class="group-hover:text-indigo-600 transition-colors"><Monitor /></el-icon>
             <span class="group-hover:text-indigo-600 font-medium">会议室预约</span>
           </el-menu-item>
 
-          <el-menu-item index="/recruitment" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200">
+          <el-menu-item index="/recruitment" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
             <el-icon class="group-hover:text-indigo-600 transition-colors"><UserFilled /></el-icon>
             <span class="group-hover:text-indigo-600 font-medium">招新面试</span>
           </el-menu-item>
-
-          <el-menu-item index="/assets" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200">
-            <el-icon class="group-hover:text-indigo-600 transition-colors"><Box /></el-icon>
-            <span class="group-hover:text-indigo-600 font-medium">物资管理</span>
+          
+           <el-menu-item index="/wireless-cup" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+            <el-icon class="group-hover:text-indigo-600 transition-colors"><Trophy /></el-icon>
+            <span class="group-hover:text-indigo-600 font-medium">无线杯</span>
           </el-menu-item>
 
-          <div class="px-4 py-2 mt-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            系统设置
-          </div>
-
-          <el-menu-item index="/users" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200">
-             <el-icon class="group-hover:text-indigo-600 transition-colors"><User /></el-icon>
-            <span class="group-hover:text-indigo-600 font-medium">成员管理</span>
+           <el-menu-item index="/telecom-cup" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+            <el-icon class="group-hover:text-indigo-600 transition-colors"><Medal /></el-icon>
+            <span class="group-hover:text-indigo-600 font-medium">电信杯</span>
           </el-menu-item>
+          
+           <el-menu-item index="/contacts" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+            <el-icon class="group-hover:text-indigo-600 transition-colors"><Notebook /></el-icon>
+            <span class="group-hover:text-indigo-600 font-medium">通讯录</span>
+          </el-menu-item>
+
+          <!-- 管理工具 (仅 Admin 可见) -->
+          <template v-if="userStore.userRole === 'admin'">
+            <div class="px-4 py-2 mt-4 mb-2 text-xs font-semibold text-gray-400 opacity-60">管理工具</div>
+
+            <el-menu-item index="/users" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+                <el-icon class="group-hover:text-indigo-600 transition-colors"><User /></el-icon>
+                <span class="group-hover:text-indigo-600 font-medium">成员管理</span>
+            </el-menu-item>
+
+            <el-menu-item index="/admin/rooms" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+                <el-icon class="group-hover:text-indigo-600 transition-colors"><Setting /></el-icon>
+                <span class="group-hover:text-indigo-600 font-medium">会议室管理</span>
+            </el-menu-item>
+
+            <el-menu-item index="/admin/recruitment" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+                <el-icon class="group-hover:text-indigo-600 transition-colors"><DataLine /></el-icon>
+                <span class="group-hover:text-indigo-600 font-medium">招新数据</span>
+            </el-menu-item>
+            
+            <el-menu-item index="/admin/contest" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+                <el-icon class="group-hover:text-indigo-600 transition-colors"><Platform /></el-icon>
+                <span class="group-hover:text-indigo-600 font-medium">比赛后台</span>
+            </el-menu-item>
+          </template>
+
         </el-menu>
       </el-scrollbar>
 
@@ -148,6 +176,11 @@ import {
   Bell,
   CaretBottom,
   Setting,
+  Trophy,
+  Medal,
+  Notebook,
+  DataLine,
+  Platform,
   SwitchButton
 } from '@element-plus/icons-vue'
 
@@ -194,6 +227,7 @@ const handleLogout = () => {
     background-color: #EEF2FF !important; /* indigo-50 */
     color: #4F46E5 !important; /* indigo-600 */
     font-weight: 600;
+    border-left-color: #4F46E5 !important;
 }
 :deep(.el-menu-item:hover) {
     background-color: #FAFAFA; /* gray-50 */

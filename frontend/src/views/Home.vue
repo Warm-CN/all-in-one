@@ -178,16 +178,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { Monitor, User, Trophy, Calendar, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
+import { getBookings } from '@/api/booking'
 
 dayjs.locale('zh-cn')
 
 const userStore = useUserStore()
 const calendarValue = ref(new Date())
+const roomSlots = ref([])
 
 // 切换日历日期
 const selectDate = (type) => {
@@ -236,14 +238,23 @@ const getEvents = (day) => {
     return eventsMap[day] || []
 }
 
-// 模拟【单个】会议室（第一会议室）的时间段数据
-const roomSlots = ref([
-    { time: '08:00 - 10:00', status: 'free', user: '', dept: '' },
-    { time: '10:00 - 12:00', status: 'booked', user: '张三', dept: '技术部' },
-    { time: '14:00 - 16:00', status: 'booked', user: '李四', dept: '宣传部' },
-    { time: '16:00 - 18:00', status: 'free', user: '', dept: '' },
-    { time: '19:00 - 21:00', status: 'booked', user: '王五', dept: '主席团' }
-])
+onMounted(async () => {
+   try {
+      // 默认获取今天的预约作为概览
+      const res = await getBookings(dayjs().format('YYYY-MM-DD'))
+      if (res.code === 200) {
+         // 适配 API 数据到 Home 组件的格式
+         roomSlots.value = res.data.map(item => ({
+             time: `${item.start_time} - ${item.end_time}`,
+             status: 'booked', // 只要是 API 返回的都是 booked
+             user: item.user_name || '未知用户',
+             dept: item.user_dept || '未知部门'
+         }))
+      }
+   } catch (e) {
+      console.error('Fetch home bookings failed', e)
+   }
+})
 
 // 模拟贡献者数据
 const developers = ref([

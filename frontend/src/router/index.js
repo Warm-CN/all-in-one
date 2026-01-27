@@ -29,6 +29,60 @@ const routes = [
                     title: '首页概览',
                     requiresAuth: true
                 }
+            },
+            {
+                path: 'rooms',
+                name: 'Rooms',
+                component: () => import('@/views/MeetingRoom.vue'),
+                meta: { title: '会议室预约', requiresAuth: true }
+            },
+            {
+                path: 'recruitment',
+                name: 'Recruitment',
+                component: () => import('@/views/Placeholder.vue'),
+                meta: { title: '招新面试', requiresAuth: true }
+            },
+            {
+                path: 'wireless-cup',
+                name: 'WirelessCup',
+                component: () => import('@/views/Placeholder.vue'),
+                meta: { title: '无线杯', requiresAuth: true }
+            },
+            {
+                path: 'telecom-cup',
+                name: 'TelecomCup',
+                component: () => import('@/views/Placeholder.vue'),
+                meta: { title: '电信杯', requiresAuth: true }
+            },
+            {
+                path: 'contacts',
+                name: 'Contacts',
+                component: () => import('@/views/Placeholder.vue'),
+                meta: { title: '通讯录', requiresAuth: true }
+            },
+            {
+                path: 'users',
+                name: 'Users',
+                component: () => import('@/views/Placeholder.vue'),
+                meta: { title: '成员管理', requiresAuth: true }
+            },
+            {
+                path: 'admin/rooms',
+                name: 'AdminRooms',
+                component: () => import('@/views/Placeholder.vue'),
+                meta: { title: '会议室管理', requiresAuth: true }
+            },
+            {
+                path: 'admin/recruitment',
+                name: 'AdminRecruitment',
+                component: () => import('@/views/Placeholder.vue'),
+                meta: { title: '招新数据管理', requiresAuth: true }
+            },
+            {
+                path: 'admin/contest',
+                name: 'AdminContest',
+                component: () => import('@/views/Placeholder.vue'),
+                meta: { title: '比赛后台管理', requiresAuth: true }
             }
         ]
     },

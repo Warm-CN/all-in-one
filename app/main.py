@@ -9,7 +9,7 @@ from app.core.database import engine, Base
 from app.schemas.response import error_response
 
 # 导入路由
-from app.api.v1 import auth, signups, bookings
+from app.api.v1 import auth, signups, bookings, room_bookings
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -75,6 +75,12 @@ app.include_router(
     bookings.router,
     prefix="/api/v1/bookings",
     tags=["🏢 会议室预约"]
+)
+
+# 会议室日常预约路由（简化版 - 无需审批）
+app.include_router(
+    room_bookings.router,
+    tags=["📅 会议室预约（日常）"]
 )
 
 
