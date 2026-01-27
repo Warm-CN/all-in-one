@@ -5,8 +5,8 @@
     <div 
       class="relative transition-all duration-700 cubic-bezier-smooth"
       :style="{
-        width: isFlipped ? '800px' : '440px',
-        height: isFlipped ? '920px' : '640px'
+        width: isFlipped ? '780px' : '440px',
+        height: isFlipped ? '680px' : '640px'
       }"
     >
       <!-- 翻转容器 -->
@@ -88,64 +88,64 @@
         <div class="absolute inset-0 backface-hidden bg-white/95 backdrop-blur-xl rounded-[24px] border border-white/50 p-0 flex flex-col shadow-lg overflow-hidden rotate-y-180 z-10">
           
           <!-- 头部标题栏 -->
-          <div class="px-12 py-10 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center backdrop-blur-sm">
+          <div class="px-10 py-6 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center backdrop-blur-sm shrink-0">
              <div>
-               <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight">内部档案录入</h2>
-               <p class="text-slate-400 text-sm mt-1.5 font-medium tracking-wide">INTERNAL MEMBER REGISTRATION</p>
+               <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">内部档案录入</h2>
+               <p class="text-slate-400 text-xs mt-1 font-medium tracking-wide">INTERNAL MEMBER REGISTRATION</p>
              </div>
-             <div class="w-14 h-14 bg-white rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm">
+             <div class="w-12 h-12 bg-white rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm">
                <el-icon class="text-blue-600 text-2xl"><Document /></el-icon>
              </div>
           </div>
 
           <!-- 申请表单内容 -->
-          <div class="flex-1 px-12 py-10 overflow-y-auto custom-scrollbar">
+          <div class="flex-1 px-10 py-6 overflow-y-auto custom-scrollbar">
              <form class="h-full flex flex-col">
                 <!-- Grid 布局 -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-20 gap-y-10 mb-10">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-6">
                   
                   <!-- 左侧：基本信息 -->
-                  <div class="space-y-10">
-                    <div class="flex items-center gap-4 mb-8 pb-4 border-b border-slate-100">
-                      <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                        <el-icon class="text-blue-600 text-xl"><User /></el-icon>
+                  <div class="flex flex-col gap-5">
+                    <div class="flex items-center gap-3 pb-2 border-b border-slate-100">
+                      <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <el-icon class="text-blue-600 text-base"><User /></el-icon>
                       </div>
-                      <span class="font-bold text-slate-800 text-lg tracking-wide">基本信息 / BASIC INFO</span>
+                      <span class="font-bold text-slate-800 text-base tracking-wide">基本信息</span>
                     </div>
 
                     <div class="form-item">
-                      <label class="block text-slate-500 text-sm font-bold mb-4 uppercase tracking-wider pl-1">Student ID</label>
-                      <el-input v-model="registerForm.studentId" placeholder="请输入学号" class="!h-12 text-base" />
+                      <label class="block text-slate-500 text-xs font-bold mb-1.5 uppercase tracking-wider pl-1">Student ID</label>
+                      <el-input v-model="registerForm.studentId" placeholder="请输入学号" class="!h-11 text-base" />
                     </div>
 
                     <div class="form-item">
-                      <label class="block text-slate-500 text-sm font-bold mb-4 uppercase tracking-wider pl-1">Full Name</label>
-                      <el-input v-model="registerForm.name" placeholder="请输入姓名" class="!h-12 text-base" />
+                      <label class="block text-slate-500 text-xs font-bold mb-1.5 uppercase tracking-wider pl-1">Full Name</label>
+                      <el-input v-model="registerForm.name" placeholder="请输入姓名" class="!h-11 text-base" />
                     </div>
 
                     <div class="form-item">
-                      <label class="block text-slate-500 text-sm font-bold mb-4 uppercase tracking-wider pl-1">Mobile Phone</label>
-                      <el-input v-model="registerForm.phone" placeholder="请输入手机号" class="!h-12 text-base" />
+                      <label class="block text-slate-500 text-xs font-bold mb-1.5 uppercase tracking-wider pl-1">Mobile Phone</label>
+                      <el-input v-model="registerForm.phone" placeholder="请输入手机号" class="!h-11 text-base" />
                     </div>
 
                     <div class="form-item">
-                      <label class="block text-slate-500 text-sm font-bold mb-4 uppercase tracking-wider pl-1">Email Address</label>
-                      <el-input v-model="registerForm.email" placeholder="请输入邮箱地址" class="!h-12 text-base" />
+                      <label class="block text-slate-500 text-xs font-bold mb-1.5 uppercase tracking-wider pl-1">Email Address</label>
+                      <el-input v-model="registerForm.email" placeholder="请输入邮箱地址" class="!h-11 text-base" />
                     </div>
                   </div>
 
                   <!-- 右侧：职位与密码 -->
-                  <div class="space-y-10">
-                    <div class="flex items-center gap-4 mb-8 pb-4 border-b border-slate-100">
-                      <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                        <el-icon class="text-indigo-600 text-xl"><Suitcase /></el-icon>
+                  <div class="flex flex-col gap-5">
+                    <div class="flex items-center gap-3 pb-2 border-b border-slate-100">
+                      <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                        <el-icon class="text-indigo-600 text-base"><Suitcase /></el-icon>
                       </div>
-                      <span class="font-bold text-slate-800 text-lg tracking-wide">职位信息 / POSITION</span>
+                      <span class="font-bold text-slate-800 text-base tracking-wide">职位信息</span>
                     </div>
 
                     <div class="form-item">
-                      <label class="block text-slate-500 text-sm font-bold mb-4 uppercase tracking-wider pl-1">Department</label>
-                      <el-select v-model="registerForm.department" placeholder="请选择部门" class="w-full !h-12 text-base">
+                      <label class="block text-slate-500 text-xs font-bold mb-1.5 uppercase tracking-wider pl-1">Department</label>
+                      <el-select v-model="registerForm.department" placeholder="请选择部门" class="w-full !h-11 text-base">
                         <el-option 
                           v-for="dept in departments" 
                           :key="dept" 
@@ -156,11 +156,11 @@
                     </div>
 
                     <div class="form-item">
-                      <label class="block text-slate-500 text-sm font-bold mb-4 uppercase tracking-wider pl-1">Position</label>
+                      <label class="block text-slate-500 text-xs font-bold mb-1.5 uppercase tracking-wider pl-1">Position</label>
                       <el-select 
                         v-model="registerForm.position" 
                         placeholder="请选择职位" 
-                        class="w-full !h-12 text-base"
+                        class="w-full !h-11 text-base"
                         :disabled="!registerForm.department"
                       >
                          <el-option 
@@ -172,24 +172,22 @@
                       </el-select>
                     </div>
 
-                    <div class="mt-12 pt-10 border-t border-slate-100"></div>
-
-                    <div class="flex items-center gap-4 mb-8">
-                      <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
-                        <el-icon class="text-red-500 text-xl"><Lock /></el-icon>
+                    <div class="flex items-center gap-3 pb-2 mt-2 border-b border-slate-100">
+                      <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                        <el-icon class="text-red-500 text-base"><Lock /></el-icon>
                       </div>
-                      <span class="font-bold text-slate-800 text-lg tracking-wide">账户安全 / SECURITY</span>
+                      <span class="font-bold text-slate-800 text-base tracking-wide">账户安全</span>
                     </div>
 
                     <div class="form-item">
-                      <label class="block text-slate-500 text-sm font-bold mb-4 uppercase tracking-wider pl-1">Set Password</label>
-                      <el-input v-model="registerForm.password" type="password" placeholder="设置登录密码" show-password class="!h-12 text-base" />
+                      <label class="block text-slate-500 text-xs font-bold mb-1.5 uppercase tracking-wider pl-1">Set Password</label>
+                      <el-input v-model="registerForm.password" type="password" placeholder="设置登录密码" show-password class="!h-11 text-base" />
                     </div>
                   </div>
                 </div>
 
                 <!-- 底部说明与按钮 -->
-                <div class="mt-auto pt-10 flex items-center justify-between border-t border-slate-100">
+                <div class="mt-auto pt-6 flex items-center justify-between border-t border-slate-100 shrink-0">
                   <button 
                     type="button" 
                     @click="toggleFlip" 
@@ -200,7 +198,7 @@
 
                   <el-button 
                     type="primary" 
-                    class="!px-12 !h-14 !text-lg !font-bold !rounded-2xl !shadow-xl !shadow-blue-500/20"
+                    class="!px-10 !h-12 !text-lg !font-bold !rounded-2xl !shadow-xl !shadow-blue-500/20"
                     @click="handleRegister"
                   >
                     确认录入档案
