@@ -49,3 +49,30 @@ export function getMyBookings(upcoming = false) {
         params: { upcoming }
     })
 }
+
+/**
+ * 获取管理员视角的预约列表（支持时间范围）
+ * @param {string} startDate - 开始日期 YYYY-MM-DD
+ * @param {string} endDate - 结束日期 YYYY-MM-DD
+ */
+export function getAdminBookings(startDate, endDate) {
+    return request({
+        url: '/api/v1/admin/bookings/range',
+        method: 'get',
+        params: { start_date: startDate, end_date: endDate }
+    })
+}
+
+/**
+ * 导出月度预约记录
+ * @param {number} year 
+ * @param {number} month 
+ */
+export function exportBookings(year, month) {
+    return request({
+        url: '/api/v1/admin/bookings/export',
+        method: 'get',
+        params: { year, month },
+        responseType: 'blob'
+    })
+}

@@ -112,6 +112,10 @@ async def create_booking(
     # 检查日期是否是过去
     if booking_data.booking_date < date.today():
         return error_response(400, "不能预约过去的日期")
+        
+    # 检查日期是否超过未来7天
+    if booking_data.booking_date > date.today() + timedelta(days=7):
+        return error_response(400, "只能预约未来7天内的日期")
     
     # 检查时间冲突
     has_conflict = check_time_overlap(

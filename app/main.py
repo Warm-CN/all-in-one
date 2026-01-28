@@ -9,7 +9,7 @@ from app.core.database import engine, Base
 from app.schemas.response import error_response
 
 # 导入路由
-from app.api.v1 import auth, signups, room_bookings, admin, users
+from app.api.v1 import auth, signups, room_bookings, admin, users, admin_bookings
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -80,6 +80,13 @@ app.include_router(
 app.include_router(
     admin.router,
     tags=["👨‍💼 管理员-用户管理"]
+)
+
+# 管理员会议室管理路由
+app.include_router(
+    admin_bookings.router,
+    prefix="/api/v1/admin/bookings",
+    tags=["📅 管理员-会议室管理"]
 )
 
 # 通讯录/用户查询路由

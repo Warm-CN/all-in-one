@@ -13,7 +13,7 @@
       </div>
       
       <div class="flex items-center gap-2">
-         <el-button :icon="ArrowLeft" circle size="default" @click="changeDate(-1)" />
+         <el-button :icon="ArrowLeft" circle size="default" @click="changeDate(-1)" :disabled="isToday" />
          <el-date-picker
               v-model="currentDate"
               type="date"
@@ -22,10 +22,11 @@
               value-format="YYYY-MM-DD"
               :clearable="false"
               class="!w-[160px]"
+              :disabled-date="disabledDate"
               @change="fetchData"
             />
-         <el-button :icon="ArrowRight" circle size="default" @click="changeDate(1)" />
-         <el-button type="primary" text bg size="default" @click="goToToday" class="!ml-1">今天</el-button>
+         <el-button :icon="ArrowRight" circle size="default" @click="changeDate(1)" :disabled="isMaxDate" />
+         <el-button type="primary" text bg size="default" @click="goToToday" class="!ml-1" :disabled="isToday">今天</el-button>
       </div>
     </div>
 
@@ -144,9 +145,9 @@
        <!-- 右侧：预约表单 (35%) -->
        <div class="w-[35%] flex flex-col gap-5">
            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1 flex flex-col relative overflow-hidden">
-              <div v-if="isPastDate" class="absolute inset-0 bg-gray-50/80 z-20 flex flex-col items-center justify-center backdrop-blur-[1px]">
+              <div v-if="isPastDate || isTooFarFuture" class="absolute inset-0 bg-gray-50/80 z-20 flex flex-col items-center justify-center backdrop-blur-[1px]">
                   <el-icon :size="48" class="text-gray-300 mb-2"><CircleCloseFilled /></el-icon>
-                  <p class="text-gray-500 font-bold">无法在过去日期进行预约</p>
+                  <p class="text-gray-500 font-bold">{{ isPastDate ? '无法在过去日期进行预约' : '只能预约未来7天内的日期' }}</p>
                   <el-button type="primary" link @click="goToToday" class="mt-2">返回今天</el-button>
               </div>
 
@@ -155,7 +156,7 @@
                  预约申请
               </h2>
 
-              <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="flex-1 flex flex-col" :disabled="loading || isPastDate">
+              <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="flex-1 flex flex-col" :disabled="loading || isPastDate || isTooFarFuture">
                  <el-form-item label="预约日期">
                     <div class="w-full px-3 py-2 bg-gray-50 rounded-lg text-gray-500 text-sm font-bold border border-gray-200">
                         {{ currentDateFormatted }}
@@ -258,6 +259,24 @@ const isPastDate = computed(() => {
     return dayjs(currentDate.value).isBefore(dayjs(), 'day')
 })
 
+// 是否超过未来7天
+const isTooFarFuture = computed(() => {
+    return dayjs(currentDate.value).isAfter(dayjs().add(7, 'day'), 'day')
+})
+
+// 是否为最大可选日期（今天+7天）
+const isMaxDate = computed(() => {
+    return dayjs(currentDate.value).isSame(dayjs().add(7, 'day'), 'day') || isTooFarFuture.value
+})
+
+// 日期禁用逻辑
+const disabledDate = (time) => {
+    const date = dayjs(time)
+    const today = dayjs().startOf('day')
+    const maxDate = today.add(7, 'day')
+    return date.isBefore(today) || date.isAfter(maxDate)
+}
+
 // 检查是否是我的预约 (用于今日列表高亮)
 const isMyBooking = (booking) => {
     return booking.user_id === userStore.userInfo?.id || userStore.userRole === 'admin'
@@ -291,7 +310,7 @@ const fetchData = async () => {
 
 const fetchMyBookings = async () => {
     try {
-        const res = await getMyBookings(true) // true for upcoming
+        const res = await getMyBookings(true) // true 仅获取未来预约
         if (res.code === 200) {
             myBookings.value = res.data
         }
