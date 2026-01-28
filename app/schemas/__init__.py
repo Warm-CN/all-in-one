@@ -10,6 +10,7 @@ from app.schemas.auth import (
     PasswordResetRequest,
     PasswordChangeRequest
 )
+from app.schemas.schedule import ScheduleCreate, ScheduleResponse
 
 __all__ = [
     "ResponseModel",
@@ -21,4 +22,6 @@ __all__ = [
     "RegisterRequest",
     "PasswordResetRequest",
     "PasswordChangeRequest",
+    "ScheduleCreate",
+    "ScheduleResponse",
 ]

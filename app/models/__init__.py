@@ -8,6 +8,7 @@ from app.models.room import Room
 from app.models.room_booking import RoomBooking
 from app.models.signup import SignupConfig
 from app.models.application import Application, ApplicationStatus
+from app.models.schedule import Schedule
 
 __all__ = [
     "BaseModel",
@@ -17,4 +18,5 @@ __all__ = [
     "SignupConfig",
     "Application",
     "ApplicationStatus",
+    "Schedule",
 ]

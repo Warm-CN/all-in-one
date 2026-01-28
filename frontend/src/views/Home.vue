@@ -48,7 +48,8 @@
             </template>
 
             <template #date-cell="{ data }">
-               <div :class="['absolute inset-1.5 flex flex-col justify-start items-center overflow-hidden transition-all duration-300 rounded-xl py-1 border border-transparent hover:border-indigo-100 hover:bg-slate-50 relative group/cell', 
+               <div @click.stop="handleDateClick(data.day, $event)" 
+                    :class="['absolute inset-1.5 flex flex-col justify-start items-center overflow-hidden transition-all duration-300 rounded-xl py-1 border border-transparent hover:border-indigo-100 hover:bg-slate-50 relative group/cell cursor-pointer', 
                   isSameDay(data.day, calendarValue) ? '!bg-indigo-50/40' : '']">
                   <!-- 日期数字 -->
                   <div class="flex justify-center items-center h-8 w-full mb-0.5 shrink-0">
@@ -59,21 +60,66 @@
                   </div>
                   
                   <!-- 日程标记点 -->
-                  <div class="w-full px-1 flex flex-col gap-0.5 items-center flex-1 min-h-0 overflow-hidden">
+                  <div class="w-full px-1 flex flex-wrap gap-1 justify-center items-center flex-1 min-h-0 overflow-hidden">
                      <template v-for="(event, index) in getEvents(data.day)" :key="index">
-                        <el-tooltip :content="event.title" placement="top" :hide-after="0">
-                           <div v-if="event.type === 'tag'" 
-                                :class="['w-full py-[2px] rounded-[3px] text-[9px] truncate text-center font-bold leading-none opacity-90 shadow-[0_1px_1px_rgba(0,0,0,0.03)] border border-transparent/50 scale-95 origin-center shrink-0', event.colorClass]">
-                              {{ event.title }}
-                           </div>
-                           <div v-else 
-                                class="w-1.5 h-1.5 rounded-full ring-2 ring-white mt-0.5 shrink-0" :class="event.dotColor"></div>
+                        <el-tooltip v-if="event.type === 'dot'" :content="event.title" placement="top" :hide-after="0">
+                           <div class="w-1.5 h-1.5 rounded-full ring-1 ring-white shrink-0" 
+                                :style="{ backgroundColor: event.dotColor }"></div>
                         </el-tooltip>
+                        <span v-else-if="event.type === 'more'" 
+                              class="text-[10px] text-gray-400 font-bold shrink-0">+{{ event.count }}</span>
                      </template>
                   </div>
                </div>
             </template>
          </el-calendar>
+         
+         <!-- 浮动日程卡片 -->
+         <transition name="schedule-card">
+            <div v-if="showScheduleCard" 
+                 class="fixed w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[9999] overflow-hidden"
+                 :style="popupStyle"
+                 @click.stop>
+               <!-- 卡片头部 -->
+               <div class="bg-gradient-to-r from-indigo-500 to-purple-500 p-4 text-white">
+                  <div class="flex items-center justify-between mb-1">
+                     <h3 class="text-lg font-bold">{{ dayjs(selectedDate).format('MM月DD日') }}</h3>
+                     <el-button circle size="small" text @click="closeScheduleCard" class="!text-white hover:!bg-white/20">
+                        <el-icon><Close /></el-icon>
+                     </el-button>
+                  </div>
+                  <p class="text-xs opacity-90">{{ dayjs(selectedDate).format('dddd') }}</p>
+               </div>
+               
+               <!-- 卡片内容 -->
+               <div class="p-4 max-h-96 overflow-y-auto custom-scrollbar">
+                  <div v-if="selectedDateSchedules.length === 0" class="flex flex-col items-center justify-center py-8 text-gray-400">
+                     <el-icon :size="40" class="mb-2 opacity-20"><Calendar /></el-icon>
+                     <p class="text-sm">当日暂无日程</p>
+                  </div>
+                  
+                  <div v-else class="space-y-3">
+                     <div v-for="schedule in selectedDateSchedules" :key="schedule.id" 
+                          class="p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-100">
+                        <!-- 时间标记 -->
+                        <div class="flex items-center gap-2 mb-2">
+                           <div class="w-2 h-2 rounded-full" :style="{ backgroundColor: schedule.color }"></div>
+                           <span class="text-xs font-mono font-bold text-gray-500">{{ schedule.start_time }} - {{ schedule.end_time }}</span>
+                        </div>
+                        
+                        <!-- 标题 -->
+                        <h4 class="font-bold text-gray-800 mb-1 text-sm">{{ schedule.title }}</h4>
+                        
+                        <!-- 地点 -->
+                        <div v-if="schedule.location" class="flex items-center gap-1 text-xs text-gray-500">
+                           <el-icon :size="12"><Location /></el-icon>
+                           <span>{{ schedule.location }}</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </transition>
       </div>
 
       <!-- 右侧：状态与贡献者 (42%) -->
@@ -173,13 +219,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
-import { Monitor, User, Trophy, Calendar, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { Monitor, User, Trophy, Calendar, ArrowLeft, ArrowRight, Close, Location } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 import { getBookings } from '@/api/booking'
+import { getSchedules } from '@/api/schedule'
 
 dayjs.locale('zh-cn')
 
@@ -187,6 +234,11 @@ const router = useRouter()
 const userStore = useUserStore()
 const calendarValue = ref(new Date())
 const roomSlots = ref([])
+const schedulesMap = ref({}) // 日程数据映射 { 'YYYY-MM-DD': [...] }
+const showScheduleCard = ref(false) // 是否显示日程浮动卡片
+const selectedDate = ref(null) // 选中的日期
+const selectedDateSchedules = ref([]) // 选中日期的日程列表
+const popupStyle = ref({ top: '0px', left: '0px' })
 
 // 切换日历日期
 const selectDate = (type) => {
@@ -219,29 +271,110 @@ const isMonthBoundary = (dateStr) => {
     return d.date() === 1 || d.date() === d.daysInMonth()
 }
 
-// 模拟日历事件数据
-const eventsMap = {
-    [dayjs().format('YYYY-MM-DD')]: [
-        { type: 'tag', title: '全员大会', colorClass: 'bg-indigo-100 text-indigo-600', dotColor: 'bg-indigo-500' },
-        { type: 'dot', title: '部门会议', dotColor: 'bg-orange-400' }
-    ],
-    [dayjs().add(2, 'day').format('YYYY-MM-DD')]: [
-        { type: 'tag', title: '招新宣讲', colorClass: 'bg-emerald-100 text-emerald-600', dotColor: 'bg-emerald-500' }
-    ],
-    [dayjs().add(5, 'day').format('YYYY-MM-DD')]: [
-        { type: 'dot', title: '物资盘点', dotColor: 'bg-pink-400' },
-        { type: 'dot', title: '系统维护', dotColor: 'bg-gray-400' }
-    ],
-    [dayjs().subtract(3, 'day').format('YYYY-MM-DD')]: [
-        { type: 'tag', title: '艺术展览', colorClass: 'bg-purple-100/80 text-purple-600', dotColor: 'bg-purple-500' }
-    ]
+// 获取指定日期的日程（显示为圆点）
+const getEvents = (day) => {
+    const schedules = schedulesMap.value[day] || []
+    // 最多显示3个圆点，超出显示+N
+    const maxDots = 3
+    const events = schedules.slice(0, maxDots).map(schedule => ({
+        type: 'dot',
+        title: `${schedule.start_time}-${schedule.end_time} ${schedule.title}`,
+        dotColor: schedule.color || '#3B82F6'
+    }))
+    
+    // 如果超过3个，添加+N提示
+    if (schedules.length > maxDots) {
+        events.push({
+            type: 'more',
+            count: schedules.length - maxDots
+        })
+    }
+    
+    return events
 }
 
-const getEvents = (day) => {
-    return eventsMap[day] || []
+// 加载指定月份的日程
+const loadMonthSchedules = async (targetDate) => {
+    try {
+        const startDate = dayjs(targetDate).startOf('month').format('YYYY-MM-DD')
+        const endDate = dayjs(targetDate).endOf('month').format('YYYY-MM-DD')
+        
+        const res = await getSchedules({ start_date: startDate, end_date: endDate })
+        if (res.code === 200) {
+            // 将数组转换为按日期分组的对象
+            const newMap = {}
+            res.data.forEach(schedule => {
+                const dateKey = schedule.schedule_date
+                if (!newMap[dateKey]) {
+                    newMap[dateKey] = []
+                }
+                newMap[dateKey].push(schedule)
+            })
+            schedulesMap.value = newMap
+        }
+    } catch (e) {
+        console.error('加载日程失败:', e)
+    }
+}
+
+// 监听日历月份变化
+watch(calendarValue, (newVal) => {
+    loadMonthSchedules(newVal)
+})
+
+// 处理日期点击事件
+const handleDateClick = (day, event) => {
+    selectedDate.value = day
+    selectedDateSchedules.value = schedulesMap.value[day] || []
+    
+    // 智能定位：根据鼠标在屏幕的位置决定弹出方向
+    const gap = 12 // 鼠标偏移量
+    const { clientX, clientY } = event
+    const { innerWidth, innerHeight } = window
+    
+    const style = {}
+
+    // 水平方向：如果在屏幕右侧 (60%之后)，则向左弹出
+    if (clientX > innerWidth * 0.6) {
+        style.left = 'auto'
+        style.right = `${innerWidth - clientX + gap}px`
+        // 防止溢出左边界 (320px是卡片宽)
+        if (clientX - 320 < 0) {
+             style.right = 'auto'
+             style.left = '10px'
+        }
+    } else {
+        style.left = `${clientX + gap}px`
+        style.right = 'auto'
+    }
+
+    // 垂直方向：如果在屏幕下方 (60%之后)，则向上弹出
+    if (clientY > innerHeight * 0.6) {
+        style.top = 'auto'
+        style.bottom = `${innerHeight - clientY + gap}px`
+    } else {
+        style.top = `${clientY + gap}px`
+        style.bottom = 'auto'
+    }
+
+    popupStyle.value = style
+    showScheduleCard.value = true
+}
+
+// 关闭浮动卡片
+const closeScheduleCard = () => {
+    showScheduleCard.value = false
+}
+
+// 点击空白关闭
+const handleGlobalClick = () => {
+   if (showScheduleCard.value) {
+      showScheduleCard.value = false
+   }
 }
 
 onMounted(async () => {
+   document.addEventListener('click', handleGlobalClick)
    try {
       // 默认获取今天的预约作为概览
       const res = await getBookings(dayjs().format('YYYY-MM-DD'))
@@ -257,6 +390,13 @@ onMounted(async () => {
    } catch (e) {
       console.error('Fetch home bookings failed', e)
    }
+   
+   // 加载当月日程
+   await loadMonthSchedules(new Date())
+})
+
+onUnmounted(() => {
+   document.removeEventListener('click', handleGlobalClick)
 })
 
 // 模拟贡献者数据
@@ -365,5 +505,41 @@ const developers = ref([
 @keyframes fadeInRight {
   from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
+}
+
+/* 浮动卡片过渡动画 */
+.schedule-card-enter-active,
+.schedule-card-leave-active {
+  transition: all 0.2s ease-out;
+}
+.schedule-card-enter-from,
+.schedule-card-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* 遮罩层过渡 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 自定义滚动条 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 </style>

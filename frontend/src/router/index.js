@@ -75,7 +75,7 @@ const routes = [
             {
                 path: 'admin/schedule',
                 name: 'AdminSchedule',
-                component: () => import('@/views/Placeholder.vue'),
+                component: () => import('@/views/AdminSchedule.vue'),
                 meta: { title: '日程管理', requiresAuth: true }
             },
             {
