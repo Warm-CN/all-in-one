@@ -69,8 +69,14 @@ const routes = [
             {
                 path: 'admin/rooms',
                 name: 'AdminRooms',
-                component: () => import('@/views/admin/MeetingRoomAdmin.vue'),
+                component: () => import('@/views/MeetingRoomAdmin.vue'),
                 meta: { title: '会议室管理', requiresAuth: true }
+            },
+            {
+                path: 'admin/schedule',
+                name: 'AdminSchedule',
+                component: () => import('@/views/Placeholder.vue'),
+                meta: { title: '日程管理', requiresAuth: true }
             },
             {
                 path: 'admin/recruitment',

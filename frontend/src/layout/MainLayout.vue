@@ -68,6 +68,11 @@
                 <span class="group-hover:text-indigo-600 font-medium">成员管理</span>
             </el-menu-item>
 
+            <el-menu-item index="/admin/schedule" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+                <el-icon class="group-hover:text-indigo-600 transition-colors"><Calendar /></el-icon>
+                <span class="group-hover:text-indigo-600 font-medium">日程管理</span>
+            </el-menu-item>
+
             <el-menu-item index="/admin/rooms" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
                 <el-icon class="group-hover:text-indigo-600 transition-colors"><Setting /></el-icon>
                 <span class="group-hover:text-indigo-600 font-medium">会议室管理</span>
@@ -181,7 +186,8 @@ import {
   Notebook,
   DataLine,
   Platform,
-  SwitchButton
+  SwitchButton,
+  Calendar
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
