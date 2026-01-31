@@ -174,7 +174,7 @@
                            <span class="text-[11px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded font-medium shrink-0">{{ slot.dept }}</span>
                         </div>
                         <div class="text-xs text-gray-400 truncate flex items-center gap-1">
-                           <span>需使用投影仪、白板</span>
+                           <span>{{ slot.remarks }}</span>
                         </div>
                      </div>
                   </div>
@@ -197,7 +197,7 @@
             
             <div class="flex items-center gap-[-8px]">
                <div class="flex -space-x-2 overflow-hidden py-2 px-1">
-                 <el-tooltip v-for="(dev, idx) in developers" :key="dev.id" :content="dev.name" placement="top" effect="light">
+                 <el-tooltip v-for="(dev, idx) in developers.slice(0, 5)" :key="dev.id" :content="dev.name" placement="top" effect="light">
                     <a :href="dev.url" target="_blank" 
                        class="inline-block relative transition-transform duration-300 hover:!z-10 hover:-translate-y-1.5 rounded-full ring-2 ring-white">
                       <img :src="dev.avatar" :alt="dev.name" class="h-10 w-10 rounded-full object-cover bg-gray-200" />
@@ -205,12 +205,42 @@
                  </el-tooltip>
                  
                  <!-- More Button -->
-                 <a href="#" class="flex items-center justify-center h-10 w-10 rounded-full ring-2 ring-white bg-gray-100 text-gray-500 text-xs font-medium hover:bg-gray-200 transition-colors z-0 relative hover:z-10 hover:-translate-y-1">
-                    +3
-                 </a>
+                 <div v-if="developers.length > 5" 
+                      @click.stop="openContributorsPopup($event)" 
+                      class="flex items-center justify-center h-10 w-10 rounded-full ring-2 ring-white bg-indigo-50 text-indigo-600 text-xs font-bold hover:bg-indigo-100 hover:text-indigo-700 transition-all z-0 relative hover:z-10 hover:-translate-y-1 cursor-pointer shadow-sm">
+                    +{{ developers.length - 5 }}
+                 </div>
                </div>
             </div>
          </div>
+         
+         <!-- 贡献者悬浮卡片 -->
+         <transition name="schedule-card">
+            <div v-if="showContributorCard" 
+                 class="fixed w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[9999] overflow-hidden"
+                 :style="contributorPopupStyle"
+                 @click.stop>
+               <!-- 卡片头部 -->
+               <div class="bg-gradient-to-r from-indigo-500 to-purple-500 p-4 text-white relative z-10">
+                  <div class="flex items-center justify-between mb-1">
+                     <h3 class="text-lg font-bold">系统贡献者</h3>
+                     <el-button circle size="small" text @click="showContributorCard = false" class="!text-white hover:!bg-white/20">
+                        <el-icon><Close /></el-icon>
+                     </el-button>
+                  </div>
+                  <p class="text-xs opacity-90">感谢每一位开发者的辛勤付出！</p>
+               </div>
+               
+               <!-- 卡片内容 -->
+               <div class="p-5 pt-6 grid grid-cols-4 gap-4 max-h-80 overflow-y-auto custom-scrollbar relative z-0">
+                  <a v-for="dev in developers" :key="dev.id" :href="dev.url" target="_blank" 
+                     class="flex flex-col items-center gap-2 group p-2 rounded-xl hover:bg-gray-50 transition-colors">
+                      <img :src="dev.avatar" :alt="dev.name" class="h-10 w-10 rounded-full object-cover ring-2 ring-gray-100 group-hover:ring-indigo-200 transition-all"/>
+                      <span class="text-[10px] text-gray-600 font-medium truncate w-full text-center">{{ dev.name }}</span>
+                  </a>
+               </div>
+            </div>
+         </transition>
          
       </div>
 
@@ -239,6 +269,8 @@ const showScheduleCard = ref(false) // 是否显示日程浮动卡片
 const selectedDate = ref(null) // 选中的日期
 const selectedDateSchedules = ref([]) // 选中日期的日程列表
 const popupStyle = ref({ top: '0px', left: '0px' })
+const showContributorCard = ref(false)
+const contributorPopupStyle = ref({ top: '0px', left: '0px' })
 
 // 切换日历日期
 const selectDate = (type) => {
@@ -366,10 +398,45 @@ const closeScheduleCard = () => {
     showScheduleCard.value = false
 }
 
+const openContributorsPopup = (event) => {
+    const gap = 12
+    const { clientX, clientY } = event
+    const { innerWidth, innerHeight } = window
+    
+    const style = {}
+
+    if (clientX > innerWidth * 0.6) {
+        style.left = 'auto'
+        style.right = `${innerWidth - clientX + gap}px`
+        // 防止溢出左边界 (320px是卡片宽)
+        if (clientX - 320 < 0) {
+             style.right = 'auto'
+             style.left = '10px'
+        }
+    } else {
+        style.left = `${clientX + gap}px`
+        style.right = 'auto'
+    }
+
+    if (clientY > innerHeight * 0.6) {
+        style.top = 'auto'
+        style.bottom = `${innerHeight - clientY + gap}px`
+    } else {
+        style.top = `${clientY + gap}px`
+        style.bottom = 'auto'
+    }
+
+    contributorPopupStyle.value = style
+    showContributorCard.value = true
+}
+
 // 点击空白关闭
 const handleGlobalClick = () => {
    if (showScheduleCard.value) {
       showScheduleCard.value = false
+   }
+   if (showContributorCard.value) {
+      showContributorCard.value = false
    }
 }
 
@@ -384,7 +451,8 @@ onMounted(async () => {
              time: `${item.start_time} - ${item.end_time}`,
              status: 'booked', // 只要是 API 返回的都是 booked
              user: item.user_name || '未知用户',
-             dept: item.user_dept || '未知部门'
+             dept: item.user_dept || '未知部门',
+             remarks: item.remarks || '无备注'
          }))
       }
    } catch (e) {
@@ -405,7 +473,10 @@ const developers = ref([
     { id: 2, name: 'Anthony Fu', avatar: 'https://avatars.githubusercontent.com/u/11247099?v=4', url: 'https://github.com/antfu' },
     { id: 3, name: 'Sindre Sorhus', avatar: 'https://avatars.githubusercontent.com/u/170270?v=4', url: 'https://github.com/sindresorhus' },
     { id: 4, name: 'Linus Torvalds', avatar: 'https://avatars.githubusercontent.com/u/1024025?v=4', url: 'https://github.com/torvalds' },
-    { id: 5, name: 'Guido van Rossum', avatar: 'https://avatars.githubusercontent.com/u/289464?v=4', url: 'https://github.com/gvanrossum' }
+    { id: 5, name: 'Guido van Rossum', avatar: 'https://avatars.githubusercontent.com/u/289464?v=4', url: 'https://github.com/gvanrossum' },
+    { id: 6, name: 'Dan Abramov', avatar: 'https://avatars.githubusercontent.com/u/810438?v=4', url: 'https://github.com/gaearon' },
+    { id: 7, name: 'Ryan Dahl', avatar: 'https://avatars.githubusercontent.com/u/80?v=4', url: 'https://github.com/ry' },
+    { id: 8, name: 'Rich Harris', avatar: 'https://avatars.githubusercontent.com/u/1162160?v=4', url: 'https://github.com/Rich-Harris' }
 ])
 
 </script>
