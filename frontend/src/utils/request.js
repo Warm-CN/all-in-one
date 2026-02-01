@@ -6,9 +6,21 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
+// 获取 API 基础地址
+// 生产环境使用 /api（由 Nginx 代理）
+// 开发环境可以为空（使用 Vite 代理）或直接指定后端地址
+const getBaseURL = () => {
+    const envUrl = import.meta.env.VITE_API_BASE_URL
+    // 如果环境变量存在（包括空字符串），使用它；否则使用默认值
+    if (envUrl !== undefined) {
+        return envUrl
+    }
+    return 'http://localhost:8001'
+}
+
 // 创建 axios 实例
 const request = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001',
+    baseURL: getBaseURL(),
     timeout: 15000,
     headers: {
         'Content-Type': 'application/json'
