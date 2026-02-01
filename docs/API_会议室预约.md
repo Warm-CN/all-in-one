@@ -104,9 +104,10 @@ Content-Type: application/json
 
 **核心校验逻辑：**
 1. ✅ 预约日期不能是过去的日期
-2. ✅ 结束时间必须晚于开始时间
-3. ✅ 检查时间段是否与已有预约重叠（冲突检测算法）
-4. ✅ 自动通过 JWT Token 关联当前登录用户的 user_id
+2. ✅ 预约日期不能超过未来7天
+3. ✅ 结束时间必须晚于开始时间
+4. ✅ 检查时间段是否与已有预约重叠（冲突检测算法）
+5. ✅ 自动通过 JWT Token 关联当前登录用户的 user_id
 
 **成功响应 (200)：**
 ```json
@@ -138,6 +139,15 @@ Content-Type: application/json
 {
   "code": 400,
   "msg": "不能预约过去的日期",
+  "data": null
+}
+```
+
+**超出预约范围 (400)：**
+```json
+{
+  "code": 400,
+  "msg": "只能预约未来7天内的日期",
   "data": null
 }
 ```
@@ -195,16 +205,21 @@ Authorization: Bearer {access_token}
 
 ### 4. 获取我的预约
 
-**GET** `/api/bookings/my`
+**GET** `/api/bookings/my?upcoming=false`
 
-获取当前登录用户的所有预约记录，按日期和时间倒序排列。
+获取当前登录用户的所有预约记录。
 
 **请求头：**
 ```
 Authorization: Bearer {access_token}
 ```
 
-**成功响应 (200)：**
+**查询参数：**
+- `upcoming` (可选): 是否仅获取未来（含今天）的预约，默认 `false`
+  - `upcoming=true`: 仅获取未来（含今天）的预约，按时间正序排列（最近的在前面）
+  - `upcoming=false`: 获取所有预约，按时间倒序排列（最新的在前面）
+
+**成功响应 (200) - 获取所有预约（默认）：**
 ```json
 {
   "code": 200,
@@ -227,6 +242,37 @@ Authorization: Bearer {access_token}
       "num_people": 15,
       "remarks": "部门周会",
       "created_at": "2026-01-27T10:30:00"
+    }
+  ]
+}
+```
+
+**成功响应 (200) - 仅获取未来预约：**
+
+请求：`GET /api/bookings/my?upcoming=true`
+
+```json
+{
+  "code": 200,
+  "msg": "获取成功",
+  "data": [
+    {
+      "id": 3,
+      "booking_date": "2026-02-05",
+      "start_time": "09:00",
+      "end_time": "11:00",
+      "num_people": 15,
+      "remarks": "部门周会",
+      "created_at": "2026-01-27T10:30:00"
+    },
+    {
+      "id": 7,
+      "booking_date": "2026-02-08",
+      "start_time": "14:00",
+      "end_time": "16:00",
+      "num_people": 10,
+      "remarks": "项目讨论",
+      "created_at": "2026-02-01T09:00:00"
     }
   ]
 }
@@ -344,10 +390,32 @@ async function cancelBooking(bookingId) {
     }
   });
   const result = await response.json();
-  
+
   if (result.code === 200) {
     alert('预约已取消');
   }
+}
+
+// 4. 获取我的所有预约
+async function getMyBookings() {
+  const response = await fetch('/api/bookings/my', {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  });
+  const result = await response.json();
+  return result.data;
+}
+
+// 5. 获取我的未来预约（含今天）
+async function getMyUpcomingBookings() {
+  const response = await fetch('/api/bookings/my?upcoming=true', {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  });
+  const result = await response.json();
+  return result.data;
 }
 ```
 
@@ -373,3 +441,5 @@ python main.py
 3. ⚠️ 普通用户只能删除自己的预约，管理员可删除任意预约
 4. ⚠️ 时间冲突检测仅针对同一日期，不同日期的预约不会冲突
 5. ⚠️ 系统会自动记录预约的创建时间和更新时间
+6. ⚠️ 只能预约未来7天内的日期（含今天）
+7. ⚠️ 获取预约列表时会包含预约者的姓名和部门信息
