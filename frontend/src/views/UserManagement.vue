@@ -99,56 +99,58 @@
             </div>
 
             <!-- 成员列表 -->
-            <el-table :data="activeMembers" class="custom-table" style="width: 100%">
-              <el-table-column prop="real_name" label="姓名" min-width="100" />
-              <el-table-column prop="student_id" label="学号" min-width="120" />
-              <el-table-column prop="department" label="部门" min-width="120" />
-              <el-table-column prop="position" label="职位" min-width="120">
-                <template #default="{ row }">
-                  {{ row.position || '-' }}
-                </template>
-              </el-table-column>
-              <el-table-column label="角色" width="100">
-                <template #default="{ row }">
-                  <el-tag v-if="row.role === 'admin'" type="danger" size="small" round>Admin</el-tag>
-                  <el-tag v-else type="success" size="small" round>Member</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="phone" label="手机号" min-width="130" />
-              <el-table-column label="操作" width="320" fixed="right">
-                <template #default="{ row }">
-                  <el-button 
-                    type="warning" 
-                    size="small" 
-                    plain
-                    @click="showResetPasswordDialog(row)"
-                    class="!rounded-lg"
-                  >
-                    重置密码
-                  </el-button>
-                  <el-button 
-                    v-if="row.role !== 'admin'"
-                    type="primary" 
-                    size="small"
-                    @click="promoteToAdmin(row)"
-                    class="!rounded-lg"
-                  >
-                    设为管理员
-                  </el-button>
-                  <el-popconfirm
-                    title="确认移出该成员？"
-                    @confirm="removeUser(row.id)"
-                    width="200"
-                  >
-                    <template #reference>
-                      <el-button type="danger" size="small" plain class="!rounded-lg">
-                        移出社团
-                      </el-button>
-                    </template>
-                  </el-popconfirm>
-                </template>
-              </el-table-column>
-            </el-table>
+            <div class="overflow-x-auto w-full">
+              <el-table :data="activeMembers" class="custom-table" style="width: 100%; min-width: 800px;">
+                <el-table-column prop="real_name" label="姓名" min-width="100" fixed="left" />
+                <el-table-column prop="student_id" label="学号" min-width="120" />
+                <el-table-column prop="department" label="部门" min-width="120" />
+                <el-table-column prop="position" label="职位" min-width="120">
+                  <template #default="{ row }">
+                    {{ row.position || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="角色" width="100">
+                  <template #default="{ row }">
+                    <el-tag v-if="row.role === 'admin'" type="danger" size="small" round>Admin</el-tag>
+                    <el-tag v-else type="success" size="small" round>Member</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="phone" label="手机号" min-width="130" />
+                <el-table-column label="操作" width="320" fixed="right">
+                  <template #default="{ row }">
+                    <el-button 
+                      type="warning" 
+                      size="small" 
+                      plain
+                      @click="showResetPasswordDialog(row)"
+                      class="!rounded-lg"
+                    >
+                      重置密码
+                    </el-button>
+                    <el-button 
+                      v-if="row.role !== 'admin'"
+                      type="primary" 
+                      size="small"
+                      @click="promoteToAdmin(row)"
+                      class="!rounded-lg"
+                    >
+                      设为管理员
+                    </el-button>
+                    <el-popconfirm
+                      title="确认移出该成员？"
+                      @confirm="removeUser(row.id)"
+                      width="200"
+                    >
+                      <template #reference>
+                        <el-button type="danger" size="small" plain class="!rounded-lg">
+                          移出社团
+                        </el-button>
+                      </template>
+                    </el-popconfirm>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
 
             <div v-if="activeMembers.length === 0" class="text-center py-16 text-gray-400">
               <el-icon :size="48" class="mb-3"><UserFilled /></el-icon>
@@ -159,19 +161,18 @@
       </el-tabs>
     </div>
 
-    <!-- 重置密码弹窗 -->
-    <el-dialog
-      v-model="resetPasswordDialogVisible"
-      title="重置密码"
-      width="400px"
-      :close-on-click-modal="false"
-      class="custom-dialog"
-    >
+      <el-dialog
+        v-model="resetPasswordDialogVisible"
+        title="重置密码"
+        width="400px"
+        :close-on-click-modal="false"
+        class="custom-dialog !rounded-2xl"
+      >
       <div class="text-center py-6">
         <el-icon :size="64" color="#faad14" class="mb-4"><Warning /></el-icon>
         <p class="text-base text-gray-700 mb-2">确认重置以下用户的密码？</p>
         <p class="text-lg font-bold text-gray-800 mb-4">{{ currentUser?.real_name }} ({{ currentUser?.student_id }})</p>
-        <el-alert type="warning" :closable="false" show-icon>
+        <el-alert type="warning" :closable="false" show-icon class="!rounded-xl">
             <template #default>
               <div class="flex flex-col">
                   <span class="font-bold">密码将被重置为随机生成的8位强密码</span>
@@ -184,6 +185,43 @@
         <div class="flex gap-3 justify-center">
           <el-button @click="resetPasswordDialogVisible = false" class="!rounded-xl">取消</el-button>
           <el-button type="primary" @click="confirmResetPassword" class="!rounded-xl">确认重置</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 重置成功弹窗 -->
+    <el-dialog
+      v-model="resetSuccessVisible"
+      title="重置成功"
+      width="400px"
+      :close-on-click-modal="false"
+      class="custom-dialog !rounded-2xl"
+      center
+      align-center
+    >
+      <div class="text-center py-4">
+        <div class="mb-4 flex justify-center">
+            <div class="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center">
+                <el-icon :size="32"><CircleCheck /></el-icon>
+            </div>
+        </div>
+        <p class="text-gray-600 mb-4">请务必记录新密码，点击下方密码可复制</p>
+        
+        <div 
+            class="bg-gray-50 border border-gray-200 rounded-xl p-4 cursor-pointer hover:bg-gray-100/80 hover:border-indigo-200 transition-all group relative"
+            @click="copyPassword"
+        >
+            <p class="font-mono text-2xl font-bold text-indigo-600 tracking-wider select-all">{{ newPassword }}</p>
+            <div class="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity">
+                <span class="text-xs font-bold text-gray-600 bg-white/90 px-2 py-1 rounded shadow-sm">点击复制</span>
+            </div>
+        </div>
+        
+        <p class="text-xs text-gray-400 mt-4">点击确定后可以通过修改密码功能更改</p>
+      </div>
+      <template #footer>
+        <div class="flex justify-center">
+          <el-button type="primary" size="large" @click="resetSuccessVisible = false" class="!rounded-xl !px-8">我已记录</el-button>
         </div>
       </template>
     </el-dialog>
@@ -204,7 +242,25 @@ const selectedPendingIds = ref([])
 const searchKeyword = ref('')
 const selectedDepartment = ref('')
 const resetPasswordDialogVisible = ref(false)
+const resetSuccessVisible = ref(false)
+const newPassword = ref('')
 const currentUser = ref(null)
+
+// 复制密码
+const copyPassword = async () => {
+  if (!newPassword.value) return
+  try {
+    if (navigator.clipboard) {
+        await navigator.clipboard.writeText(newPassword.value)
+        ElMessage.success('密码已复制到剪贴板')
+    } else {
+        // 降级处理 or 提示手动复制
+        ElMessage.info('请长按密码手动复制')
+    }
+  } catch (err) {
+    ElMessage.error('复制失败，请手动复制')
+  }
+}
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -327,24 +383,8 @@ const confirmResetPassword = async () => {
     })
     if (res.code === 200) {
       resetPasswordDialogVisible.value = false
-      // 使用 Alert 弹窗显示新密码，确保管理员能看到
-      ElMessageBox.alert(
-        `<div class="text-center">
-            <p class="mb-2">重置成功！请务必记录新密码：</p>
-            <div class="bg-gray-100 p-2 rounded font-mono text-xl font-bold text-indigo-600 select-all cursor-text text-center border border-gray-200">
-               ${res.data.new_password}
-            </div>
-            <p class="text-xs text-gray-400 mt-2">点击确定后可以通过修改密码功能更改</p>
-         </div>`,
-        '重置成功',
-        {
-            dangerouslyUseHTMLString: true,
-            confirmButtonText: '我已记录',
-            center: true,
-            customClass: '!rounded-2xl',
-            draggable: true
-        }
-      )
+      newPassword.value = res.data.new_password
+      resetSuccessVisible.value = true
     }
   } catch (err) {
     ElMessage.error('重置密码失败')

@@ -1,7 +1,7 @@
 <template>
-  <div class="h-full flex gap-4 p-6 bg-gray-50">
+  <div class="h-full flex flex-col lg:flex-row gap-4 p-4 lg:p-6 bg-gray-50 overflow-y-auto lg:overflow-hidden">
     <!-- 左侧：日历 (58%) -->
-    <div class="w-[58%] bg-white rounded-3xl p-6 shadow-sm flex flex-col relative border border-gray-100/60">
+    <div class="w-full lg:w-[58%] shrink-0 bg-white rounded-3xl p-4 lg:p-6 shadow-sm flex flex-col relative border border-gray-100/60 lg:h-full min-h-[400px]">
       <el-calendar v-model="calendarValue" class="custom-calendar h-full flex flex-col">
         <!-- 自定义日历头部 -->
         <template #header="{ date }">
@@ -54,7 +54,7 @@
     </div>
 
     <!-- 右侧：日程管理 (42%) -->
-    <div class="w-[42%] flex flex-col gap-4">
+    <div class="w-full lg:w-[42%] flex flex-col gap-4 lg:h-full">
       <!-- 选中日期显示 -->
       <div class="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl py-5 px-8 text-white shadow-lg">
         <h2 class="text-2xl font-bold mb-1">{{ dayjs(selectedDate).format('MM月DD日') }}</h2>

@@ -31,9 +31,9 @@
     </div>
 
     <!-- 主体内容 -->
-    <div class="flex flex-1 gap-5 min-h-0 overflow-hidden">
+    <div class="flex flex-col lg:flex-row flex-1 gap-5 min-h-0 overflow-auto lg:overflow-hidden pb-4">
        <!-- 左侧：预约列表视图 (65%) -->
-       <div class="w-[65%] flex flex-col gap-4 min-h-0">
+       <div class="w-full lg:w-[65%] flex flex-col gap-4 min-h-0 shrink-0">
           
           <!-- 上半部分：今日预约列表 -->
           <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden relative group">
@@ -143,8 +143,8 @@
        </div>
 
        <!-- 右侧：预约表单 (35%) -->
-       <div class="w-[35%] flex flex-col gap-5">
-           <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1 flex flex-col relative overflow-hidden">
+       <div class="w-full lg:w-[35%] flex flex-col gap-5">
+           <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1 flex flex-col relative overflow-hidden h-[600px] lg:h-auto">
               <div v-if="isPastDate || isTooFarFuture" class="absolute inset-0 bg-gray-50/80 z-20 flex flex-col items-center justify-center backdrop-blur-[1px]">
                   <el-icon :size="48" class="text-gray-300 mb-2"><CircleCloseFilled /></el-icon>
                   <p class="text-gray-500 font-bold">{{ isPastDate ? '无法在过去日期进行预约' : '只能预约未来7天内的日期' }}</p>
