@@ -95,6 +95,25 @@ export const useUserStore = defineStore('user', () => {
         localStorage.removeItem('userInfo')
     }
 
+    /**
+     * 设置用户信息
+     */
+    const setUserInfo = (info) => {
+        userInfo.value = info
+        localStorage.setItem('userInfo', JSON.stringify(info))
+    }
+
+    /**
+     * 设置用户姓名
+     */
+    const setUserName = (name) => {
+        if (userInfo.value) {
+            userInfo.value.full_name = name
+            userInfo.value.real_name = name // 兼容字段
+            localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+        }
+    }
+
     return {
         // 状态
         token,
@@ -112,6 +131,8 @@ export const useUserStore = defineStore('user', () => {
         login,
         getUserInfo,
         logout,
-        resetState
+        resetState,
+        setUserInfo,
+        setUserName
     }
 })

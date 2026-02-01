@@ -248,11 +248,10 @@ const handleUpdateProfile = async () => {
       ElMessage.success('个人信息更新成功')
       userStore.setUserName(profileForm.full_name)
       await fetchUserInfo()
-    } else {
-      ElMessage.error(res.msg || '更新失败')
     }
   } catch (e) {
-    ElMessage.error('网络请求失败')
+    // 错误已经在 request 拦截器中统一处理，这里不再重复提示
+    console.error('更新失败:', e)
   } finally {
     loading.value = false
   }
@@ -272,14 +271,14 @@ const handleChangePassword = async () => {
           passwordForm.old_password = ''
           passwordForm.new_password = ''
           passwordForm.confirm_password = ''
-          // 可选：登出 
-          // userStore.logout()
-          // router.push('/login')
-        } else {
-          ElMessage.error(res.msg || '修改失败')
+          // 延迟1秒后登出并跳转
+          setTimeout(() => {
+            userStore.logout()
+          }, 1000)
         }
       } catch (e) {
-        ElMessage.error('修改失败，请检查原密码是否正确')
+        // 错误已经在 request 拦截器中统一处理
+        console.error('修改失败:', e)
       } finally {
         pwdLoading.value = false
       }
