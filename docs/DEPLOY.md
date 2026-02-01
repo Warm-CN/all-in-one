@@ -63,38 +63,7 @@ sudo apt install -y git python3-venv python3-pip nodejs npm nginx mysql-server
    python3 scripts/init_admin.py
    ```
 
-## 4. 自动化更新脚本 (协作者预览专用)
-
-为了方便频繁更新代码并供协作者预览，建议在项目根目录下创建一个 `update_preview.sh`：
-
-```bash
-#!/bin/bash
-echo ">>> 正在停止后端服务..."
-sudo systemctl stop club-backend
-
-echo ">>> 正在拉取最新代码..."
-git pull origin main
-
-echo ">>> 正在更新后端依赖与数据库..."
-source .venv/bin/activate
-pip install -r requirements.txt
-# 如果有新的迁移文件，运行此命令
-# alembic upgrade head 
-
-echo ">>> 正在重新启动后端服务..."
-sudo systemctl start club-backend
-
-echo ">>> 正在构建前端最新版..."
-cd frontend
-npm install
-npm run build
-
-echo ">>> 更新完成！预览地址: http://your_domain_or_ip"
-```
-
-赋予执行权限：`chmod +x update_preview.sh`。之后每次代码提交后，只需在服务器运行 `./update_preview.sh` 即可完成一键更新。
-
-## 5. 后端进程管理 (Systemd)
+## 4. 后端进程管理 (Systemd)
 
 创建服务文件: `sudo nano /etc/systemd/system/club-backend.service`
 
