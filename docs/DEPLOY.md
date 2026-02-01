@@ -78,7 +78,7 @@ Group=www-data
 WorkingDirectory=/var/www/all_in_one
 Environment="PATH=/var/www/all_in_one/.venv/bin"
 # 根据核心数调整 workers，通常为 2n+1
-ExecStart=/var/www/all_in_one/.venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 127.0.0.1:8000
+ExecStart=/var/www/all_in_one/.venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 127.0.0.1:8001
 
 [Install]
 WantedBy=multi-user.target
@@ -119,7 +119,7 @@ server {
 
     # 后端 API 代理
     location /api {
-        proxy_pass http://127.0.0.1:8000;
+        proxy_pass http://127.0.0.1:8001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -128,7 +128,7 @@ server {
 
     # Swagger 文档代理 (可选)
     location /docs {
-        proxy_pass http://127.0.0.1:8000/docs;
+        proxy_pass http://127.0.0.1:8001/docs;
     }
 }
 ```
