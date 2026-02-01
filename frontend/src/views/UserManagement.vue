@@ -172,9 +172,12 @@
         <p class="text-base text-gray-700 mb-2">确认重置以下用户的密码？</p>
         <p class="text-lg font-bold text-gray-800 mb-4">{{ currentUser?.real_name }} ({{ currentUser?.student_id }})</p>
         <el-alert type="warning" :closable="false" show-icon>
-          <template #default>
-            <p class="text-sm">密码将被重置为初始密码：<span class="font-mono font-bold">123456</span></p>
-          </template>
+            <template #default>
+              <div class="flex flex-col">
+                  <span class="font-bold">密码将被重置为随机生成的8位强密码</span>
+                  <span class="text-xs mt-1">请重置后在弹窗中复制并保存</span>
+              </div>
+            </template>
         </el-alert>
       </div>
       <template #footer>
@@ -323,8 +326,25 @@ const confirmResetPassword = async () => {
       params: { user_id: currentUser.value.id }
     })
     if (res.code === 200) {
-      ElMessage.success(res.msg)
       resetPasswordDialogVisible.value = false
+      // 使用 Alert 弹窗显示新密码，确保管理员能看到
+      ElMessageBox.alert(
+        `<div class="text-center">
+            <p class="mb-2">重置成功！请务必记录新密码：</p>
+            <div class="bg-gray-100 p-2 rounded font-mono text-xl font-bold text-indigo-600 select-all cursor-text text-center border border-gray-200">
+               ${res.data.new_password}
+            </div>
+            <p class="text-xs text-gray-400 mt-2">点击确定后可以通过修改密码功能更改</p>
+         </div>`,
+        '重置成功',
+        {
+            dangerouslyUseHTMLString: true,
+            confirmButtonText: '我已记录',
+            center: true,
+            customClass: '!rounded-2xl',
+            draggable: true
+        }
+      )
     }
   } catch (err) {
     ElMessage.error('重置密码失败')
