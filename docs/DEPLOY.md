@@ -104,7 +104,7 @@ sudo journalctl -u club-backend -n 50
    ```bash
    cd /var/www/all_in_one/frontend
    # 创建前端生产环境变量
-   echo "VITE_API_BASE_URL=/api" > .env.production
+   echo "VITE_API_BASE_URL=" > .env.production
    npm install
    npm run build
    ```
@@ -116,7 +116,6 @@ sudo journalctl -u club-backend -n 50
 1. **在本地项目根目录创建环境变量文件**（Windows PowerShell）：
    ```powershell
    cd D:\code\python\all_in_one\frontend
-   echo "VITE_API_BASE_URL=/api" > .env.production
    ```
 
 2. **本地构建**：
@@ -155,9 +154,7 @@ server {
     }
 
     # 后端 API 代理
-    location /api {
-        # 处理前端可能发送的 /api/api/... 重复路径
-        rewrite ^/api/api/(.*)$ /api/$1 break;
+    location /api {   
         proxy_pass http://127.0.0.1:8001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -285,4 +282,4 @@ sudo systemctl restart nginx
   ```
 
 ---
-© 2024 Club Management System Deployment Guide
+© 2026 Club Management System Deployment Guide

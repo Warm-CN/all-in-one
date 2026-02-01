@@ -52,3 +52,4 @@ frontend/pnpm-debug.log*
 frontend/.vite/
 frontend/.cache/
 frontend/coverage/
+frontend/.env.production
