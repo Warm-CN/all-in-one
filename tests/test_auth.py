@@ -51,7 +51,7 @@ def test_auth_system():
     # 4. 测试场景 B（内部接口）- 查看我的预约
     print("\n4️⃣ 测试场景 B（内部接口）- 查看我的预约...")
     bookings_response = requests.get(
-        f"{BASE_URL}/api/v1/bookings/my-bookings",
+        f"{BASE_URL}/api/bookings/my",
         headers=headers
     )
     print(f"   状态码: {bookings_response.status_code}")
@@ -60,10 +60,10 @@ def test_auth_system():
     else:
         print(f"   ❌ 权限验证失败！")
     
-    # 5. 测试场景 C（管理接口）- 查看所有预约
-    print("\n5️⃣ 测试场景 C（管理接口）- 查看所有预约...")
+    # 5. 测试场景 C（管理接口）- 查看所有用户
+    print("\n5️⃣ 测试场景 C（管理接口）- 查看用户列表...")
     all_bookings_response = requests.get(
-        f"{BASE_URL}/api/v1/bookings/all",
+        f"{BASE_URL}/api/v1/users",
         headers=headers
     )
     print(f"   状态码: {all_bookings_response.status_code}")

@@ -39,7 +39,7 @@ def test_user_management():
     print("\n>>> 注册测试用户")
     for i in range(3):
         register_res = requests.post(f"{BASE_URL}/api/v1/auth/register", json={
-            "real_name": f"测试用户{i+1}",
+            "full_name": f"测试用户{i+1}",
             "student_id": f"test{i+1:03d}",
             "password": "123456",
             "phone": f"1380013800{i}",
@@ -95,7 +95,7 @@ def test_user_management():
     test_user = members[0]
     
     # 7. 重置密码
-    print(f"\n>>> 重置用户 {test_user['real_name']} 的密码")
+    print(f"\n>>> 重置用户 {test_user['full_name']} 的密码")
     reset_res = requests.post(
         f"{BASE_URL}/api/admin/users/reset-password",
         headers=headers,
@@ -104,7 +104,7 @@ def test_user_management():
     print_response("重置密码", reset_res)
     
     # 8. 提升为管理员
-    print(f"\n>>> 提升用户 {test_user['real_name']} 为管理员")
+    print(f"\n>>> 提升用户 {test_user['full_name']} 为管理员")
     promote_res = requests.post(
         f"{BASE_URL}/api/admin/users/promote",
         headers=headers,
@@ -123,7 +123,7 @@ def test_user_management():
     
     # 10. 移出成员
     if len(members) > 1:
-        print(f"\n>>> 移出成员 {members[1]['real_name']}")
+        print(f"\n>>> 移出成员 {members[1]['full_name']}")
         remove_res = requests.delete(
             f"{BASE_URL}/api/admin/users/{members[1]['id']}",
             headers=headers

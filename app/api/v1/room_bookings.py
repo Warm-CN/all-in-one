@@ -109,6 +109,10 @@ async def create_booking(
     - 检查时间段是否与已有预约重叠
     - 自动关联当前登录用户
     """
+    # 检查时间区间是否合法
+    if booking_data.start_time >= booking_data.end_time:
+        return error_response(400, "结束时间必须晚于开始时间")
+    
     # 检查日期是否是过去
     if booking_data.booking_date < date.today():
         return error_response(400, "不能预约过去的日期")

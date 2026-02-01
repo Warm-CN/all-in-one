@@ -208,12 +208,12 @@ async def approve_user(
     if not target_user:
         return error_response(404, "用户不存在")
     
-    if target_user.status != UserStatus.PENDING:
-        return error_response(400, f"用户当前状态为 {target_user.status.value}，无需审核")
+    if target_user.status != 'pending':
+        return error_response(400, f"用户当前状态为 {target_user.status}，无需审核")
     
     # 激活用户并设置为 Member
-    target_user.status = UserStatus.ACTIVE
-    target_user.role = UserRole.MEMBER
+    target_user.status = 'active'
+    target_user.role = 'member'
     db.commit()
     
     return success_response(
