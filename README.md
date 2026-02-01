@@ -64,8 +64,8 @@
 
 ### 1. 克隆项目
 ```bash
-git clone <your-repo-url>
-cd all_in_one
+git clone git@github.com:Warm-CN/all-in-one.git
+cd all-in-one
 ```
 
 ### 2. 后端配置与启动
@@ -94,7 +94,7 @@ cd all_in_one
    ```bash
    python main.py
    ```
-   接口文档访问地址: [http://localhost:8000/docs](http://localhost:8000/docs)
+   接口文档访问地址: [http://localhost:8001/docs](http://localhost:8001/docs)
 
 ### 3. 前端启动
 1. **进入前端目录**:
@@ -109,7 +109,7 @@ cd all_in_one
    ```bash
    npm run dev
    ```
-   访问地址: [http://localhost:5173](http://localhost:5173)
+   
 
 ## 📖 开发指南
 更多详细信息请参阅 `docs/` 目录下的相关文档：
@@ -118,4 +118,4 @@ cd all_in_one
 - [认证系统使用指南](docs/第二阶段-认证系统使用指南.md)
 
 ## 📄 许可证
-© 2024 All In One. 仅供内部学习与参考使用。
+© 2026 All In One. 仅供内部学习与参考使用。

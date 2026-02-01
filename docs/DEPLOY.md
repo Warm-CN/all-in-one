@@ -32,9 +32,9 @@ sudo apt install -y git python3-venv python3-pip nodejs npm nginx mysql-server
 1. **克隆项目**:
    ```bash
    cd /var/www
-   sudo git clone <your-repo-url> all_in_one
-   sudo chown -R $USER:$USER all_in_one
-   cd all_in_one
+   sudo git clone git@github.com:Warm-CN/all-in-one.git
+   sudo chown -R $USER:$USER all-in-one
+   cd all-in-one
    ```
 
 2. **后端环境**:
@@ -75,10 +75,10 @@ After=network.target
 [Service]
 User=your_ubuntu_user
 Group=www-data
-WorkingDirectory=/var/www/all_in_one
-Environment="PATH=/var/www/all_in_one/.venv/bin"
+WorkingDirectory=/var/www/all-in-one
+Environment="PATH=/var/www/all-in-one/.venv/bin"
 # 根据核心数调整 workers，通常为 2n+1
-ExecStart=/var/www/all_in_one/.venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 127.0.0.1:8001
+ExecStart=/var/www/all-in-one/.venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 127.0.0.1:8001
 
 [Install]
 WantedBy=multi-user.target
@@ -102,7 +102,7 @@ sudo journalctl -u club-backend -n 50
 ### 方案 A：在服务器上构建（需要较高配置）
 1. **构建前端**:
    ```bash
-   cd /var/www/all_in_one/frontend
+   cd /var/www/all-in-one/frontend
    # 创建前端生产环境变量
    echo "VITE_API_BASE_URL=" > .env.production
    npm install
@@ -115,7 +115,7 @@ sudo journalctl -u club-backend -n 50
 
 1. **在本地项目根目录创建环境变量文件**（Windows PowerShell）：
    ```powershell
-   cd D:\code\python\all_in_one\frontend
+   cd D:\code\python\all-in-one\frontend
    ```
 
 2. **本地构建**：
@@ -124,16 +124,16 @@ sudo journalctl -u club-backend -n 50
    ```
 
 3. **上传到服务器**（使用 SCP 或 SFTP 工具如 WinSCP、FileZilla）：
-   - 将整个 `frontend/dist` 文件夹上传到服务器的 `/var/www/all_in_one/frontend/dist`
+   - 将整个 `frontend/dist` 文件夹上传到服务器的 `/var/www/all-in-one/frontend/dist`
    - 或者使用命令行（需要安装 OpenSSH）：
      ```powershell
-     scp -r dist root@your_server_ip:/var/www/all_in_one/frontend/
+     scp -r dist root@your_server_ip:/var/www/all-in-one/frontend/
      ```
 
 4. **验证上传成功**：
    ```bash
    # 在服务器上执行
-   ls -la /var/www/all_in_one/frontend/dist
+   ls -la /var/www/all-in-one/frontend/dist
    sudo systemctl reload nginx
    ```
 
@@ -148,7 +148,7 @@ server {
 
     # 前端静态文件
     location / {
-        root /var/www/all_in_one/frontend/dist;
+        root /var/www/all-in-one/frontend/dist;
         index index.html;
         try_files $uri $uri/ /index.html;
     }
@@ -219,10 +219,9 @@ sudo systemctl restart nginx
    
    **解决方法**：确保前端构建时使用了正确的环境变量：
    ```bash
-   cd /var/www/all_in_one/frontend
-   cat .env.production  # 检查是否有 VITE_API_BASE_URL=/api
-   # 如果没有或配置错误，重新创建并构建
-   echo "VITE_API_BASE_URL=/api" > .env.production
+   cd /var/www/all-in-one/frontend
+   cat .env.production  
+   echo "VITE_API_BASE_URL=" > .env.production
    npm run build
    sudo systemctl reload nginx
    ```
@@ -245,7 +244,7 @@ sudo systemctl restart nginx
 
 1. **在本地 Windows 检查并创建环境变量文件**：
    ```powershell
-   cd D:\code\python\all_in_one\frontend
+   cd D:\code\python\all-in-one\frontend
    # 检查文件是否存在
    Get-Content .env.production
    # 如果不存在或内容错误，创建/覆盖

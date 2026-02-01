@@ -360,13 +360,13 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### 1. 启动后端服务
 
 ```bash
-cd d:\code\python\all_in_one
+cd d:\code\python\all-in-one
 python main.py
 ```
 
 ### 2. 访问 API 文档
 
-打开浏览器访问：http://localhost:8000/docs
+打开浏览器访问：http://localhost:8001/docs
 
 在 Swagger UI 中可以直接测试所有接口。
 
