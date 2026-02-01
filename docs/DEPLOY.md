@@ -156,6 +156,8 @@ server {
 
     # 后端 API 代理
     location /api {
+        # 处理前端可能发送的 /api/api/... 重复路径
+        rewrite ^/api/api/(.*)$ /api/$1 break;
         proxy_pass http://127.0.0.1:8001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

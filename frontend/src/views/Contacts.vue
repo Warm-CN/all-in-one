@@ -127,16 +127,43 @@ const fetchData = async () => {
 
 const copyText = async (text) => {
   if (!text) return
+  
+  // 优先尝试使用 Clipboard API
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text)
       ElMessage.success('复制成功')
+      return
     } catch (e) {
-      ElMessage.error('复制失败')
+      console.error('Clipboard API failed:', e)
     }
-  } else {
-    // 降级处理
-    ElMessage.warning('浏览器不支持自动复制，请手动复制')
+  }
+
+  // 降级使用 document.execCommand
+  try {
+    const textArea = document.createElement("textarea")
+    textArea.value = text
+    
+    // 确保 textarea 不可见但存在于 DOM 中
+    textArea.style.position = "fixed"
+    textArea.style.left = "-9999px"
+    textArea.style.top = "0"
+    
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    
+    const successful = document.execCommand('copy')
+    document.body.removeChild(textArea)
+    
+    if (successful) {
+      ElMessage.success('复制成功')
+    } else {
+      ElMessage.warning('请手动复制')
+    }
+  } catch (err) {
+    console.error('Fallback copy failed:', err)
+    ElMessage.warning('请手动复制')
   }
 }
 

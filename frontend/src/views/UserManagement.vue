@@ -249,16 +249,43 @@ const currentUser = ref(null)
 // 复制密码
 const copyPassword = async () => {
   if (!newPassword.value) return
-  try {
-    if (navigator.clipboard) {
+  
+  // 优先尝试使用 Clipboard API
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
         await navigator.clipboard.writeText(newPassword.value)
         ElMessage.success('密码已复制到剪贴板')
+        return
+    } catch (err) {
+        console.error('Clipboard API failed:', err)
+    }
+  }
+
+  // 降级使用 document.execCommand
+  try {
+    const textArea = document.createElement("textarea")
+    textArea.value = newPassword.value
+    
+    // 确保 textarea 不可见 but part of DOM
+    textArea.style.position = "fixed"
+    textArea.style.left = "-9999px"
+    textArea.style.top = "0"
+    
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    
+    const successful = document.execCommand('copy')
+    document.body.removeChild(textArea)
+    
+    if (successful) {
+      ElMessage.success('密码已复制到剪贴板')
     } else {
-        // 降级处理 or 提示手动复制
-        ElMessage.info('请长按密码手动复制')
+      ElMessage.info('请手动复制')
     }
   } catch (err) {
-    ElMessage.error('复制失败，请手动复制')
+    console.error('Fallback copy failed:', err)
+    ElMessage.info('请手动复制')
   }
 }
 
