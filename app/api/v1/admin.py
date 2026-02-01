@@ -211,13 +211,18 @@ async def reset_user_password(
     if target_user.id == current_user.id:
         return error_response(400, "不能重置自己的密码，请使用修改密码功能")
     
-    # 重置为初始密码
-    initial_password = "123456"
-    target_user.password_hash = get_password_hash(initial_password)
+    # 生成随机八位强密码
+    import secrets
+    import string
+    alphabet = string.ascii_letters + string.digits
+    new_password = ''.join(secrets.choice(alphabet) for i in range(8))
+    
+    target_user.password_hash = get_password_hash(new_password)
     db.commit()
     
     return success_response(
-        msg=f"已重置 {target_user.full_name} 的密码为初始密码"
+        data={"new_password": new_password},
+        msg=f"已重置 {target_user.full_name} 的密码，请务必记录新密码：{new_password}"
     )
 
 

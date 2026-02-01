@@ -63,3 +63,13 @@ class PasswordChangeRequest(BaseModel):
     """修改密码请求（用户自己）"""
     old_password: str = Field(..., description="旧密码")
     new_password: str = Field(..., min_length=6, max_length=50, description="新密码")
+
+
+class UserUpdateRequest(BaseModel):
+    """用户更新个人信息请求"""
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    department: Optional[str] = None
+    position: Optional[str] = None
+    full_name: Optional[str] = None
+

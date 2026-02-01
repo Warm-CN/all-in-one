@@ -55,6 +55,12 @@ const routes = [
                 meta: { title: '电信杯', requiresAuth: true }
             },
             {
+                path: 'settings',
+                name: 'AccountSettings',
+                component: () => import('@/views/AccountSettings.vue'),
+                meta: { title: '账号设置', requiresAuth: true }
+            },
+            {
                 path: 'contacts',
                 name: 'Contacts',
                 component: () => import('@/views/Contacts.vue'),

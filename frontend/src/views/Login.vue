@@ -22,8 +22,8 @@
           
           <!-- 顶部 Logo -->
           <div class="mt-4 mb-8 flex flex-col items-center">
-            <div class="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-[2rem] flex items-center justify-center shadow-xl shadow-blue-500/20 mb-4 transform hover:scale-105 transition-transform duration-300 ring-4 ring-blue-50">
-              <el-icon class="text-white text-5xl"><Monitor /></el-icon>
+            <div class="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-blue-500/20 mb-4 transform hover:scale-105 transition-transform duration-300 ring-4 ring-blue-50 overflow-hidden p-3">
+              <img :src="logo" alt="Logo" class="w-full h-full object-contain" />
             </div>
             <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">社团通行证</h1>
             <p class="text-slate-400 text-sm mt-2 tracking-[0.2em] uppercase font-medium">Club Passport</p>
@@ -220,6 +220,7 @@ import { useUserStore } from '@/store/user'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Monitor, Document, Suitcase, Back } from '@element-plus/icons-vue'
 import { register } from '@/api/auth'
+import logo from '@/assets/images/logo.png'
 
 const router = useRouter()
 const userStore = useUserStore()

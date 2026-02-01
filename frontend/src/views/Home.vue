@@ -6,10 +6,6 @@
         <h1 class="text-2xl font-bold text-gray-800 tracking-tight">
           欢迎回来，{{ userStore.userName || '同学' }}！👋
         </h1>
-        <p class="text-gray-500 mt-2 text-sm flex items-center gap-2">
-          今天有 <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-bold">5</span> 个新动态，
-          <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-bold">2</span> 场宣讲会即将开始。
-        </p>
       </div>
       <div class="flex items-center gap-3">
          <div class="text-right hidden sm:block">
