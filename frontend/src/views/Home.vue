@@ -465,14 +465,10 @@ onUnmounted(() => {
 
 // 模拟贡献者数据
 const developers = ref([
-    { id: 1, name: 'Evan You', avatar: 'https://avatars.githubusercontent.com/u/499550?v=4', url: 'https://github.com/yyx990803' },
-    { id: 2, name: 'Anthony Fu', avatar: 'https://avatars.githubusercontent.com/u/11247099?v=4', url: 'https://github.com/antfu' },
-    { id: 3, name: 'Sindre Sorhus', avatar: 'https://avatars.githubusercontent.com/u/170270?v=4', url: 'https://github.com/sindresorhus' },
-    { id: 4, name: 'Linus Torvalds', avatar: 'https://avatars.githubusercontent.com/u/1024025?v=4', url: 'https://github.com/torvalds' },
-    { id: 5, name: 'Guido van Rossum', avatar: 'https://avatars.githubusercontent.com/u/289464?v=4', url: 'https://github.com/gvanrossum' },
-    { id: 6, name: 'Dan Abramov', avatar: 'https://avatars.githubusercontent.com/u/810438?v=4', url: 'https://github.com/gaearon' },
-    { id: 7, name: 'Ryan Dahl', avatar: 'https://avatars.githubusercontent.com/u/80?v=4', url: 'https://github.com/ry' },
-    { id: 8, name: 'Rich Harris', avatar: 'https://avatars.githubusercontent.com/u/1162160?v=4', url: 'https://github.com/Rich-Harris' }
+    { id: 1, name: 'Wang Qihao', avatar: 'https://avatars.githubusercontent.com/u/190904930?v=4', url: 'https://github.com/Warm-CN' },
+    { id: 2, name: 'quhangqi', avatar: 'https://avatars.githubusercontent.com/u/254076522?v=4', url: 'https://github.com/quhangqi' },
+    { id: 3, name: '詹泓铭', avatar: 'https://avatars.githubusercontent.com/u/221240955?v=4', url: 'https://github.com/JTwilliam' },
+    { id: 4, name: 'jeffyzspms-bit', avatar: 'https://avatars.githubusercontent.com/u/254076150?v=4', url: 'https://github.com/jeffyzspms-bit' }
 ])
 
 </script>
