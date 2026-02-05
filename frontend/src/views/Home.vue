@@ -1,7 +1,7 @@
 <template>
   <div class="h-full flex flex-col gap-6">
     <!-- 顶部欢迎区 -->
-    <div class="flex items-center justify-between shrink-0 animate-fade-in-down">
+    <div class="flex items-center justify-between shrink-0">
       <div>
         <h1 class="text-2xl font-bold text-gray-800 tracking-tight">
           欢迎回来，{{ userStore.userName || '同学' }}！👋
@@ -19,7 +19,7 @@
     <div class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 pr-1">
       
       <!-- 左侧：现代化日历 (58%) -->
-      <div class="w-full lg:w-[58%] bg-white rounded-3xl p-6 shadow-sm flex flex-col relative group animate-fade-in-left border border-gray-100/60 overflow-hidden">
+      <div class="w-full lg:w-[58%] bg-white rounded-3xl p-6 shadow-sm flex flex-col relative group border border-gray-100/60 overflow-hidden">
          <el-calendar v-model="calendarValue" class="custom-calendar h-full flex flex-col">
             <!-- 自定义日历头部 -->
             <template #header="{ date }">
@@ -119,7 +119,7 @@
       </div>
 
       <!-- 右侧：状态与贡献者 (42%) -->
-      <div class="w-full lg:w-[42%] flex flex-col gap-4 animate-fade-in-right">
+      <div class="w-full lg:w-[42%] flex flex-col gap-4">
          
          <!-- 会议室状态卡片 -->
          <div class="bg-white rounded-[24px] p-7 shadow-sm flex-1 flex flex-col min-h-0 relative overflow-hidden group border border-gray-100/60">
