@@ -191,11 +191,11 @@
                <span class="text-[10px] text-gray-300 bg-gray-50 px-2 py-0.5 rounded-full">Open Source</span>
             </div>
             
-            <div class="flex items-center gap-[-8px]">
-               <div class="flex -space-x-2 overflow-hidden py-2 px-1">
+            <div class="flex items-center">
+               <div class="flex gap-3 py-2 px-1">
                  <el-tooltip v-for="(dev, idx) in developers.slice(0, 5)" :key="dev.id" :content="dev.name" placement="top" effect="light">
                     <a :href="dev.url" target="_blank" 
-                       class="inline-block relative transition-transform duration-300 hover:!z-10 hover:-translate-y-1.5 rounded-full ring-2 ring-white">
+                       class="inline-block relative shrink-0 transition-transform duration-300 hover:!z-10 hover:-translate-y-1.5 rounded-full ring-2 ring-white">
                       <img :src="dev.avatar" :alt="dev.name" class="h-10 w-10 rounded-full object-cover bg-gray-200" />
                     </a>
                  </el-tooltip>
@@ -203,7 +203,7 @@
                  <!-- More Button -->
                  <div v-if="developers.length > 5" 
                       @click.stop="openContributorsPopup($event)" 
-                      class="flex items-center justify-center h-10 w-10 rounded-full ring-2 ring-white bg-indigo-50 text-indigo-600 text-xs font-bold hover:bg-indigo-100 hover:text-indigo-700 transition-all z-0 relative hover:z-10 hover:-translate-y-1 cursor-pointer shadow-sm">
+                      class="flex shrink-0 items-center justify-center h-10 w-10 rounded-full ring-2 ring-white bg-indigo-50 text-indigo-600 text-xs font-bold hover:bg-indigo-100 hover:text-indigo-700 transition-all z-0 relative hover:z-10 hover:-translate-y-1 cursor-pointer shadow-sm">
                     +{{ developers.length - 5 }}
                  </div>
                </div>
