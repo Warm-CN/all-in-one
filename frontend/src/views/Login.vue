@@ -301,6 +301,20 @@ const handleRegister = async () => {
     ElMessage.warning('请填写完整所有信息')
     return
   }
+
+  // 格式验证
+  if (registerForm.studentId.length < 5) {
+    ElMessage.warning('学号长度至少5位')
+    return
+  }
+  if (registerForm.password.length < 6) {
+    ElMessage.warning('密码长度至少6位')
+    return
+  }
+  if (registerForm.name.length < 2) {
+    ElMessage.warning('姓名至少2个字符')
+    return
+  }
   
   loading.value = true
   try {

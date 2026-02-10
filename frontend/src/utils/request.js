@@ -92,6 +92,18 @@ request.interceptors.response.use(
                     ElMessage.error(data.msg || '请求的资源不存在')
                     break
 
+                case 422:
+                    // 处理 FastAPI 验证错误
+                    if (data.detail && Array.isArray(data.detail)) {
+                        // 取第一个错误展示，或者拼接
+                        const firstError = data.detail[0]
+                        const field = firstError.loc ? firstError.loc[firstError.loc.length - 1] : '字段'
+                        ElMessage.error(`参数校验失败: ${field} - ${firstError.msg}`)
+                    } else {
+                        ElMessage.error(data.msg || '参数校验失败')
+                    }
+                    break
+
                 case 500:
                     ElMessage.error(data.msg || '服务器内部错误')
                     break
