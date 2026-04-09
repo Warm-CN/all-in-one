@@ -16,6 +16,7 @@ class SignupConfig(BaseModel):
     end_time = Column(DateTime, nullable=False, comment="报名结束时间")
     max_participants = Column(Integer, nullable=True, comment="最大报名人数（null表示不限制）")
     is_active = Column(Boolean, default=True, nullable=False, comment="是否激活")
+    current_stage = Column(String(30), nullable=False, default="registration", comment="系统当前阶段")
     
     # 自定义表单字段配置 (JSON 格式)
     # 示例: [{"name": "姓名", "type": "text", "required": true}, {"name": "专业", "type": "text"}]

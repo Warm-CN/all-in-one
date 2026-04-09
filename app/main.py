@@ -1,12 +1,14 @@
 """
 FastAPI 应用主入口
 """
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import engine, Base, SessionLocal
 from app.schemas.response import error_response
+from app.models.signup import SignupConfig
 
 # 导入路由
 from app.api.v1 import auth, signups, room_bookings, admin, users, admin_bookings, schedules, admin_schedules
@@ -33,8 +35,57 @@ async def startup_event():
     """应用启动事件"""
     # 创建所有数据库表
     Base.metadata.create_all(bind=engine)
+    ensure_default_signup_config()
     print(f"✅ {settings.APP_NAME} v{settings.APP_VERSION} 启动成功！")
     print(f"📚 API 文档: http://localhost:8000/docs")
+
+
+def ensure_default_signup_config():
+    """开发环境下自动生成一个招新活动，避免前端无活动可演示。"""
+    if not settings.DEBUG:
+        return
+
+    db = SessionLocal()
+    try:
+        now = datetime.now()
+        active_exists = db.query(SignupConfig).filter(
+            SignupConfig.is_active == True,
+            SignupConfig.start_time <= now,
+            SignupConfig.end_time >= now,
+            SignupConfig.category.in_(["recruitment", "招新"])
+        ).first()
+
+        if active_exists:
+            return
+
+        config = SignupConfig(
+            title="2026 春季协会招新",
+            description="欢迎报名协会，提交后可在公开页面查询进度与面试安排。",
+            start_time=now - timedelta(days=1),
+            end_time=now + timedelta(days=20),
+            max_participants=None,
+            is_active=True,
+            category="recruitment",
+            form_fields=[
+                {"name": "姓名", "type": "text", "required": True},
+                {"name": "手机号", "type": "text", "required": True},
+                {"name": "邮箱", "type": "text", "required": True},
+                {"name": "学院", "type": "text", "required": True},
+                {"name": "专业班级", "type": "text", "required": True},
+                {"name": "第一志愿", "type": "select", "required": True},
+                {"name": "第二志愿", "type": "select", "required": False},
+                {"name": "服从调剂", "type": "radio", "required": True},
+                {"name": "自我介绍", "type": "textarea", "required": False}
+            ]
+        )
+        db.add(config)
+        db.commit()
+        print("✅ 已自动创建默认招新活动（DEBUG模式）")
+    except Exception as exc:
+        db.rollback()
+        print(f"⚠️ 默认招新活动创建失败: {exc}")
+    finally:
+        db.close()
 
 
 @app.on_event("shutdown")

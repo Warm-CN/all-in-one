@@ -17,6 +17,24 @@ const routes = [
         }
     },
     {
+        path: '/apply',
+        name: 'Apply',
+        component: () => import('@/views/Apply.vue'),
+        meta: {
+            title: '招新报名',
+            requiresAuth: false
+        }
+    },
+    {
+        path: '/apply/success',
+        name: 'ApplySuccess',
+        component: () => import('@/views/ApplySuccess.vue'),
+        meta: {
+            title: '报名成功',
+            requiresAuth: false
+        }
+    },
+    {
         path: '/',
         component: () => import('@/layout/MainLayout.vue'),
         redirect: '/home',
@@ -39,7 +57,7 @@ const routes = [
             {
                 path: 'recruitment',
                 name: 'Recruitment',
-                component: () => import('@/views/Placeholder.vue'),
+                component: () => import('@/views/RecruitmentManagement.vue'),
                 meta: { title: '招新面试', requiresAuth: true }
             },
             {
@@ -85,16 +103,22 @@ const routes = [
                 meta: { title: '日程管理', requiresAuth: true }
             },
             {
+                path: 'admin/management',
+                name: 'AdminManagement',
+                component: () => import('@/views/AdminManagement.vue'),
+                meta: { title: '后台管理', requiresAuth: true }
+            },
+            {
                 path: 'admin/recruitment',
                 name: 'AdminRecruitment',
-                component: () => import('@/views/Placeholder.vue'),
-                meta: { title: '招新数据管理', requiresAuth: true }
+                redirect: '/admin/management',
+                meta: { title: '后台管理', requiresAuth: true }
             },
             {
                 path: 'admin/contest',
                 name: 'AdminContest',
-                component: () => import('@/views/Placeholder.vue'),
-                meta: { title: '比赛后台管理', requiresAuth: true }
+                redirect: '/admin/management',
+                meta: { title: '后台管理', requiresAuth: true }
             }
         ]
     },

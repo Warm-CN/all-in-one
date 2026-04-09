@@ -78,14 +78,9 @@
                 <span class="group-hover:text-indigo-600 font-medium">会议室管理</span>
             </el-menu-item>
 
-            <el-menu-item index="/admin/recruitment" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+            <el-menu-item index="/admin/management" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
                 <el-icon class="group-hover:text-indigo-600 transition-colors"><DataLine /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">招新数据</span>
-            </el-menu-item>
-            
-            <el-menu-item index="/admin/contest" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><Platform /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">比赛后台</span>
+              <span class="group-hover:text-indigo-600 font-medium">后台管理</span>
             </el-menu-item>
           </template>
 
@@ -258,14 +253,9 @@
                     <span class="group-hover:text-indigo-600 font-medium">会议室管理</span>
                 </el-menu-item>
 
-                <el-menu-item index="/admin/recruitment" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
+                <el-menu-item index="/admin/management" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
                     <el-icon class="group-hover:text-indigo-600 transition-colors"><DataLine /></el-icon>
-                    <span class="group-hover:text-indigo-600 font-medium">招新数据</span>
-                </el-menu-item>
-                
-                <el-menu-item index="/admin/contest" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                    <el-icon class="group-hover:text-indigo-600 transition-colors"><Platform /></el-icon>
-                    <span class="group-hover:text-indigo-600 font-medium">比赛后台</span>
+                  <span class="group-hover:text-indigo-600 font-medium">后台管理</span>
                 </el-menu-item>
             </template>
 
@@ -295,7 +285,6 @@ import {
   Medal,
   Notebook,
   DataLine,
-  Platform,
   SwitchButton,
   Calendar,
   Expand
