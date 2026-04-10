@@ -1,15 +1,15 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50">
+  <div class="h-full flex flex-col">
     <!-- 搜索栏 -->
-    <div class="p-6 pb-0">
-      <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center">
+    <div class="p-3 pb-0 sm:p-4 sm:pb-0 lg:p-6 lg:pb-0">
+      <div class="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:p-5">
         <el-input
           v-model="searchKeyword"
           placeholder="搜索姓名或学号..."
           clearable
           @clear="fetchData"
           @keyup.enter="fetchData"
-          class="!w-64"
+          class="w-full sm:!w-64"
         >
           <template #prefix>
             <el-icon><Search /></el-icon>
@@ -21,7 +21,7 @@
           placeholder="选择部门"
           clearable
           @change="fetchData"
-          class="!w-48"
+          class="w-full sm:!w-48"
         >
           <el-option label="全部部门" value="" />
           <el-option label="科创部" value="科创部" />
@@ -32,7 +32,7 @@
           <el-option label="常委" value="常委" />
         </el-select>
 
-        <el-button type="primary" @click="fetchData" class="!rounded-xl">
+        <el-button type="primary" @click="fetchData" class="!w-full !rounded-xl sm:!w-auto">
           <el-icon class="mr-1"><Search /></el-icon>
           查询
         </el-button>
@@ -40,10 +40,10 @@
     </div>
 
     <!-- 内容区域 -->
-    <div class="flex-1 p-6 overflow-auto">
+    <div class="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
       <div v-loading="loading">
         <!-- Grid 布局展示卡片 -->
-        <div v-if="contacts.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div v-if="contacts.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-6">
           <div 
             v-for="user in contacts" 
             :key="user.id" 
@@ -53,8 +53,8 @@
             <div class="h-1.5 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
 
             <!-- 卡片内容 -->
-            <div class="p-5 flex-1 flex flex-col">
-              <div class="mb-4 flex items-start justify-between">
+            <div class="flex flex-1 flex-col p-5 sm:p-6">
+              <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 class="text-lg font-bold text-gray-800">{{ user.real_name || user.full_name }}</h3>
                   <div class="text-sm text-gray-500 mt-1.5 flex items-center gap-2">
@@ -62,7 +62,7 @@
                     <span v-if="user.position" class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-xs">{{ user.position }}</span>
                   </div>
                 </div>
-                <el-tag size="small" :type="user.role === 'admin' ? 'danger' : 'info'" effect="light" round>
+                <el-tag size="small" :type="user.role === 'admin' ? 'danger' : 'info'" effect="light" round class="w-fit">
                   {{ user.role === 'admin' ? 'Admin' : 'Member' }}
                 </el-tag>
               </div>

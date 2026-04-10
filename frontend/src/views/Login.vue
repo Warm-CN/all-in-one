@@ -1,13 +1,10 @@
 <template>
-  <div class="min-h-screen w-full flex items-center justify-center p-4 perspective-container">
+  <div class="perspective-container flex min-h-screen w-full items-center justify-center p-3 sm:p-4">
     
     <!-- 卡片容器：控制尺寸平滑过渡 -->
     <div 
       class="relative transition-all duration-700 cubic-bezier-smooth"
-      :style="{
-        width: isFlipped ? '780px' : '440px',
-        height: isFlipped ? '680px' : '640px'
-      }"
+      :style="cardFrameStyle"
     >
       <!-- 翻转容器 -->
       <div 
@@ -18,7 +15,7 @@
         <!-- =======================
              正面：登录 (Login)
              ======================= -->
-        <div class="absolute inset-0 backface-hidden bg-white/95 backdrop-blur-2xl rounded-[24px] border border-white/60 p-10 flex flex-col items-center shadow-xl overflow-hidden z-20">
+        <div class="absolute inset-0 z-20 flex flex-col items-center overflow-hidden rounded-[24px] border border-white/60 bg-white/95 p-5 shadow-xl backdrop-blur-2xl backface-hidden sm:p-8 lg:p-10">
           
           <!-- 顶部 Logo -->
           <div class="mt-4 mb-8 flex flex-col items-center">
@@ -30,8 +27,8 @@
           </div>
 
           <!-- 登录表单 -->
-          <form @submit.prevent="handleLogin" class="w-full flex flex-col gap-8 px-4">
-            <div class="flex flex-col gap-5">
+          <form @submit.prevent="handleLogin" class="flex w-full flex-col gap-6 px-1 sm:gap-8 sm:px-4">
+            <div class="flex flex-col gap-4 sm:gap-5">
               <el-input 
                 v-model="loginForm.studentId" 
                 placeholder="请输入学号 / Student ID" 
@@ -85,10 +82,10 @@
         <!-- =======================
              背面：注册申请表 (Register)
              ======================= -->
-        <div class="absolute inset-0 backface-hidden bg-white/95 backdrop-blur-xl rounded-[24px] border border-white/50 p-0 flex flex-col shadow-lg overflow-hidden rotate-y-180 z-10">
+        <div class="absolute inset-0 z-10 flex flex-col overflow-hidden rounded-[24px] border border-white/50 bg-white/95 p-0 shadow-lg backdrop-blur-xl rotate-y-180 backface-hidden">
           
           <!-- 头部标题栏 -->
-          <div class="px-10 py-6 border-b border-slate-100 bg-slate-50/80 flex justify-between items-center backdrop-blur-sm shrink-0">
+          <div class="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50/80 px-5 py-5 backdrop-blur-sm sm:px-8 lg:px-10 lg:py-6">
              <div>
                <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">内部档案录入</h2>
                <p class="text-slate-400 text-xs mt-1 font-medium tracking-wide">INTERNAL MEMBER REGISTRATION</p>
@@ -99,10 +96,10 @@
           </div>
 
           <!-- 申请表单内容 -->
-          <div class="flex-1 px-10 py-6 overflow-y-auto custom-scrollbar">
+          <div class="custom-scrollbar flex-1 overflow-y-auto px-5 py-5 sm:px-8 lg:px-10 lg:py-6">
              <form class="h-full flex flex-col">
                 <!-- Grid 布局 -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-6">
+                <div class="grid grid-cols-1 gap-x-12 gap-y-6 lg:grid-cols-2">
                   
                   <!-- 左侧：基本信息 -->
                   <div class="flex flex-col gap-5">
@@ -187,7 +184,7 @@
                 </div>
 
                 <!-- 底部说明与按钮 -->
-                <div class="mt-auto pt-6 flex items-center justify-between border-t border-slate-100 shrink-0">
+                <div class="mt-auto flex shrink-0 flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
                   <button 
                     type="button" 
                     @click="toggleFlip" 
@@ -263,6 +260,11 @@ const positionOptions = computed(() => {
     return ['部长', '副部长', '干事']
   }
 })
+
+const cardFrameStyle = computed(() => ({
+  width: isFlipped.value ? 'min(calc(100vw - 1.5rem), 780px)' : 'min(calc(100vw - 1.5rem), 440px)',
+  height: isFlipped.value ? 'min(calc(100vh - 1.5rem), 680px)' : 'min(calc(100vh - 1.5rem), 640px)'
+}))
 
 // 监听部门变化，重置职位
 watch(() => registerForm.department, () => {

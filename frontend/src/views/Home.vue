@@ -1,9 +1,9 @@
 <template>
-  <div class="h-full flex flex-col gap-6">
+  <div class="flex h-full flex-col gap-5 pb-2 sm:gap-6 sm:pb-3">
     <!-- 顶部欢迎区 -->
-    <div class="flex items-center justify-between shrink-0">
+    <div class="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800 tracking-tight">
+        <h1 class="pb-1 text-2xl font-bold leading-[1.2] tracking-tight text-gray-800">
           欢迎回来，{{ userStore.userName || '同学' }}！👋
         </h1>
       </div>
@@ -16,14 +16,14 @@
     </div>
 
     <!-- 核心内容区 -->
-    <div class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 pr-1">
+    <div class="flex min-h-0 flex-1 flex-col gap-5 lg:flex-row">
       
       <!-- 左侧：现代化日历 (58%) -->
-      <div class="w-full lg:w-[58%] bg-white rounded-3xl p-6 shadow-sm flex flex-col relative group border border-gray-100/60 overflow-hidden">
+      <div class="group relative flex w-full flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_14px_36px_-28px_rgba(15,23,42,0.28)] sm:p-6 lg:w-[58%]">
          <el-calendar v-model="calendarValue" class="custom-calendar h-full flex flex-col">
             <!-- 自定义日历头部 -->
             <template #header="{ date }">
-              <div class="flex items-center justify-between w-full mb-2 px-2 shrink-0">
+              <div class="mb-2 flex w-full shrink-0 flex-col gap-3 px-2 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex flex-col">
                    <div class="flex items-baseline gap-2">
                      <span class="text-3xl font-black text-gray-800 tracking-tight">{{ dayjs(calendarValue).format('MMM') }}</span>
@@ -31,7 +31,7 @@
                    </div>
                 </div>
                 <!-- 导航按钮组 -->
-                <div class="flex items-center bg-gray-50 rounded-full p-1 border border-gray-200/50 shadow-sm">
+                <div class="flex items-center justify-between rounded-full border border-gray-200/50 bg-gray-50 p-1 shadow-sm sm:w-auto sm:justify-start">
                   <el-button size="small" circle text @click="selectDate('prev-month')" class="!w-8 !h-8 hover:!bg-white hover:!text-indigo-600 transition-colors">
                      <el-icon><ArrowLeft /></el-icon>
                   </el-button>
@@ -73,7 +73,7 @@
          <!-- 浮动日程卡片 -->
          <transition name="schedule-card">
             <div v-if="showScheduleCard" 
-                 class="fixed w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[9999] overflow-hidden"
+                 class="fixed z-[9999] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl"
                  :style="popupStyle"
                  @click.stop>
                <!-- 卡片头部 -->
@@ -122,21 +122,21 @@
       <div class="w-full lg:w-[42%] flex flex-col gap-4">
          
          <!-- 会议室状态卡片 -->
-         <div class="bg-white rounded-[24px] p-7 shadow-sm flex-1 flex flex-col min-h-0 relative overflow-hidden group border border-gray-100/60">
+         <div class="group relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[26px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f9fbff_100%)] p-5 shadow-[0_14px_36px_-28px_rgba(15,23,42,0.26)] sm:p-6 lg:p-7">
             <!-- 装饰背景 -->
             <div class="absolute -right-8 -top-8 w-40 h-40 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
 
             <!-- 当前状态大卡片 -->
-            <div class="relative z-10 mb-6 bg-white/40 backdrop-blur-sm rounded-2xl border border-gray-100 p-5 overflow-hidden">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1">Current Status</span>
+            <div class="relative z-10 mb-6 overflow-visible rounded-[22px] border border-slate-200/80 bg-white/72 px-5 pb-5 pt-6 shadow-[0_10px_24px_-22px_rgba(37,99,235,0.45)] backdrop-blur-sm sm:px-6 sm:pb-6 sm:pt-7">
+                <div class="mb-3 flex items-center justify-between">
+                    <span class="pl-1 pt-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.22em] text-gray-500">Current Status</span>
                 </div>
-                <div class="flex items-end gap-3">
-                    <h2 class="text-3xl font-black text-gray-800 tracking-tight">空闲中</h2>
-                    <span class="text-sm font-medium text-gray-400 mb-1.5 bg-gray-100 px-2 py-0.5 rounded-md">北三会议室</span>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
+                    <h2 class="pt-1 text-3xl font-black leading-[1.08] tracking-tight text-gray-800 sm:text-[2.15rem]">空闲中</h2>
+                    <span class="inline-flex w-fit rounded-md bg-gray-100 px-2 py-0.5 text-sm font-medium text-gray-500 sm:mb-1.5">北三会议室</span>
                 </div>
-                <div class="mt-4 flex gap-3">
-                    <el-button type="primary" class="!rounded-xl !px-6 !h-9 !font-bold !shadow-md shadow-indigo-100/50" @click="router.push('/rooms')">立即预约</el-button>
+                <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+                    <el-button type="primary" class="!h-10 !rounded-xl !px-6 !font-bold !shadow-md shadow-indigo-100/50 sm:!w-auto" @click="router.push('/rooms')">立即预约</el-button>
                 </div>
             </div>
 
@@ -153,7 +153,7 @@
                
                <div v-else class="space-y-3">
                   <div v-for="(slot, idx) in roomSlots.filter(s => s.status === 'booked')" :key="idx" 
-                       class="relative flex gap-4 p-4 rounded-2xl bg-gray-50/30 border border-gray-50 hover:bg-white hover:shadow-lg hover:shadow-gray-100/40 hover:border-gray-100 transition-all duration-300">
+                       class="relative flex flex-col gap-4 rounded-2xl border border-gray-50 bg-gray-50/30 p-4 transition-all duration-300 hover:border-gray-100 hover:bg-white hover:shadow-lg hover:shadow-gray-100/40 sm:flex-row">
                      
                      <div class="flex flex-col items-center justify-center min-w-[60px] border-r border-gray-200 pr-4">
                         <span class="text-sm font-bold text-gray-500 font-mono">{{ slot.time.split('-')[0] }}</span>
@@ -169,7 +169,7 @@
                            <span class="font-bold text-gray-700 text-sm truncate">{{ slot.user }}</span>
                            <span class="text-[11px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded font-medium shrink-0">{{ slot.dept }}</span>
                         </div>
-                        <div class="text-xs text-gray-400 truncate flex items-center gap-1">
+                        <div class="flex items-center gap-1 text-xs leading-5 text-gray-400">
                            <span>{{ slot.remarks }}</span>
                         </div>
                      </div>
@@ -179,7 +179,7 @@
          </div>
 
          <!-- 贡献者墙 (毛玻璃悬浮卡片) -->
-         <div class="h-auto shrink-0 bg-white/60 backdrop-blur-xl rounded-[20px] p-5 border border-white/50 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(99,102,241,0.08)] transition-all duration-500 relative overflow-hidden group/wall">
+         <div class="group/wall relative h-auto shrink-0 overflow-hidden rounded-[22px] border border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(248,250,252,0.9))] p-4 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.22)] transition-all duration-500 hover:shadow-[0_14px_34px_-24px_rgba(99,102,241,0.18)] sm:p-5">
             <!-- 镜面反光效果 -->
             <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/40 to-white/0 opacity-0 group-hover/wall:opacity-100 transition-opacity duration-700 pointer-events-none transform -skew-x-12 translate-x-[-100%] group-hover/wall:translate-x-[100%] ease-in-out"></div>
 
@@ -213,7 +213,7 @@
          <!-- 贡献者悬浮卡片 -->
          <transition name="schedule-card">
             <div v-if="showContributorCard" 
-                 class="fixed w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[9999] overflow-hidden"
+                 class="fixed z-[9999] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl"
                  :style="contributorPopupStyle"
                  @click.stop>
                <!-- 卡片头部 -->
@@ -228,7 +228,7 @@
                </div>
                
                <!-- 卡片内容 -->
-               <div class="p-5 pt-6 grid grid-cols-4 gap-4 max-h-80 overflow-y-auto custom-scrollbar relative z-0">
+               <div class="relative z-0 grid max-h-80 grid-cols-3 gap-4 overflow-y-auto p-5 pt-6 custom-scrollbar sm:grid-cols-4">
                   <a v-for="dev in developers" :key="dev.id" :href="dev.url" target="_blank" 
                      class="flex flex-col items-center gap-2 group p-2 rounded-xl hover:bg-gray-50 transition-colors">
                       <img :src="dev.avatar" :alt="dev.name" class="h-10 w-10 rounded-full object-cover ring-2 ring-gray-100 group-hover:ring-indigo-200 transition-all"/>

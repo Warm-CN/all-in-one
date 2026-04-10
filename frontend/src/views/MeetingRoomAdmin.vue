@@ -1,18 +1,18 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50">
+  <div class="h-full flex flex-col">
     <!-- Header -->
-    <div class="bg-white px-6 py-4 shadow-sm border-b border-gray-100 flex justify-end items-center">
-      <div class="flex items-center gap-4">
+    <div class="flex flex-col gap-3 border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-end sm:px-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <el-date-picker
           v-model="exportMonth"
           type="month"
           placeholder="选择导出月份"
-          style="width: 140px"
+          class="w-full sm:!w-[160px]"
           :clearable="false"
           format="YYYY年MM月"
           value-format="YYYY-MM"
         />
-        <el-button type="primary" :loading="exportLoading" @click="handleExport" class="!rounded-md">
+        <el-button type="primary" :loading="exportLoading" @click="handleExport" class="!w-full !rounded-md sm:!w-auto">
           <el-icon class="mr-1"><Download /></el-icon>
           导出表格
         </el-button>
@@ -20,16 +20,16 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 p-6 overflow-hidden">
-        <div class="bg-white h-full rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+    <div class="flex-1 overflow-hidden p-3 sm:p-4 lg:p-6">
+        <div class="flex h-full flex-col rounded-2xl border border-gray-100 bg-white shadow-sm">
           <!-- Filters/Tabs -->
-           <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+           <div class="flex flex-col gap-3 border-b border-gray-100 p-4 lg:flex-row lg:items-center lg:justify-between">
              <div class="text-gray-600 text-sm">
                 当前显示: <span class="font-medium text-gray-900">{{ formatDate(startDate) }}</span> 至 <span class="font-medium text-gray-900">{{ formatDate(endDate) }}</span>
                 (共 {{ bookings.length }} 条记录)
              </div>
              
-             <el-radio-group v-model="viewRange" size="small" @change="fetchBookings">
+             <el-radio-group v-model="viewRange" size="small" @change="fetchBookings" class="admin-booking-radios">
                 <el-radio-button label="all">近15天</el-radio-button>
                 <el-radio-button label="past">过去7天</el-radio-button>
                 <el-radio-button label="today">今天</el-radio-button>
@@ -38,13 +38,15 @@
            </div>
            
            <!-- Table -->
-           <el-table 
-             v-loading="loading" 
-             :data="bookings" 
-             class="flex-1 custom-table"
-             height="100%"
-             stripe
-           >
+           <div class="min-h-0 flex-1 overflow-x-auto">
+             <el-table 
+               v-loading="loading" 
+               :data="bookings" 
+               class="custom-table min-h-0"
+               height="100%"
+               stripe
+               style="min-width: 860px"
+             >
               <el-table-column prop="booking_date" label="日期" width="120" sortable fixed="left">
                  <template #default="{ row }">
                    <div :class="getDateClass(row.booking_date)">
@@ -81,7 +83,8 @@
                   </el-popconfirm>
                 </template>
               </el-table-column>
-           </el-table>
+             </el-table>
+           </div>
         </div>
     </div>
   </div>
@@ -199,5 +202,10 @@ onMounted(() => {
   background-color: #f9fafb;
   font-weight: 600;
   color: #374151;
+}
+
+.admin-booking-radios {
+  display: flex;
+  flex-wrap: wrap;
 }
 </style>

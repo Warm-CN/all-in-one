@@ -1,91 +1,123 @@
 <template>
-  <div class="h-full recruitment-page">
-    <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h2 class="text-2xl font-bold text-slate-800">招新报名管理</h2>
-        <p class="mt-1 text-sm text-slate-500">共 {{ tableData.length }} 人报名</p>
-      </div>
-      <div class="flex items-center gap-2" v-if="userStore.isAdmin">
-        <el-upload
-          :show-file-list="false"
-          accept=".xlsx"
-          :http-request="handleImportUpload"
-        >
-          <el-button type="primary" plain :loading="importing">导入一/二面安排（xlsx）</el-button>
-        </el-upload>
-        <el-button type="success" @click="handleExport" :loading="exporting">
-          下载面试模板
-        </el-button>
-      </div>
-    </div>
+  <div class="recruitment-page flex h-full min-h-0 flex-col gap-5 pb-2 sm:gap-6 sm:pb-3">
+    <section class="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 pb-5 pt-6 shadow-[0_14px_34px_-28px_rgba(15,23,42,0.22)] sm:px-6 sm:pb-6 sm:pt-7 lg:px-7 lg:pb-7 lg:pt-8">
+      <div class="flex flex-col gap-5 2xl:flex-row 2xl:items-start 2xl:justify-between">
+        <div class="min-w-0">
+          <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-blue-600">
+            RECRUITMENT
+          </span>
+          <h2 class="recruitment-hero-title mt-3 max-w-full pt-1 text-[1.95rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">
+            招新面试
+          </h2>
+        </div>
 
-    <div class="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-700" v-if="userStore.isAdmin">
-      导入模板用于批量写入一面/二面时间地点；当前系统阶段请在下方“招新渠道与阶段控制”里设置。
-    </div>
-
-    <div class="mb-4 rounded-xl border border-slate-100 bg-white p-4" v-if="userStore.isAdmin">
-      <div class="mb-3 text-sm font-semibold text-slate-700">招新渠道与阶段控制</div>
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-5">
-        <el-input v-model="configForm.title" placeholder="招新活动名称" />
-        <el-date-picker v-model="configForm.start_time" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" placeholder="开放报名时间" />
-        <el-date-picker v-model="configForm.end_time" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" placeholder="关闭报名时间" />
-        <el-select v-model="configForm.current_stage" placeholder="当前阶段">
-          <el-option v-for="item in stageOptions" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-        <div class="flex items-center gap-2">
-          <el-switch v-model="configForm.is_active" active-text="开放" inactive-text="关闭" />
-          <el-button type="primary" :loading="savingConfig" @click="saveRecruitmentConfig">保存</el-button>
+        <div v-if="userStore.isAdmin" class="flex flex-col gap-2 sm:flex-row 2xl:justify-end">
+          <el-upload
+            :show-file-list="false"
+            accept=".xlsx"
+            :http-request="handleImportUpload"
+            class="w-full sm:w-auto"
+          >
+            <el-button type="primary" plain :loading="importing" class="!h-11 !w-full !rounded-2xl !px-5 sm:!w-auto">
+              导入一/二面安排（xlsx）
+            </el-button>
+          </el-upload>
+          <el-button type="success" @click="handleExport" :loading="exporting" class="!h-11 !w-full !rounded-2xl !px-5 sm:!w-auto">
+            下载面试模板
+          </el-button>
         </div>
       </div>
-    </div>
 
-    <div class="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-3">
-      <el-input v-model="filters.keyword" placeholder="姓名/学号/手机号" clearable @keyup.enter="fetchList" />
-      <el-select v-model="filters.department" placeholder="按部门筛选" clearable>
-        <el-option v-for="item in departmentOptions" :key="item" :label="item" :value="item" />
-      </el-select>
-      <div class="flex gap-2">
-        <el-button type="primary" @click="fetchList">查询</el-button>
-        <el-button @click="resetFilters">重置</el-button>
-      </div>
-    </div>
-
-    <el-table :data="tableData" border stripe height="calc(100% - 170px)" v-loading="loading">
-      <el-table-column prop="name" label="姓名" min-width="100" />
-      <el-table-column prop="student_id" label="学号" min-width="120" />
-      <el-table-column prop="phone" label="手机号" min-width="130" />
-      <el-table-column prop="current_stage_desc" label="当前阶段" min-width="130">
-        <template #default="{ row }">
-          <el-tag :type="stageTagType(row.current_stage)">{{ row.current_stage_desc || '-' }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="first_choice" label="第一志愿" min-width="140" />
-      <el-table-column prop="second_choice" label="第二志愿" min-width="140" />
-      <el-table-column label="面试安排" min-width="280">
-        <template #default="{ row }">
-          <div class="text-xs leading-6 text-slate-600 whitespace-pre-wrap">{{ formatInterviewPlan(row) }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="college" label="学院" min-width="150" />
-      <el-table-column prop="major" label="专业班级" min-width="150" />
-      <el-table-column label="自我介绍" min-width="220">
-        <template #default="{ row }">
-          <el-tooltip effect="dark" :content="row.intro || '-'" placement="top" :show-after="300">
-            <span class="inline-block max-w-[200px] truncate text-slate-600">{{ row.intro || '-' }}</span>
-          </el-tooltip>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" min-width="180" fixed="right" v-if="userStore.isAdmin">
-        <template #default="{ row }">
-          <div class="flex gap-2">
-            <el-button link type="primary" @click="openEdit(row)">修改</el-button>
-            <el-button link type="danger" @click="removeRow(row)">删除</el-button>
+      <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div class="stat-card rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 shadow-[0_10px_24px_-26px_rgba(15,23,42,0.24)]">
+          <div class="stat-card__label text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">报名人数</div>
+          <div class="stat-card__value mt-1.5 text-[1.45rem] font-black text-slate-900">{{ tableData.length }}</div>
+        </div>
+        <div class="stat-card rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 shadow-[0_10px_24px_-26px_rgba(15,23,42,0.24)]">
+          <div class="stat-card__label text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">当前阶段</div>
+          <div class="stat-card__value mt-1.5 text-[15px] font-semibold text-slate-800">
+            {{ stageOptions.find((item) => item.value === configForm.current_stage)?.label || '未设置' }}
           </div>
-        </template>
-      </el-table-column>
-    </el-table>
+        </div>
+        <div
+          class="stat-card rounded-[20px] border px-4 py-3.5 shadow-[0_10px_24px_-26px_rgba(15,23,42,0.24)]"
+          :class="configForm.is_active ? 'border-emerald-200 bg-emerald-50/80' : 'border-slate-200/80 bg-slate-50/95'"
+        >
+          <div class="stat-card__label text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">当前状态</div>
+          <div class="stat-card__value mt-1.5 text-[15px] font-semibold" :class="configForm.is_active ? 'text-emerald-700' : 'text-slate-700'">
+            {{ configForm.is_active ? '报名开放中' : '报名已关闭' }}
+          </div>
+        </div>
+      </div>
+    </section>
 
-    <el-dialog v-model="editVisible" title="修改报名信息" width="860px" destroy-on-close>
+    <section class="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.18)] sm:p-6">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <h3 class="section-title text-lg font-semibold text-slate-800">筛选</h3>
+        <div class="inline-flex w-fit items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
+          当前已载入 {{ tableData.length }} 条记录
+        </div>
+      </div>
+
+      <div class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_320px_auto]">
+        <el-input v-model="filters.keyword" placeholder="姓名 / 学号 / 手机号" clearable @keyup.enter="fetchList" />
+        <el-select v-model="filters.department" placeholder="按部门筛选" clearable class="w-full">
+          <el-option v-for="item in departmentOptions" :key="item" :label="item" :value="item" />
+        </el-select>
+        <div class="flex flex-col gap-2 sm:flex-row xl:justify-end">
+          <el-button type="primary" @click="fetchList" class="!h-11 !w-full !rounded-2xl !px-6 sm:!w-auto">查询</el-button>
+          <el-button @click="resetFilters" class="!h-11 !w-full !rounded-2xl !px-6 sm:!w-auto">重置</el-button>
+        </div>
+      </div>
+    </section>
+
+    <section class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] shadow-[0_16px_38px_-32px_rgba(15,23,42,0.2)]">
+      <div class="flex flex-col gap-3 border-b border-slate-200/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <h3 class="section-title text-lg font-semibold text-slate-800">报名列表</h3>
+        <div class="text-xs font-medium text-slate-400">列表内容按当前筛选条件实时刷新</div>
+      </div>
+
+      <div class="flex h-full min-h-0 flex-col p-4 sm:p-5">
+        <div class="min-h-0 flex-1 overflow-auto rounded-[24px] border border-slate-200/80 bg-white">
+          <el-table :data="tableData" border stripe height="100%" v-loading="loading" style="min-width: 1460px">
+            <el-table-column prop="name" label="姓名" min-width="100" />
+            <el-table-column prop="student_id" label="学号" min-width="120" />
+            <el-table-column prop="phone" label="手机号" min-width="130" />
+            <el-table-column prop="current_stage_desc" label="当前阶段" min-width="130">
+              <template #default="{ row }">
+                <el-tag :type="stageTagType(row.current_stage)">{{ row.current_stage_desc || '-' }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="first_choice" label="第一志愿" min-width="140" />
+            <el-table-column prop="second_choice" label="第二志愿" min-width="140" />
+            <el-table-column label="面试安排" min-width="280">
+              <template #default="{ row }">
+                <div class="whitespace-pre-wrap text-xs leading-6 text-slate-600">{{ formatInterviewPlan(row) }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="college" label="学院" min-width="150" />
+            <el-table-column prop="major" label="专业班级" min-width="150" />
+            <el-table-column label="自我介绍" min-width="220">
+              <template #default="{ row }">
+                <el-tooltip effect="dark" :content="row.intro || '-'" placement="top" :show-after="300">
+                  <span class="inline-block max-w-[200px] truncate text-slate-600">{{ row.intro || '-' }}</span>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="180" fixed="right" v-if="userStore.isAdmin">
+              <template #default="{ row }">
+                <div class="flex flex-wrap gap-2">
+                  <el-button link type="primary" @click="openEdit(row)">修改</el-button>
+                  <el-button link type="danger" @click="removeRow(row)">删除</el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+    </section>
+
+    <el-dialog v-model="editVisible" title="修改报名信息" width="min(860px, calc(100vw - 24px))" destroy-on-close>
       <el-form ref="editFormRef" :model="editForm" :rules="rules" label-position="top" size="large">
         <div class="grid grid-cols-1 gap-x-4 gap-y-1 md:grid-cols-2">
           <el-form-item label="姓名" prop="name">
@@ -155,8 +187,10 @@
       </el-form>
 
       <template #footer>
-        <el-button @click="editVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submitEdit">保存</el-button>
+        <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <el-button @click="editVisible = false">取消</el-button>
+          <el-button type="primary" :loading="saving" @click="submitEdit">保存</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -172,8 +206,7 @@ import {
   exportApplications,
   getInternalApplications,
   importInterviewArrangements,
-  getAdminSignupConfigs,
-  updateAdminSignupConfig
+  getAdminSignupConfigs
 } from '@/api/recruitment'
 
 const userStore = useUserStore()
@@ -181,9 +214,7 @@ const userStore = useUserStore()
 const loading = ref(false)
 const exporting = ref(false)
 const importing = ref(false)
-const savingConfig = ref(false)
 const tableData = ref([])
-const recruitmentConfigId = ref(null)
 
 const stageOptions = [
   { label: '报名阶段', value: 'registration' },
@@ -250,7 +281,6 @@ const fetchRecruitmentConfig = async () => {
     const list = Array.isArray(res.data) ? res.data : []
     if (!list.length) return
     const cfg = list[0]
-    recruitmentConfigId.value = cfg.id
     configForm.title = cfg.title || ''
     configForm.start_time = (cfg.start_time || '').slice(0, 19)
     configForm.end_time = (cfg.end_time || '').slice(0, 19)
@@ -258,26 +288,6 @@ const fetchRecruitmentConfig = async () => {
     configForm.is_active = !!cfg.is_active
   } catch (error) {
     ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '获取招新配置失败')
-  }
-}
-
-const saveRecruitmentConfig = async () => {
-  if (!recruitmentConfigId.value) return
-  savingConfig.value = true
-  try {
-    await updateAdminSignupConfig(recruitmentConfigId.value, {
-      title: configForm.title,
-      start_time: configForm.start_time,
-      end_time: configForm.end_time,
-      current_stage: configForm.current_stage,
-      is_active: configForm.is_active
-    })
-    ElMessage.success('招新配置已保存')
-    await fetchList()
-  } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '保存招新配置失败')
-  } finally {
-    savingConfig.value = false
   }
 }
 
@@ -479,8 +489,81 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.recruitment-hero-title {
+  line-height: 1.22;
+  padding-bottom: 2px;
+  overflow: visible;
+}
+
+.section-title {
+  line-height: 1.25;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.stat-card {
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.stat-card__label {
+  line-height: 1.3;
+}
+
+.stat-card__value {
+  line-height: 1.28;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.recruitment-page :deep(.el-upload) {
+  width: 100%;
+}
+
 .recruitment-page :deep(.el-table th.el-table__cell) {
   background: #f8fafc;
   color: #334155;
+}
+
+.recruitment-page :deep(.el-table) {
+  --el-table-border-color: #e2e8f0;
+  --el-table-header-bg-color: #f8fafc;
+  --el-table-row-hover-bg-color: #f8fbff;
+}
+
+.recruitment-page :deep(.el-table td.el-table__cell) {
+  vertical-align: top;
+}
+
+.recruitment-page :deep(.el-table .cell) {
+  line-height: 1.6;
+}
+
+.recruitment-page :deep(.el-tag) {
+  border-radius: 999px;
+  padding-inline: 10px;
+}
+
+.recruitment-page :deep(.el-dialog) {
+  max-width: calc(100vw - 24px);
+  border-radius: 26px;
+  overflow: hidden;
+}
+
+.recruitment-page :deep(.el-dialog__body) {
+  padding-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .recruitment-hero-title {
+    line-height: 1.2;
+  }
+
+  .stat-card {
+    min-height: 78px;
+  }
 }
 </style>

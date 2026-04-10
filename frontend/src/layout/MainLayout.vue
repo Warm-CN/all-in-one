@@ -1,155 +1,160 @@
 <template>
-  <el-container class="h-screen w-full bg-[#F8FAFC]">
-    <!-- 侧边栏 -->
+  <el-container class="main-shell h-screen min-h-screen w-full overflow-hidden bg-[#F5F7FB]">
     <el-aside
-      width="260px"
-      class="hidden md:flex h-full bg-white border-r border-gray-100 transition-all duration-300 flex-col z-20 shadow-[2px_0_12px_rgba(0,0,0,0.01)]"
+      width="248px"
+      class="hidden h-screen min-h-screen flex-col overflow-hidden border-r border-slate-200/80 bg-white/95 shadow-[8px_0_32px_-24px_rgba(15,23,42,0.24)] md:flex"
     >
-      <!-- Logo 区域 -->
-      <div class="h-16 flex items-center justify-center border-b border-gray-50/50">
+      <div class="flex h-16 shrink-0 items-center justify-center border-b border-slate-200/80 px-4">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-white shadow-lg shadow-indigo-600/20 overflow-hidden p-1">
-            <img :src="logo" alt="Logo" class="w-full h-full object-contain" />
+          <div class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-lg shadow-indigo-600/15">
+            <img :src="logo" alt="Logo" class="h-full w-full object-contain" />
           </div>
-          <span class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 tracking-tight">
-            无协ALL IN ONE
-          </span>
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Club Suite</div>
+            <div class="text-base font-bold tracking-tight text-slate-800">无线协 ALL IN ONE</div>
+          </div>
         </div>
       </div>
 
-      <!-- 菜单区域 -->
-      <el-scrollbar class="flex-1">
-        <el-menu
-          :default-active="activeMenu"
-          class="border-none w-full !bg-transparent py-4 px-3"
-          router
-        >
-          <!-- 首页概览 -->
-          <div class="px-4 py-2 mb-2 text-xs font-semibold text-gray-400 opacity-60">首页</div>
-          <el-menu-item index="/home" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-            <el-icon class="group-hover:text-indigo-600 transition-colors"><HomeFilled /></el-icon>
-            <span class="group-hover:text-indigo-600 font-medium group-[.is-active]:text-indigo-600">首页概览</span>
+      <el-scrollbar class="sidebar-scroll min-h-0 flex-1">
+        <el-menu :default-active="activeMenu" class="border-none !bg-transparent px-3 py-4" router>
+          <div class="menu-group-title">首页</div>
+          <el-menu-item index="/home" class="menu-item">
+            <el-icon><HomeFilled /></el-icon>
+            <span>首页总览</span>
           </el-menu-item>
 
-          <!-- 协会资源 (所有人可见) -->
-          <div class="px-4 py-2 mt-4 mb-2 text-xs font-semibold text-gray-400 opacity-60">协会资源</div>
-
-          <el-menu-item index="/rooms" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-            <el-icon class="group-hover:text-indigo-600 transition-colors"><Monitor /></el-icon>
-            <span class="group-hover:text-indigo-600 font-medium">会议室预约</span>
+          <div class="menu-group-title">协会资源</div>
+          <el-menu-item index="/rooms" class="menu-item">
+            <el-icon><Monitor /></el-icon>
+            <span>会议室预约</span>
+          </el-menu-item>
+          <el-menu-item index="/recruitment" class="menu-item">
+            <el-icon><UserFilled /></el-icon>
+            <span>招新面试</span>
+          </el-menu-item>
+          <el-menu-item index="/wireless-cup" class="menu-item">
+            <el-icon><Trophy /></el-icon>
+            <span>无线杯</span>
+          </el-menu-item>
+          <el-menu-item index="/telecom-cup" class="menu-item">
+            <el-icon><Medal /></el-icon>
+            <span>电信杯</span>
+          </el-menu-item>
+          <el-menu-item index="/contacts" class="menu-item">
+            <el-icon><Notebook /></el-icon>
+            <span>通讯录</span>
           </el-menu-item>
 
-          <el-menu-item index="/recruitment" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-            <el-icon class="group-hover:text-indigo-600 transition-colors"><UserFilled /></el-icon>
-            <span class="group-hover:text-indigo-600 font-medium">招新面试</span>
-          </el-menu-item>
-          
-           <el-menu-item index="/wireless-cup" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-            <el-icon class="group-hover:text-indigo-600 transition-colors"><Trophy /></el-icon>
-            <span class="group-hover:text-indigo-600 font-medium">无线杯</span>
-          </el-menu-item>
-
-           <el-menu-item index="/telecom-cup" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-            <el-icon class="group-hover:text-indigo-600 transition-colors"><Medal /></el-icon>
-            <span class="group-hover:text-indigo-600 font-medium">电信杯</span>
-          </el-menu-item>
-          
-           <el-menu-item index="/contacts" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-            <el-icon class="group-hover:text-indigo-600 transition-colors"><Notebook /></el-icon>
-            <span class="group-hover:text-indigo-600 font-medium">通讯录</span>
-          </el-menu-item>
-
-          <!-- 管理工具 (仅 Admin 可见) -->
           <template v-if="userStore.userRole === 'admin'">
-            <div class="px-4 py-2 mt-4 mb-2 text-xs font-semibold text-gray-400 opacity-60">管理工具</div>
-
-            <el-menu-item index="/users" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><User /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">成员管理</span>
+            <div class="menu-group-title">管理工具</div>
+            <el-menu-item index="/users" class="menu-item">
+              <el-icon><User /></el-icon>
+              <span>成员管理</span>
             </el-menu-item>
-
-            <el-menu-item index="/admin/schedule" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><Calendar /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">日程管理</span>
+            <el-menu-item index="/admin/schedule" class="menu-item">
+              <el-icon><Calendar /></el-icon>
+              <span>日程管理</span>
             </el-menu-item>
-
-            <el-menu-item index="/admin/rooms" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><Setting /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">会议室管理</span>
+            <el-menu-item index="/admin/rooms" class="menu-item">
+              <el-icon><Setting /></el-icon>
+              <span>会议室管理</span>
             </el-menu-item>
-
-            <el-menu-item index="/admin/management" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><DataLine /></el-icon>
-              <span class="group-hover:text-indigo-600 font-medium">后台管理</span>
+            <el-menu-item index="/admin/management" class="menu-item">
+              <el-icon><DataLine /></el-icon>
+              <span>后台管理</span>
             </el-menu-item>
           </template>
-
         </el-menu>
       </el-scrollbar>
 
-      <!-- 底部版权 -->
-      <div class="h-12 border-t border-gray-50 flex items-center justify-center text-xs text-gray-400 bg-white/50 backdrop-blur-sm">
-        <span>© 2024 All In One</span>
+      <div class="mt-auto shrink-0 border-t border-slate-200/80 bg-gradient-to-b from-white to-slate-50 px-4 py-3 text-center text-xs font-medium text-slate-400">
+        © 2026 All In One
       </div>
     </el-aside>
 
-    <!-- 右侧主体 -->
-    <el-container class="bg-[#F8FAFC]">
-      <!-- 顶部导航栏 -->
-      <el-header class="!h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 transition-all duration-300">
-        <!-- 左侧面包屑 -->
-        <div class="flex items-center gap-2 md:gap-4">
-           <!-- 移动端菜单按钮 -->
-           <el-button class="md:hidden !p-1 !h-9 !w-9 mr-1" text circle @click="isDrawerOpen = true">
-              <el-icon :size="20"><Expand /></el-icon>
-           </el-button>
-           
-           <el-breadcrumb separator="/" class="text-sm">
-            <el-breadcrumb-item :to="{ path: '/home' }">首页</el-breadcrumb-item>
-            <el-breadcrumb-item>{{ currentRouteName }}</el-breadcrumb-item>
-          </el-breadcrumb>
+    <el-container class="min-w-0 flex-1 bg-[radial-gradient(circle_at_top,#ffffff_0%,#f7f9fc_55%,#f3f6fb_100%)]">
+      <el-header
+        class="sticky top-0 z-10 flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 bg-white/88 px-3 py-3 backdrop-blur-md sm:px-4 md:px-6"
+      >
+        <div class="flex min-w-0 items-center gap-2 sm:gap-4">
+          <el-button class="!h-9 !w-9 !p-1 md:hidden" text circle @click="isDrawerOpen = true">
+            <el-icon :size="20"><Expand /></el-icon>
+          </el-button>
+
+          <div class="min-w-0">
+            <div class="truncate text-base font-semibold text-slate-700 sm:hidden">{{ currentRouteName }}</div>
+            <el-breadcrumb separator="/" class="hidden text-sm sm:flex">
+              <el-breadcrumb-item :to="{ path: '/home' }">首页</el-breadcrumb-item>
+              <el-breadcrumb-item>{{ currentRouteName }}</el-breadcrumb-item>
+            </el-breadcrumb>
+          </div>
         </div>
 
-        <!-- 右侧用户区 -->
-        <div class="flex items-center gap-3">
-           <!-- GitHub 图标 -->
-           <a href="https://github.com/Warm-CN/all-in-one" target="_blank" class="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-black hover:bg-gray-50 transition-all">
-              <svg height="20" aria-hidden="true" viewBox="0 0 16 16" version="1.1" width="20" data-view-component="true" class="fill-current">
-                  <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path>
-              </svg>
-           </a>
+        <div class="flex items-center gap-1 sm:gap-3">
+          <a
+            href="https://github.com/Warm-CN/all-in-one"
+            target="_blank"
+            class="hidden h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-50 hover:text-black sm:flex"
+          >
+            <svg
+              height="20"
+              width="20"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+              version="1.1"
+              class="fill-current"
+            >
+              <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" />
+            </svg>
+          </a>
 
-           <!-- 通知图标 -->
-           <div class="relative w-9 h-9 rounded-full flex items-center justify-center cursor-pointer text-gray-400 hover:text-indigo-600 hover:bg-gray-50 transition-all">
-              <el-icon :size="20"><Bell /></el-icon>
-              <span v-if="pendingCount > 0" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-           </div>
+          <div class="relative hidden h-9 w-9 items-center justify-center rounded-full text-gray-400 transition-all hover:bg-gray-50 hover:text-indigo-600 sm:flex">
+            <el-icon :size="20"><Bell /></el-icon>
+            <span
+              v-if="pendingCount > 0"
+              class="absolute right-2 top-2 h-2 w-2 rounded-full border border-white bg-red-500"
+            ></span>
+          </div>
 
           <el-dropdown trigger="click" @command="handleCommand">
-            <div class="flex items-center gap-3 cursor-pointer group py-1 px-2 rounded-full hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-              <el-avatar :size="32" class="bg-indigo-100 text-indigo-600 text-sm font-bold ring-2 ring-indigo-50 group-hover:ring-indigo-100 transition-all">
+            <div
+              class="flex items-center gap-2 rounded-full border border-transparent bg-white/70 px-1.5 py-1 transition-colors hover:border-gray-100 hover:bg-gray-50 sm:px-2"
+            >
+              <el-avatar
+                :size="32"
+                class="bg-indigo-100 text-sm font-bold text-indigo-600 ring-2 ring-indigo-50 transition-all"
+              >
                 {{ userStore.userName?.charAt(0) || 'U' }}
               </el-avatar>
-              <div class="flex flex-col items-start mr-1">
-                <span class="text-sm font-semibold text-gray-700 group-hover:text-indigo-700 transition-colors">{{ userStore.userName || '用户' }}</span>
-                <span class="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded leading-none mt-0.5" :class="{'!text-indigo-500 !bg-indigo-50': userStore.isAdmin}">
-                    {{ userStore.userRole === 'admin' ? '系统管理员' : '普通成员' }}
+              <div class="hidden min-w-0 flex-col items-start sm:flex">
+                <span class="max-w-28 truncate text-sm font-semibold text-gray-700">
+                  {{ userStore.userName || '用户' }}
+                </span>
+                <span
+                  class="mt-0.5 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] leading-none text-gray-400"
+                  :class="{ '!bg-indigo-50 !text-indigo-500': userStore.isAdmin }"
+                >
+                  {{ userStore.userRole === 'admin' ? '系统管理员' : '普通成员' }}
                 </span>
               </div>
-              <el-icon class="text-gray-400 group-hover:text-indigo-500 transition-transform duration-300 group-hover:rotate-180"><CaretBottom /></el-icon>
+              <el-icon class="hidden text-gray-400 transition-transform duration-300 sm:block">
+                <CaretBottom />
+              </el-icon>
             </div>
+
             <template #dropdown>
-              <el-dropdown-menu class="!p-2 !rounded-xl !border-gray-100 !shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]">
-                <div class="px-4 py-2 border-b border-gray-50 mb-1">
-                    <p class="text-xs text-gray-400">当前账号</p>
-                    <p class="font-medium text-gray-700 truncate w-32">{{ userStore.studentId }}</p>
+              <el-dropdown-menu class="!rounded-xl !border-gray-100 !p-2 !shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)]">
+                <div class="mb-1 border-b border-gray-50 px-4 py-2">
+                  <p class="text-xs text-gray-400">当前账号</p>
+                  <p class="w-32 truncate font-medium text-gray-700">{{ userStore.studentId }}</p>
                 </div>
-                <el-dropdown-item command="settings" class="!rounded-lg !my-0.5 hover:!bg-indigo-50 hover:!text-indigo-600">
-                    <el-icon><Setting /></el-icon>账号设置
+                <el-dropdown-item command="settings" class="!my-0.5 !rounded-lg hover:!bg-indigo-50 hover:!text-indigo-600">
+                  <el-icon><Setting /></el-icon>账号设置
                 </el-dropdown-item>
                 <el-divider class="!my-1 !border-gray-100" />
-                <el-dropdown-item command="logout" class="!rounded-lg !my-0.5 !text-red-500 hover:!bg-red-50 hover:!text-red-600">
-                    <el-icon><SwitchButton /></el-icon>退出登录
+                <el-dropdown-item command="logout" class="!my-0.5 !rounded-lg !text-red-500 hover:!bg-red-50 hover:!text-red-600">
+                  <el-icon><SwitchButton /></el-icon>退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -157,126 +162,112 @@
         </div>
       </el-header>
 
-      <!-- 主要内容区 -->
-      <el-main class="!p-4 md:!p-6 h-[calc(100vh-64px)] overflow-hidden">
+      <el-main class="flex min-h-0 flex-1 overflow-hidden !p-3 sm:!p-4 lg:!p-5">
         <router-view v-slot="{ Component }">
           <transition name="fade-slide" mode="out-in">
-             <div class="h-full w-full bg-white rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.02)] border border-gray-100/50 p-6 overflow-auto custom-scrollbar">
+            <section
+              class="mx-auto flex h-full w-full max-w-[1480px] min-w-0 flex-col overflow-hidden rounded-[24px] border border-slate-200/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94))] shadow-[0_18px_60px_-34px_rgba(15,23,42,0.28)]"
+            >
+              <div class="page-scroll-shell min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-5 sm:py-6 lg:px-6 lg:py-7">
                 <component :is="Component" />
-             </div>
+              </div>
+            </section>
           </transition>
         </router-view>
       </el-main>
     </el-container>
   </el-container>
 
-  <!-- 移动端抽屉菜单 -->
   <el-drawer
     v-model="isDrawerOpen"
     direction="ltr"
-    size="260px"
+    size="84vw"
     :with-header="false"
-    class="!p-0"
+    class="mobile-nav-drawer !p-0"
   >
-      <div class="h-full bg-white flex flex-col">
-        <!-- Logo 区域 -->
-        <div class="h-16 flex items-center justify-center border-b border-gray-50/50 shrink-0">
-            <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-white shadow-lg shadow-indigo-600/20 overflow-hidden p-1">
-                <img :src="logo" alt="Logo" class="w-full h-full object-contain" />
-            </div>
-            <span class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 tracking-tight">
-                无协ALL IN ONE
-            </span>
-            </div>
+    <div class="flex h-full flex-col bg-white">
+      <div class="flex h-16 items-center justify-center border-b border-gray-100 px-4">
+        <div class="flex items-center gap-3">
+          <div class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-lg shadow-indigo-600/15">
+            <img :src="logo" alt="Logo" class="h-full w-full object-contain" />
+          </div>
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Club Suite</div>
+            <div class="text-base font-bold tracking-tight text-slate-800">无线协 ALL IN ONE</div>
+          </div>
         </div>
-
-        <!-- 菜单区域 -->
-        <el-scrollbar class="flex-1">
-            <el-menu
-            :default-active="activeMenu"
-            class="border-none w-full !bg-transparent py-4 px-3"
-            router
-            @select="isDrawerOpen = false"
-            >
-            <!-- 首页概览 -->
-            <div class="px-4 py-2 mb-2 text-xs font-semibold text-gray-400 opacity-60">首页</div>
-            <el-menu-item index="/home" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><HomeFilled /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium group-[.is-active]:text-indigo-600">首页概览</span>
-            </el-menu-item>
-
-            <!-- 协会资源 (所有人可见) -->
-            <div class="px-4 py-2 mt-4 mb-2 text-xs font-semibold text-gray-400 opacity-60">协会资源</div>
-
-            <el-menu-item index="/rooms" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><Monitor /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">会议室预约</span>
-            </el-menu-item>
-
-            <el-menu-item index="/recruitment" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><UserFilled /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">招新面试</span>
-            </el-menu-item>
-            
-            <el-menu-item index="/wireless-cup" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><Trophy /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">无线杯</span>
-            </el-menu-item>
-
-            <el-menu-item index="/telecom-cup" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><Medal /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">电信杯</span>
-            </el-menu-item>
-            
-            <el-menu-item index="/contacts" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                <el-icon class="group-hover:text-indigo-600 transition-colors"><Notebook /></el-icon>
-                <span class="group-hover:text-indigo-600 font-medium">通讯录</span>
-            </el-menu-item>
-
-            <!-- 管理工具 (仅 Admin 可见) -->
-            <template v-if="userStore.userRole === 'admin'">
-                <div class="px-4 py-2 mt-4 mb-2 text-xs font-semibold text-gray-400 opacity-60">管理工具</div>
-
-                <el-menu-item index="/users" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                    <el-icon class="group-hover:text-indigo-600 transition-colors"><User /></el-icon>
-                    <span class="group-hover:text-indigo-600 font-medium">成员管理</span>
-                </el-menu-item>
-
-                <el-menu-item index="/admin/schedule" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                    <el-icon class="group-hover:text-indigo-600 transition-colors"><Calendar /></el-icon>
-                    <span class="group-hover:text-indigo-600 font-medium">日程管理</span>
-                </el-menu-item>
-
-                <el-menu-item index="/admin/rooms" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                    <el-icon class="group-hover:text-indigo-600 transition-colors"><Setting /></el-icon>
-                    <span class="group-hover:text-indigo-600 font-medium">会议室管理</span>
-                </el-menu-item>
-
-                <el-menu-item index="/admin/management" class="group mb-1 rounded-xl hover:bg-indigo-50 !h-12 !leading-12 transition-all duration-200 border-l-4 border-transparent">
-                    <el-icon class="group-hover:text-indigo-600 transition-colors"><DataLine /></el-icon>
-                  <span class="group-hover:text-indigo-600 font-medium">后台管理</span>
-                </el-menu-item>
-            </template>
-
-            </el-menu>
-        </el-scrollbar>
       </div>
+
+      <el-scrollbar class="min-h-0 flex-1">
+        <el-menu
+          :default-active="activeMenu"
+          class="border-none !bg-transparent px-3 py-4"
+          router
+          @select="isDrawerOpen = false"
+        >
+          <div class="menu-group-title">首页</div>
+          <el-menu-item index="/home" class="menu-item">
+            <el-icon><HomeFilled /></el-icon>
+            <span>首页总览</span>
+          </el-menu-item>
+
+          <div class="menu-group-title">协会资源</div>
+          <el-menu-item index="/rooms" class="menu-item">
+            <el-icon><Monitor /></el-icon>
+            <span>会议室预约</span>
+          </el-menu-item>
+          <el-menu-item index="/recruitment" class="menu-item">
+            <el-icon><UserFilled /></el-icon>
+            <span>招新面试</span>
+          </el-menu-item>
+          <el-menu-item index="/wireless-cup" class="menu-item">
+            <el-icon><Trophy /></el-icon>
+            <span>无线杯</span>
+          </el-menu-item>
+          <el-menu-item index="/telecom-cup" class="menu-item">
+            <el-icon><Medal /></el-icon>
+            <span>电信杯</span>
+          </el-menu-item>
+          <el-menu-item index="/contacts" class="menu-item">
+            <el-icon><Notebook /></el-icon>
+            <span>通讯录</span>
+          </el-menu-item>
+
+          <template v-if="userStore.userRole === 'admin'">
+            <div class="menu-group-title">管理工具</div>
+            <el-menu-item index="/users" class="menu-item">
+              <el-icon><User /></el-icon>
+              <span>成员管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/schedule" class="menu-item">
+              <el-icon><Calendar /></el-icon>
+              <span>日程管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/rooms" class="menu-item">
+              <el-icon><Setting /></el-icon>
+              <span>会议室管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/management" class="menu-item">
+              <el-icon><DataLine /></el-icon>
+              <span>后台管理</span>
+            </el-menu-item>
+          </template>
+        </el-menu>
+      </el-scrollbar>
+    </div>
   </el-drawer>
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { getPendingUsers } from '@/api/user'
 import logo from '@/assets/images/logo.png'
 import {
-  ElementPlus,
   HomeFilled,
   Monitor,
   UserFilled,
-  Box,
   User,
   Bell,
   CaretBottom,
@@ -296,15 +287,12 @@ const userStore = useUserStore()
 const pendingCount = ref(0)
 const isDrawerOpen = ref(false)
 
-// 当前激活菜单
 const activeMenu = computed(() => route.path)
 
-// 当前路由名称（用于面包屑）
 const currentRouteName = computed(() => {
   return route.meta.title || '当前页面'
 })
 
-// 处理下拉菜单命令
 const handleCommand = (command) => {
   switch (command) {
     case 'settings':
@@ -316,50 +304,78 @@ const handleCommand = (command) => {
   }
 }
 
-// 退出登录
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')
 }
 
-// 检查是否有待审核用户
 const checkPendingUsers = async () => {
-    if (userStore.userRole === 'admin') {
-        try {
-            const res = await getPendingUsers()
-            if (res.code === 200) {
-                 // 接口返回的是列表
-                 if (Array.isArray(res.data)) {
-                    pendingCount.value = res.data.length
-                 }
-            }
-        } catch (e) {
-            console.error('Fetch pending users failed', e)
-        }
+  if (userStore.userRole === 'admin') {
+    try {
+      const res = await getPendingUsers()
+      if (res.code === 200 && Array.isArray(res.data)) {
+        pendingCount.value = res.data.length
+      }
+    } catch (error) {
+      console.error('Fetch pending users failed', error)
     }
+  }
 }
 
 onMounted(() => {
-    checkPendingUsers()
+  checkPendingUsers()
 })
 </script>
 
 <style scoped>
-/* 侧边栏菜单样式覆盖 */
-:deep(.el-menu-item) {
-    margin-bottom: 4px;
-}
-:deep(.el-menu-item.is-active) {
-    background-color: #EEF2FF !important; /* indigo-50 */
-    color: #4F46E5 !important; /* indigo-600 */
-    font-weight: 600;
-    border-left-color: #4F46E5 !important;
-}
-:deep(.el-menu-item:hover) {
-    background-color: #FAFAFA; /* gray-50 */
+.menu-group-title {
+  margin: 14px 0 8px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #94a3b8;
 }
 
-/* 简单的过渡动画 */
+.menu-item {
+  margin-bottom: 6px;
+  border-left: 4px solid transparent;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+
+.sidebar-scroll :deep(.el-scrollbar__wrap) {
+  overflow-x: hidden;
+}
+
+:deep(.el-menu-item) {
+  height: 48px;
+  line-height: 48px;
+}
+
+:deep(.el-menu-item.is-active) {
+  border-left-color: #4f46e5 !important;
+  background-color: #eef2ff !important;
+  color: #4f46e5 !important;
+  font-weight: 600;
+}
+
+:deep(.el-menu-item:hover) {
+  background-color: #f8fafc !important;
+}
+
+:deep(.el-menu-item .el-icon) {
+  color: inherit;
+}
+
+:deep(.mobile-nav-drawer .el-drawer__body) {
+  padding: 0 !important;
+}
+
+:deep(.mobile-nav-drawer .el-drawer) {
+  max-width: 320px;
+}
+
 .fade-slide-enter-active,
 .fade-slide-leave-active {
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -375,19 +391,14 @@ onMounted(() => {
   transform: translateY(-10px);
 }
 
-/* 自定义滚动条 */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #E2E8F0;
-  border-radius: 3px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #CBD5E1;
+@media (max-width: 640px) {
+  :deep(.el-main) {
+    min-height: calc(100vh - 73px);
+  }
+
+  .page-scroll-shell {
+    padding-top: 18px;
+    padding-bottom: 20px;
+  }
 }
 </style>

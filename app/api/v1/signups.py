@@ -606,6 +606,7 @@ async def export_applications(
     help_sheet.append(["二面部门", "第二轮仅保留一个志愿部门"])
     help_sheet.append(["二面时间/地点", "第二轮面试安排"])
     help_sheet.append(["备注", "会写入系统通知信息"])
+    help_sheet.append(["导入规则", "只更新 Excel 中填写了内容的单元格；留空不会清空系统里已有安排"])
     for cell in help_sheet[1]:
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -653,6 +654,7 @@ async def import_applications_interview_info(
 
     updated = 0
     skipped = 0
+    unchanged = 0
 
     for row in rows:
         student_id = normalize_text(row[1] if len(row) > 1 else "")
@@ -667,28 +669,50 @@ async def import_applications_interview_info(
             skipped += 1
             continue
 
-        app_record.first_choice_interview_time = normalize_text(row[11] if len(row) > 11 else "") or None
-        app_record.first_choice_interview_location = normalize_text(row[12] if len(row) > 12 else "") or None
-        app_record.second_choice_interview_time = normalize_text(row[13] if len(row) > 13 else "") or None
-        app_record.second_choice_interview_location = normalize_text(row[14] if len(row) > 14 else "") or None
-        app_record.second_round_department = normalize_text(row[15] if len(row) > 15 else "") or None
-        app_record.second_round_interview_time = normalize_text(row[16] if len(row) > 16 else "") or None
-        app_record.second_round_interview_location = normalize_text(row[17] if len(row) > 17 else "") or None
+        row_changed = False
+        field_updates = {
+            "first_choice_interview_time": normalize_text(row[11] if len(row) > 11 else ""),
+            "first_choice_interview_location": normalize_text(row[12] if len(row) > 12 else ""),
+            "second_choice_interview_time": normalize_text(row[13] if len(row) > 13 else ""),
+            "second_choice_interview_location": normalize_text(row[14] if len(row) > 14 else ""),
+            "second_round_department": normalize_text(row[15] if len(row) > 15 else ""),
+            "second_round_interview_time": normalize_text(row[16] if len(row) > 16 else ""),
+            "second_round_interview_location": normalize_text(row[17] if len(row) > 17 else ""),
+        }
+
+        # 更安全的导入策略：只有 Excel 中明确填写的字段才会覆盖数据库中的现有值。
+        for field_name, field_value in field_updates.items():
+            if not field_value:
+                continue
+            if getattr(app_record, field_name) != field_value:
+                setattr(app_record, field_name, field_value)
+                row_changed = True
 
         notes_text = normalize_text(row[18] if len(row) > 18 else "")
-        if notes_text:
+        if notes_text and app_record.review_notes != notes_text:
             app_record.review_notes = notes_text
+            row_changed = True
 
-        # 历史字段兼容：保持默认展示一面第一志愿的安排
-        app_record.interview_time = app_record.first_choice_interview_time
-        app_record.interview_location = app_record.first_choice_interview_location
+        # 历史字段兼容：仅在一面第一志愿被明确填写时才同步默认展示字段，避免空单元格误清空。
+        first_choice_time = field_updates["first_choice_interview_time"]
+        if first_choice_time and app_record.interview_time != app_record.first_choice_interview_time:
+            app_record.interview_time = app_record.first_choice_interview_time
+            row_changed = True
 
-        updated += 1
+        first_choice_location = field_updates["first_choice_interview_location"]
+        if first_choice_location and app_record.interview_location != app_record.first_choice_interview_location:
+            app_record.interview_location = app_record.first_choice_interview_location
+            row_changed = True
+
+        if row_changed:
+            updated += 1
+        else:
+            unchanged += 1
 
     db.commit()
     return success_response(
-        data={"updated": updated, "skipped": skipped},
-        msg=f"导入完成：更新 {updated} 条，跳过 {skipped} 条"
+        data={"updated": updated, "skipped": skipped, "unchanged": unchanged},
+        msg=f"导入完成：更新 {updated} 条，跳过 {skipped} 条，未改动 {unchanged} 条"
     )
 
 

@@ -1,11 +1,11 @@
 <template>
-  <div class="h-full flex flex-col lg:flex-row gap-4 p-4 lg:p-6 bg-gray-50 overflow-y-auto lg:overflow-hidden">
+  <div class="flex h-full flex-col gap-4 overflow-y-auto bg-gray-50 p-3 sm:p-4 lg:flex-row lg:overflow-hidden lg:p-6">
     <!-- 左侧：日历 (58%) -->
-    <div class="w-full lg:w-[58%] shrink-0 bg-white rounded-3xl p-4 lg:p-6 shadow-sm flex flex-col relative border border-gray-100/60 lg:h-full min-h-[400px]">
+    <div class="relative flex min-h-[400px] w-full shrink-0 flex-col rounded-3xl border border-gray-100/60 bg-white p-4 shadow-sm sm:p-5 lg:h-full lg:w-[58%] lg:p-6">
       <el-calendar v-model="calendarValue" class="custom-calendar h-full flex flex-col">
         <!-- 自定义日历头部 -->
         <template #header="{ date }">
-          <div class="flex items-center justify-between w-full mb-2 px-2 shrink-0">
+          <div class="mb-2 flex w-full shrink-0 flex-col gap-3 px-2 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex flex-col">
               <div class="flex items-baseline gap-2">
                 <span class="text-3xl font-black text-gray-800 tracking-tight">{{ dayjs(calendarValue).format('MMM') }}</span>
@@ -13,7 +13,7 @@
               </div>
             </div>
             <!-- 导航按钮组 -->
-            <div class="flex items-center bg-gray-50 rounded-full p-1 border border-gray-200/50 shadow-sm">
+            <div class="flex items-center justify-between rounded-full border border-gray-200/50 bg-gray-50 p-1 shadow-sm sm:w-auto sm:justify-start">
               <el-button size="small" circle text @click="selectDate('prev-month')" class="!w-8 !h-8 hover:!bg-white hover:!text-indigo-600 transition-colors">
                 <el-icon><ArrowLeft /></el-icon>
               </el-button>
@@ -54,15 +54,15 @@
     </div>
 
     <!-- 右侧：日程管理 (42%) -->
-    <div class="w-full lg:w-[42%] flex flex-col gap-4 lg:h-full">
+    <div class="flex w-full flex-col gap-4 lg:h-full lg:w-[42%]">
       <!-- 选中日期显示 -->
-      <div class="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl py-5 px-8 text-white shadow-lg">
+      <div class="rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-5 text-white shadow-lg sm:px-8">
         <h2 class="text-2xl font-bold mb-1">{{ dayjs(selectedDate).format('MM月DD日') }}</h2>
         <p class="text-sm opacity-90">{{ dayjs(selectedDate).format('dddd') }}</p>
       </div>
 
       <!-- 当日日程列表 -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex-1 flex flex-col min-h-0">
+      <div class="flex min-h-0 flex-1 flex-col rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
         <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2 text-sm">
           <span class="w-1 h-4 rounded-full bg-indigo-500 block"></span>
           当日日程 ({{ selectedDateSchedules.length }})
@@ -107,7 +107,7 @@
                     @confirm="handleDelete(schedule.id)"
                   >
                     <template #reference>
-                      <el-button type="danger" link size="small" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <el-button type="danger" link size="small" class="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                         <el-icon><Delete /></el-icon>
                         删除
                       </el-button>
@@ -127,7 +127,7 @@
               <el-input v-model="form.title" placeholder="请输入日程标题" maxlength="200" show-word-limit />
             </el-form-item>
 
-            <div class="grid grid-cols-2 gap-3 !mb-3">
+            <div class="!mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <el-form-item label="开始时间" class="!mb-0">
                 <el-time-select
                   v-model="form.start_time"

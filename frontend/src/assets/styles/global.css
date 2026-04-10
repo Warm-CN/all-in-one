@@ -27,6 +27,12 @@
         /* slate-800 */
     }
 
+    html,
+    body,
+    #app {
+        min-height: 100%;
+    }
+
     /* 全局滚动条样式 */
     ::-webkit-scrollbar {
         width: 6px;
@@ -88,6 +94,13 @@
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
+.el-button:not(.is-circle) {
+    min-height: 40px;
+    white-space: normal !important;
+    line-height: 1.25 !important;
+    padding: 10px 16px !important;
+}
+
 /* 普通/默认按钮：移除生硬边框，使用柔和阴影和背景 */
 .el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info):not(.is-text):not(.is-link) {
     border: 1px solid transparent !important;
@@ -124,20 +137,25 @@
 }
 
 /* 2. 输入框 (el-input) */
-.el-input__wrapper {
+.el-input__wrapper,
+.el-select__wrapper {
     border-radius: 12px !important;
     box-shadow: 0 0 0 1px #e2e8f0 inset !important;
     /* slate-200 */
-    padding: 8px 12px !important;
+    min-height: 46px !important;
+    padding: 0 14px !important;
+    align-items: center !important;
     transition: all 0.2s ease !important;
 }
 
-.el-input__wrapper:hover {
+.el-input__wrapper:hover,
+.el-select__wrapper:hover {
     box-shadow: 0 0 0 1px #94a3b8 inset !important;
     /* slate-400 */
 }
 
-.el-input__wrapper.is-focus {
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused {
     box-shadow: 0 0 0 2px #bfdbfe inset !important;
     /* blue-200 ring */
 }
@@ -151,6 +169,24 @@
     color: #1e293b !important;
 }
 
+.el-select__placeholder,
+.el-input__placeholder {
+    color: #94a3b8 !important;
+}
+
+.el-date-editor.el-input__wrapper,
+.el-date-editor--datetime.el-input__wrapper,
+.el-date-editor--date.el-input__wrapper {
+    min-height: 46px !important;
+}
+
+.el-form-item__label {
+    padding-bottom: 8px !important;
+    font-weight: 600 !important;
+    line-height: 1.45 !important;
+    color: #334155 !important;
+}
+
 /* 3. 卡片 (el-card) 如果项目中使用 */
 .el-card {
     border-radius: 16px !important;
@@ -161,4 +197,77 @@
 /* 4. 对话框 (el-dialog) */
 .el-dialog {
     border-radius: 20px !important;
+}
+
+.el-dialog__header,
+.el-dialog__body,
+.el-dialog__footer {
+    padding-left: clamp(18px, 3vw, 28px) !important;
+    padding-right: clamp(18px, 3vw, 28px) !important;
+}
+
+.el-dialog__body {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+
+.el-card__body {
+    padding: clamp(18px, 2vw, 28px) !important;
+}
+
+.el-form-item__content,
+.el-input,
+.el-select,
+.el-date-editor.el-input,
+.el-date-editor.el-input__wrapper,
+.el-input-number {
+    max-width: 100%;
+}
+
+.el-textarea__inner {
+    line-height: 1.6 !important;
+}
+
+.el-table .cell {
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.mobile-radio-group {
+    gap: 10px;
+}
+
+@media (max-width: 640px) {
+    .el-button:not(.is-circle) {
+        min-height: 42px;
+        padding: 10px 14px !important;
+    }
+
+    .el-dialog {
+        width: min(100vw - 20px, 720px) !important;
+        margin-top: 4vh !important;
+    }
+
+    .el-dialog__body {
+        max-height: calc(100vh - 210px);
+        overflow-y: auto;
+    }
+
+    .mobile-radio-group {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .mobile-radio-group .el-radio {
+        margin-right: 0 !important;
+        white-space: normal;
+    }
+
+    .el-select,
+    .el-date-editor.el-input,
+    .el-date-editor.el-input__wrapper,
+    .el-input-number {
+        width: 100% !important;
+    }
 }

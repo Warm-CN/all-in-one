@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col gap-6 animate-fade-in-up">
+  <div class="animate-fade-in-up flex h-full flex-col gap-6">
     <!-- 顶部标题 -->
     <div class="flex items-center justify-between shrink-0">
       <div>
@@ -9,16 +9,16 @@
     </div>
 
     <!-- 内容区 -->
-    <div class="flex-1 bg-white rounded-[24px] p-8 shadow-sm border border-gray-100/60 overflow-y-auto custom-scrollbar">
+    <div class="custom-scrollbar flex-1 overflow-y-auto rounded-[24px] border border-gray-100/60 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
       <div class="max-w-4xl mx-auto">
         <el-tabs v-model="activeTab" class="custom-tabs">
           <!-- 个人资料 -->
           <el-tab-pane label="个人资料" name="profile">
             <div class="pt-6">
-              <el-form :model="profileForm" ref="profileFormRef" label-position="top" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <el-form :model="profileForm" ref="profileFormRef" label-position="top" class="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
                 
                 <!-- 头像区域 (仅展示) -->
-                <div class="md:col-span-2 flex items-center gap-6 mb-4">
+                <div class="mb-4 flex flex-col gap-4 md:col-span-2 sm:flex-row sm:items-center sm:gap-6">
                   <div class="relative group">
                     <el-avatar :size="80" class="!bg-indigo-100 !text-indigo-600 !text-2xl !font-bold ring-4 ring-white shadow-lg">
                       {{ userStore.userName?.charAt(0) || 'U' }}
@@ -69,8 +69,8 @@
                       </el-select>
                 </el-form-item>
 
-                <div class="md:col-span-2 pt-4 flex justify-end">
-                   <el-button type="primary" :loading="loading" @click="handleUpdateProfile" class="!px-8 !h-10 !rounded-xl text-sm font-bold shadow-md shadow-indigo-100">
+                <div class="md:col-span-2 flex justify-end pt-4">
+                   <el-button type="primary" :loading="loading" @click="handleUpdateProfile" class="!h-10 !w-full !rounded-xl !px-8 text-sm font-bold shadow-md shadow-indigo-100 sm:!w-auto">
                      保存更改
                    </el-button>
                 </div>
@@ -80,7 +80,7 @@
 
           <!-- 安全设置 -->
           <el-tab-pane label="密码安全" name="security">
-             <div class="pt-6 max-w-lg">
+             <div class="max-w-lg pt-6">
                 <el-alert
                   title="为了保障您的账号安全，建议定期更换密码且设置高强度密码。"
                   type="info"
@@ -102,8 +102,8 @@
                     <el-input v-model="passwordForm.confirm_password" type="password" show-password placeholder="请再次输入新密码" />
                   </el-form-item>
 
-                  <div class="pt-4 flex justify-end">
-                     <el-button type="warning" :loading="pwdLoading" @click="handleChangePassword" class="!px-8 !h-10 !rounded-xl text-sm font-bold shadow-md shadow-orange-100">
+                  <div class="flex justify-end pt-4">
+                     <el-button type="warning" :loading="pwdLoading" @click="handleChangePassword" class="!h-10 !w-full !rounded-xl !px-8 text-sm font-bold shadow-md shadow-orange-100 sm:!w-auto">
                        修改密码
                      </el-button>
                   </div>
@@ -312,5 +312,13 @@ const handleChangePassword = async () => {
     background-color: #4f46e5;
     height: 3px;
     border-radius: 1.5px;
+}
+
+@media (max-width: 640px) {
+  :deep(.el-tabs__item) {
+    padding-left: 14px;
+    padding-right: 14px;
+    font-size: 14px;
+  }
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col items-center justify-center p-12 text-center h-full">
+  <div class="flex h-full flex-col items-center justify-center p-6 text-center sm:p-12">
     <div class="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center mb-6">
       <el-icon class="text-indigo-500 text-4xl"><Tools /></el-icon>
     </div>

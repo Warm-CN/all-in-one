@@ -1,12 +1,12 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50">
+  <div class="h-full flex flex-col">
     <!-- 主体内容 -->
-    <div class="flex-1 p-6 overflow-auto">
+    <div class="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
       <el-tabs v-model="activeTab" class="custom-tabs">
         <!-- 入社审批 -->
         <el-tab-pane label="入社审批" name="approval">
-          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div class="flex items-center justify-between mb-6">
+          <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm sm:p-5 lg:p-6">
+            <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div class="flex items-center gap-2">
                 <span class="text-base font-bold text-gray-700">待审核用户</span>
                 <el-tag type="warning" size="small" round>{{ pendingUsers.length }}</el-tag>
@@ -15,61 +15,65 @@
                 type="primary" 
                 :disabled="selectedPendingIds.length === 0"
                 @click="batchApprove"
-                class="!rounded-xl"
+                class="!w-full !rounded-xl sm:!w-auto"
               >
                 批量通过 ({{ selectedPendingIds.length }})
               </el-button>
             </div>
 
-            <el-table 
-              :data="pendingUsers" 
-              @selection-change="handleSelectionChange"
-              class="custom-table"
-              style="width: 100%"
-            >
-              <el-table-column type="selection" width="55" />
-              <el-table-column prop="real_name" label="姓名" min-width="100" />
-              <el-table-column prop="student_id" label="学号" min-width="120" />
-              <el-table-column prop="phone" label="手机号" min-width="130" />
-              <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
-              <el-table-column prop="department" label="部门" min-width="120" />
-              <el-table-column label="申请时间" min-width="160">
-                <template #default="{ row }">
-                  {{ formatDate(row.created_at) }}
+            <div class="overflow-x-auto">
+              <el-table 
+                :data="pendingUsers" 
+                @selection-change="handleSelectionChange"
+                class="custom-table"
+                style="width: 100%; min-width: 940px"
+              >
+                <el-table-column type="selection" width="55" />
+                <el-table-column prop="real_name" label="姓名" min-width="100" />
+                <el-table-column prop="student_id" label="学号" min-width="120" />
+                <el-table-column prop="phone" label="手机号" min-width="130" />
+                <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="department" label="部门" min-width="120" />
+                <el-table-column label="申请时间" min-width="160">
+                  <template #default="{ row }">
+                    {{ formatDate(row.created_at) }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="220" fixed="right">
+                  <template #default="{ row }">
+                    <div class="flex flex-wrap gap-2">
+                      <el-button type="success" size="small" @click="approveUser(row.id)" class="!rounded-lg">
+                        通过
+                      </el-button>
+                      <el-button type="danger" size="small" plain @click="rejectUser(row.id)" class="!rounded-lg">
+                        拒绝
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+                <template #empty>
+                  <div class="py-8 text-center text-gray-400">
+                    <el-icon :size="48" class="mb-3"><CircleCheck /></el-icon>
+                    <p>暂无待审核用户</p>
+                  </div>
                 </template>
-              </el-table-column>
-              <el-table-column label="操作" width="200" fixed="right">
-                <template #default="{ row }">
-                  <el-button type="success" size="small" @click="approveUser(row.id)" class="!rounded-lg">
-                    通过
-                  </el-button>
-                  <el-button type="danger" size="small" plain @click="rejectUser(row.id)" class="!rounded-lg">
-                    拒绝
-                  </el-button>
-                </template>
-              </el-table-column>
-              <template #empty>
-                <div class="text-center py-8 text-gray-400">
-                  <el-icon :size="48" class="mb-3"><CircleCheck /></el-icon>
-                  <p>暂无待审核用户</p>
-                </div>
-              </template>
-            </el-table>
+              </el-table>
+            </div>
           </div>
         </el-tab-pane>
 
         <!-- 成员维护 -->
         <el-tab-pane label="成员维护" name="members">
-          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm sm:p-5 lg:p-6">
             <!-- 搜索和筛选 -->
-            <div class="flex items-center gap-4 mb-6">
+            <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <el-input
                 v-model="searchKeyword"
                 placeholder="搜索姓名或学号..."
                 clearable
                 @clear="fetchMembers"
                 @keyup.enter="fetchMembers"
-                class="!w-80"
+                class="w-full sm:!w-80"
               >
                 <template #prefix>
                   <el-icon><Search /></el-icon>
@@ -81,7 +85,7 @@
                 placeholder="选择部门"
                 clearable
                 @change="fetchMembers"
-                class="!w-48"
+                class="w-full sm:!w-48"
               >
                 <el-option label="全部部门" value="" />
                 <el-option label="科创部" value="科创部" />
@@ -92,15 +96,15 @@
                 <el-option label="常委" value="常委" />
               </el-select>
 
-              <el-button type="primary" @click="fetchMembers" class="!rounded-xl">
+              <el-button type="primary" @click="fetchMembers" class="!w-full !rounded-xl sm:!w-auto">
                 <el-icon class="mr-1"><Search /></el-icon>
                 查询
               </el-button>
             </div>
 
             <!-- 成员列表 -->
-            <div class="overflow-x-auto w-full">
-              <el-table :data="activeMembers" class="custom-table" style="width: 100%; min-width: 800px;">
+            <div class="w-full overflow-x-auto">
+              <el-table :data="activeMembers" class="custom-table" style="width: 100%; min-width: 980px;">
                 <el-table-column prop="real_name" label="姓名" min-width="100" fixed="left" />
                 <el-table-column prop="student_id" label="学号" min-width="120" />
                 <el-table-column prop="department" label="部门" min-width="120" />
@@ -116,37 +120,39 @@
                   </template>
                 </el-table-column>
                 <el-table-column prop="phone" label="手机号" min-width="130" />
-                <el-table-column label="操作" width="320" fixed="right">
+                <el-table-column label="操作" width="340" fixed="right">
                   <template #default="{ row }">
-                    <el-button 
-                      type="warning" 
-                      size="small" 
-                      plain
-                      @click="showResetPasswordDialog(row)"
-                      class="!rounded-lg"
-                    >
-                      重置密码
-                    </el-button>
-                    <el-button 
-                      v-if="row.role !== 'admin'"
-                      type="primary" 
-                      size="small"
-                      @click="promoteToAdmin(row)"
-                      class="!rounded-lg"
-                    >
-                      设为管理员
-                    </el-button>
-                    <el-popconfirm
-                      title="确认移出该成员？"
-                      @confirm="removeUser(row.id)"
-                      width="200"
-                    >
-                      <template #reference>
-                        <el-button type="danger" size="small" plain class="!rounded-lg">
-                          移出社团
-                        </el-button>
-                      </template>
-                    </el-popconfirm>
+                    <div class="flex flex-wrap gap-2">
+                      <el-button 
+                        type="warning" 
+                        size="small" 
+                        plain
+                        @click="showResetPasswordDialog(row)"
+                        class="!rounded-lg"
+                      >
+                        重置密码
+                      </el-button>
+                      <el-button 
+                        v-if="row.role !== 'admin'"
+                        type="primary" 
+                        size="small"
+                        @click="promoteToAdmin(row)"
+                        class="!rounded-lg"
+                      >
+                        设为管理员
+                      </el-button>
+                      <el-popconfirm
+                        title="确认移出该成员？"
+                        @confirm="removeUser(row.id)"
+                        width="200"
+                      >
+                        <template #reference>
+                          <el-button type="danger" size="small" plain class="!rounded-lg">
+                            移出社团
+                          </el-button>
+                        </template>
+                      </el-popconfirm>
+                    </div>
                   </template>
                 </el-table-column>
               </el-table>
@@ -182,7 +188,7 @@
         </el-alert>
       </div>
       <template #footer>
-        <div class="flex gap-3 justify-center">
+        <div class="flex flex-col justify-center gap-3 sm:flex-row">
           <el-button @click="resetPasswordDialogVisible = false" class="!rounded-xl">取消</el-button>
           <el-button type="primary" @click="confirmResetPassword" class="!rounded-xl">确认重置</el-button>
         </div>
@@ -221,7 +227,7 @@
       </div>
       <template #footer>
         <div class="flex justify-center">
-          <el-button type="primary" size="large" @click="resetSuccessVisible = false" class="!rounded-xl !px-8">我已记录</el-button>
+          <el-button type="primary" size="large" @click="resetSuccessVisible = false" class="!w-full !rounded-xl !px-8 sm:!w-auto">我已记录</el-button>
         </div>
       </template>
     </el-dialog>
@@ -550,5 +556,12 @@ onMounted(() => {
 :deep(.el-dialog__footer) {
   padding: 20px 24px;
   border-top: 1px solid #f1f5f9;
+}
+
+@media (max-width: 640px) {
+  :deep(.el-tabs__item) {
+    padding: 0 14px;
+    font-size: 14px;
+  }
 }
 </style>
