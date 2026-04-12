@@ -1,0 +1,292 @@
+/* Tailwind CSS 4.x 导入 */
+@import "tailwindcss";
+
+/* ========================================
+   全局样式重置 & 主题配置
+   ======================================== */
+@layer base {
+    :root {
+        --bg-gradient-start: #F1F5F9;
+        --bg-gradient-end: #FFFFFF;
+        --font-family-main: 'Inter', 'PingFang SC', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: var(--font-family-main);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background: linear-gradient(180deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+        min-height: 100vh;
+        color: #1e293b;
+        /* slate-800 */
+    }
+
+    html,
+    body,
+    #app {
+        min-height: 100%;
+    }
+
+    /* 全局滚动条样式 */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        /* slate-300 */
+        border-radius: 9999px;
+        transition: background-color 0.2s;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+        /* slate-400 */
+    }
+}
+
+/* ========================================
+   自定义核心组件类
+   ======================================== */
+@layer components {
+
+    /* 现代风格白色卡片 */
+    .modern-card {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        /* slate-200 */
+        border-radius: 16px;
+        box-shadow:
+            0 4px 6px -1px rgba(0, 0, 0, 0.05),
+            0 2px 4px -1px rgba(0, 0, 0, 0.03),
+            0 20px 25px -5px rgba(0, 0, 0, 0.05);
+        /* 主要是 deep soft shadow */
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .modern-card:hover {
+        box-shadow:
+            0 10px 15px -3px rgba(0, 0, 0, 0.05),
+            0 4px 6px -2px rgba(0, 0, 0, 0.025),
+            0 25px 30px -5px rgba(0, 0, 0, 0.08);
+    }
+}
+
+/* ========================================
+   Element Plus 样式深度覆盖
+   ======================================== */
+
+/* 1. 按钮 (el-button) */
+.el-button {
+    border-radius: 12px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.el-button:not(.is-circle) {
+    min-height: 40px;
+    white-space: normal !important;
+    line-height: 1.25 !important;
+    padding: 10px 16px !important;
+}
+
+/* 普通/默认按钮：移除生硬边框，使用柔和阴影和背景 */
+.el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info):not(.is-text):not(.is-link) {
+    border: 1px solid transparent !important;
+    /* 取消默认边框 */
+    background-color: #ffffff !important;
+    color: #475569 !important;
+    /* slate-600 */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 0 0 1px #e2e8f0 !important;
+    /* 使用 shadow 模拟柔和边框 */
+}
+
+.el-button:not(.el-button--type):hover {
+    background-color: #f8fafc !important;
+    color: #2563eb !important;
+    /* blue-600 */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 0 0 1px #cbd5e1 !important;
+    transform: translateY(-1px);
+}
+
+/* 主要按钮 (Primary) */
+.el-button--primary {
+    background: #2563eb !important;
+    /* blue-600 */
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -1px rgba(37, 99, 235, 0.1) !important;
+}
+
+.el-button--primary span,
+.el-button--primary .el-icon {
+    color: #ffffff !important;
+}
+
+.el-button--primary:hover {
+    background: #1d4ed8 !important;
+    /* blue-700 */
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3), 0 4px 6px -2px rgba(37, 99, 235, 0.15) !important;
+    transform: translateY(-1px);
+}
+
+.el-button--primary.is-disabled,
+.el-button--primary.is-disabled:hover,
+.el-button--primary.is-disabled:focus {
+    color: #ffffff !important;
+}
+
+.el-button--primary.is-disabled span,
+.el-button--primary.is-disabled .el-icon {
+    color: #ffffff !important;
+    opacity: 0.92;
+}
+
+/* 2. 输入框 (el-input) */
+.el-input__wrapper,
+.el-select__wrapper {
+    border-radius: 12px !important;
+    box-shadow: 0 0 0 1px #e2e8f0 inset !important;
+    /* slate-200 */
+    min-height: 46px !important;
+    padding: 0 14px !important;
+    align-items: center !important;
+    transition: all 0.2s ease !important;
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover {
+    box-shadow: 0 0 0 1px #94a3b8 inset !important;
+    /* slate-400 */
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused {
+    box-shadow: 0 0 0 2px #bfdbfe inset !important;
+    /* blue-200 ring */
+}
+
+/* 移除 Element Plus 默认的 focus 边框颜色，改用上面的 ring 效果 */
+/* 注意：Element Plus 默认使用 --el-input-focus-border-color 变量，可以直接覆盖变量，或者像上面一样用 box-shadow */
+
+/* 输入框内部文字 */
+.el-input__inner {
+    font-family: var(--font-family-main);
+    color: #1e293b !important;
+}
+
+.el-select__placeholder,
+.el-input__placeholder {
+    color: #94a3b8 !important;
+}
+
+.el-date-editor.el-input__wrapper,
+.el-date-editor--datetime.el-input__wrapper,
+.el-date-editor--date.el-input__wrapper {
+    min-height: 46px !important;
+}
+
+.el-form-item__label {
+    padding-bottom: 8px !important;
+    font-weight: 600 !important;
+    line-height: 1.45 !important;
+    color: #334155 !important;
+}
+
+/* 3. 卡片 (el-card) 如果项目中使用 */
+.el-card {
+    border-radius: 16px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+/* 4. 对话框 (el-dialog) */
+.el-dialog {
+    border-radius: 20px !important;
+}
+
+.el-dialog__header,
+.el-dialog__body,
+.el-dialog__footer {
+    padding-left: clamp(18px, 3vw, 28px) !important;
+    padding-right: clamp(18px, 3vw, 28px) !important;
+}
+
+.el-dialog__body {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+
+.el-card__body {
+    padding: clamp(18px, 2vw, 28px) !important;
+}
+
+.el-form-item__content,
+.el-input,
+.el-select,
+.el-date-editor.el-input,
+.el-date-editor.el-input__wrapper,
+.el-input-number {
+    max-width: 100%;
+}
+
+.el-textarea__inner {
+    line-height: 1.6 !important;
+}
+
+.el-table .cell {
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.mobile-radio-group {
+    gap: 10px;
+}
+
+@media (max-width: 640px) {
+    .el-button:not(.is-circle) {
+        min-height: 42px;
+        padding: 10px 14px !important;
+    }
+
+    .el-dialog {
+        width: min(100vw - 20px, 720px) !important;
+        margin-top: 4vh !important;
+    }
+
+    .el-dialog__body {
+        max-height: calc(100vh - 210px);
+        overflow-y: auto;
+    }
+
+    .mobile-radio-group {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .mobile-radio-group .el-radio {
+        margin-right: 0 !important;
+        white-space: normal;
+    }
+
+    .el-select,
+    .el-date-editor.el-input,
+    .el-date-editor.el-input__wrapper,
+    .el-input-number {
+        width: 100% !important;
+    }
+}
