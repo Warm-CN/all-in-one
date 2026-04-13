@@ -9,6 +9,13 @@ from app.models.room_booking import RoomBooking
 from app.models.signup import SignupConfig
 from app.models.application import Application, ApplicationStatus
 from app.models.schedule import Schedule
+from app.models.topic_option import TopicOption
+from app.models.team import Team, TeamStatus
+from app.models.team_member import TeamMember
+from app.models.team_channel_config import TeamChannelConfig
+from app.models.inspection_assignment import InspectionAssignment
+from app.models.competition_event import CompetitionEvent
+from app.models.competition_event_topic import CompetitionEventTopic
 
 __all__ = [
     "BaseModel",
@@ -19,4 +26,12 @@ __all__ = [
     "Application",
     "ApplicationStatus",
     "Schedule",
+    "TopicOption",
+    "Team",
+    "TeamStatus",
+    "TeamMember",
+    "TeamChannelConfig",
+    "InspectionAssignment",
+    "CompetitionEvent",
+    "CompetitionEventTopic",
 ]

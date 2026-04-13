@@ -2,16 +2,18 @@
 FastAPI 应用主入口
 """
 from datetime import datetime, timedelta
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal
 from app.schemas.response import error_response
 from app.models.signup import SignupConfig
 
 # 导入路由
-from app.api.v1 import auth, signups, room_bookings, admin, users, admin_bookings, schedules, admin_schedules
+from app.api.v1 import auth, signups, room_bookings, admin, users, admin_bookings, schedules, admin_schedules, teams, competitions
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -28,6 +30,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+upload_dir = Path("uploads")
+upload_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
 
 
 @app.on_event("startup")
@@ -119,6 +125,20 @@ app.include_router(
     signups.router,
     prefix="/api/v1/signups",
     tags=["📝 报名系统（公开）"]
+)
+
+# 竞赛队伍模块路由
+app.include_router(
+    teams.router,
+    prefix="/api/v1",
+    tags=["🏆 竞赛队伍"]
+)
+
+# 比赛历史与配置路由
+app.include_router(
+    competitions.router,
+    prefix="/api/v1",
+    tags=["🏁 比赛历史与配置"]
 )
 
 # 会议室日常预约路由（简化版 - 无需审批）

@@ -15,7 +15,21 @@ const getBaseURL = () => {
     if (envUrl !== undefined) {
         return envUrl
     }
+    // 开发环境优先走 Vite 同源代理，避免跨域问题
+    if (import.meta.env.DEV) {
+        return '/api'
+    }
     return 'http://localhost:8001'
+}
+
+const dedupeApiPrefix = (baseURL, url) => {
+    if (!baseURL || !url) return url
+    const normalizedBase = String(baseURL).replace(/\/$/, '')
+    const normalizedUrl = String(url)
+    if (normalizedBase.endsWith('/api') && normalizedUrl.startsWith('/api/')) {
+        return normalizedUrl.replace(/^\/api/, '')
+    }
+    return normalizedUrl
 }
 
 // 创建 axios 实例
@@ -30,6 +44,9 @@ const request = axios.create({
 // 请求拦截器 - 自动添加 Token
 request.interceptors.request.use(
     config => {
+        // 避免 baseURL=/api 与 url=/api/* 叠加成 /api/api/*。
+        config.url = dedupeApiPrefix(config.baseURL, config.url)
+
         // 从 localStorage 获取 Token
         const token = localStorage.getItem('token')
 

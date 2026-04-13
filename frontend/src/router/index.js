@@ -35,6 +35,15 @@ const routes = [
         }
     },
     {
+        path: '/team-portal',
+        name: 'TeamPortal',
+        component: () => import('@/views/TeamPortal.vue'),
+        meta: {
+            title: '无线杯组队与选题',
+            requiresAuth: false
+        }
+    },
+    {
         path: '/',
         component: () => import('@/layout/MainLayout.vue'),
         redirect: '/home',
@@ -63,14 +72,32 @@ const routes = [
             {
                 path: 'wireless-cup',
                 name: 'WirelessCup',
-                component: () => import('@/views/Placeholder.vue'),
-                meta: { title: '无线杯', requiresAuth: true }
+                component: () => import('@/views/CompetitionCenter.vue'),
+                meta: { title: '无线杯', requiresAuth: true, cupType: 'wireless' }
+            },
+            {
+                path: 'wireless-cup/:eventId',
+                name: 'WirelessCupEvent',
+                component: () => import('@/views/CompetitionCenter.vue'),
+                meta: { title: '无线杯', requiresAuth: true, cupType: 'wireless' }
             },
             {
                 path: 'telecom-cup',
                 name: 'TelecomCup',
-                component: () => import('@/views/Placeholder.vue'),
-                meta: { title: '电信杯', requiresAuth: true }
+                component: () => import('@/views/CompetitionCenter.vue'),
+                meta: { title: '电信杯', requiresAuth: true, cupType: 'telecom' }
+            },
+            {
+                path: 'telecom-cup/:eventId',
+                name: 'TelecomCupEvent',
+                component: () => import('@/views/CompetitionCenter.vue'),
+                meta: { title: '电信杯', requiresAuth: true, cupType: 'telecom' }
+            },
+            {
+                path: 'teams-center',
+                name: 'TeamsCenter',
+                component: () => import('@/views/TeamManagement.vue'),
+                meta: { title: '竞赛队伍管理', requiresAuth: true }
             },
             {
                 path: 'settings',

@@ -41,6 +41,10 @@
             <el-icon><Medal /></el-icon>
             <span>电信杯</span>
           </el-menu-item>
+          <el-menu-item index="/teams-center" class="menu-item">
+            <el-icon><Medal /></el-icon>
+            <span>竞赛队伍管理</span>
+          </el-menu-item>
           <el-menu-item index="/contacts" class="menu-item">
             <el-icon><Notebook /></el-icon>
             <span>通讯录</span>
@@ -227,6 +231,10 @@
           <el-menu-item index="/telecom-cup" class="menu-item">
             <el-icon><Medal /></el-icon>
             <span>电信杯</span>
+          </el-menu-item>
+          <el-menu-item index="/teams-center" class="menu-item">
+            <el-icon><Medal /></el-icon>
+            <span>竞赛队伍管理</span>
           </el-menu-item>
           <el-menu-item index="/contacts" class="menu-item">
             <el-icon><Notebook /></el-icon>
