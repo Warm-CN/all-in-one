@@ -185,6 +185,26 @@ class TeamInspectionUpdateRequest(BaseModel):
     notes: Optional[str] = None
 
 
+class TeamBatchInspectionUpdateRequest(BaseModel):
+    team_ids: List[int]
+    first_inspection_time: Optional[datetime] = None
+    first_inspection_location: Optional[str] = None
+    first_inspector: Optional[str] = None
+    first_notes: Optional[str] = None
+    second_inspection_time: Optional[datetime] = None
+    second_inspection_location: Optional[str] = None
+    second_inspector: Optional[str] = None
+    second_notes: Optional[str] = None
+
+    # 兼容旧字段
+    inspection_time: Optional[datetime] = None
+    inspection_location: Optional[str] = None
+    inspector: Optional[str] = None
+    notes: Optional[str] = None
+
+    check_duplicate: bool = True
+
+
 class TeamChannelConfigUpdateRequest(BaseModel):
     module_key: str = DEFAULT_MODULE_KEY
     signup_open: Optional[bool] = None
@@ -937,6 +957,121 @@ async def update_inspection_assignment(
 
     db.commit()
     return success_response(msg="验收安排更新成功")
+
+
+@router.post("/teams/batch-inspection", response_model=dict, summary="管理员批量更新验收安排")
+async def batch_update_inspection_assignment(
+    req: TeamBatchInspectionUpdateRequest,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    team_ids = sorted(set(req.team_ids or []))
+    if not team_ids:
+        return error_response(400, "team_ids 不能为空")
+
+    updatable_fields = [
+        "first_inspection_time",
+        "first_inspection_location",
+        "first_inspector",
+        "first_notes",
+        "second_inspection_time",
+        "second_inspection_location",
+        "second_inspector",
+        "second_notes",
+        "inspection_time",
+        "inspection_location",
+        "inspector",
+        "notes",
+    ]
+
+    payload = {}
+    has_update = False
+    for field in updatable_fields:
+        value = getattr(req, field)
+        if isinstance(value, str):
+            value = value.strip()
+            if value == "":
+                value = None
+        payload[field] = value
+        if value is not None:
+            has_update = True
+
+    if not has_update:
+        return error_response(400, "请至少提供一项验收信息用于更新")
+
+    teams = db.query(Team).filter(Team.id.in_(team_ids)).all()
+    found_ids = {team.id for team in teams}
+    missing_ids = [team_id for team_id in team_ids if team_id not in found_ids]
+    if missing_ids:
+        return error_response(404, "存在不存在的队伍ID", data={"missing_team_ids": missing_ids})
+
+    assignments = (
+        db.query(InspectionAssignment)
+        .filter(InspectionAssignment.team_id.in_(team_ids))
+        .all()
+    )
+    assignment_map = {item.team_id: item for item in assignments}
+
+    updated_count = 0
+    skipped_duplicate_ids: List[int] = []
+
+    for team in teams:
+        assignment = assignment_map.get(team.id)
+        if not assignment:
+            assignment = InspectionAssignment(team_id=team.id, assigned_by=current_user.id)
+            db.add(assignment)
+            assignment_map[team.id] = assignment
+
+        is_duplicate = True
+        for field, value in payload.items():
+            if value is None:
+                continue
+            current_value = getattr(assignment, field)
+            if current_value != value:
+                is_duplicate = False
+                break
+
+        if req.check_duplicate and is_duplicate:
+            skipped_duplicate_ids.append(team.id)
+            continue
+
+        for field, value in payload.items():
+            if value is not None:
+                setattr(assignment, field, value)
+
+        # 兼容旧字段：默认同步一验
+        if req.inspection_time is None and req.first_inspection_time is not None:
+            assignment.inspection_time = req.first_inspection_time
+        if req.inspection_location is None and req.first_inspection_location is not None:
+            assignment.inspection_location = req.first_inspection_location
+        if req.inspector is None and req.first_inspector is not None:
+            assignment.inspector = req.first_inspector
+        if req.notes is None and req.first_notes is not None:
+            assignment.notes = req.first_notes
+
+        assignment.assigned_by = current_user.id
+        updated_count += 1
+
+    if updated_count == 0 and skipped_duplicate_ids:
+        return error_response(
+            400,
+            "检测到重复安排，未执行更新",
+            data={"skipped_duplicate_team_ids": skipped_duplicate_ids},
+        )
+
+    db.commit()
+
+    msg = f"批量验收维护成功，共更新 {updated_count} 支队伍"
+    if skipped_duplicate_ids:
+        msg += f"，跳过重复安排 {len(skipped_duplicate_ids)} 支"
+
+    return success_response(
+        data={
+            "updated": updated_count,
+            "skipped_duplicate_team_ids": skipped_duplicate_ids,
+        },
+        msg=msg,
+    )
 
 
 @router.put("/teams/channel-config", response_model=dict, summary="管理员更新通道配置")

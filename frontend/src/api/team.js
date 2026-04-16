@@ -176,6 +176,17 @@ export function updateTeamInspection(teamId, data) {
 }
 
 /**
+ * 管理员批量更新验收安排
+ */
+export function batchUpdateTeamInspection(data) {
+    return request({
+        url: '/api/v1/teams/batch-inspection',
+        method: 'post',
+        data
+    })
+}
+
+/**
  * 管理员更新通道配置
  */
 export function updateTeamChannelConfig(data) {

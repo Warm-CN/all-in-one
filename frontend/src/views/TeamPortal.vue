@@ -176,7 +176,7 @@
             <div v-if="topicTeamResult" class="mt-6 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] sm:p-6">
               <h3 class="text-xl font-black text-slate-900">{{ topicTeamResult.team_name }}</h3>
               <p class="mt-2 text-sm text-slate-500">队长：{{ topicTeamResult.captain_name }}（{{ topicTeamResult.captain_student_id }}）</p>
-              <p class="mt-1 text-sm text-slate-500">当前选题：{{ topicTeamResult.topic_title || '未选题' }}</p>
+              <p class="mt-1 text-sm text-slate-500">当前选题：{{ formatTopicName(topicTeamResult.topic_title) || '未选题' }}</p>
 
               <el-form :model="topicForm" :rules="topicRules" ref="topicFormRef" label-position="top" size="large" class="native-form mt-4">
                 <div class="grid grid-cols-1 gap-x-5 gap-y-3 md:grid-cols-2 lg:gap-y-4">
@@ -247,7 +247,7 @@
               <h3 class="text-xl font-black text-slate-900">{{ teamResult.team_name }}</h3>
               <p class="mt-2 text-sm text-slate-500">队长：{{ teamResult.captain_name }}（{{ teamResult.captain_student_id }}）</p>
               <p class="mt-1 text-sm text-slate-500">学院/专业班级：{{ formatText(teamResult.captain_college) }} / {{ formatText(teamResult.captain_major_class) }}</p>
-              <p class="mt-1 text-sm text-slate-500">选题：{{ teamResult.topic_title || '未选题' }}</p>
+              <p class="mt-1 text-sm text-slate-500">选题：{{ formatTopicName(teamResult.topic_title) || '未选题' }}</p>
 
               <el-divider content-position="left">队员信息</el-divider>
               <div v-if="teamResult.members?.length" class="space-y-2">
@@ -736,6 +736,12 @@ const submitDelete = async () => {
 }
 
 const formatText = (value) => value || '待安排'
+
+const formatTopicName = (value) => {
+  const raw = (value || '').toString().trim()
+  if (!raw) return ''
+  return raw.replace(/^(wireless|telecom|wireless_cup|telecom_cup)[-_\s]*/i, '')
+}
 
 const syncCompactMode = () => {
   compactSignupMode.value = window.innerWidth <= 1180

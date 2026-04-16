@@ -144,8 +144,8 @@ const routes = [
             {
                 path: 'admin/contest',
                 name: 'AdminContest',
-                redirect: '/admin/management',
-                meta: { title: '后台管理', requiresAuth: true }
+                component: () => import('@/views/AdminContestManagement.vue'),
+                meta: { title: '竞赛后台管理', requiresAuth: true }
             }
         ]
     },
