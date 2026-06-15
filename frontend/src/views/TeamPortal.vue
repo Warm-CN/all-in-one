@@ -173,10 +173,10 @@
               </div>
             </el-form>
 
-            <div v-if="topicTeamResult" class="mt-6 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] sm:p-6">
-              <h3 class="text-xl font-black text-slate-900">{{ topicTeamResult.team_name }}</h3>
-              <p class="mt-2 text-sm text-slate-500">队长：{{ topicTeamResult.captain_name }}（{{ topicTeamResult.captain_student_id }}）</p>
-              <p class="mt-1 text-sm text-slate-500">当前选题：{{ topicTeamResult.topic_title || '未选题' }}</p>
+            <div v-if="topicTeamResult" class="mt-6 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] sm:p-6 overflow-hidden">
+              <h3 class="text-xl font-black text-slate-900 truncate">{{ topicTeamResult.team_name }}</h3>
+              <p class="mt-2 text-sm text-slate-500 truncate">队长：{{ topicTeamResult.captain_name }}（{{ topicTeamResult.captain_student_id }}）</p>
+              <p class="mt-1 text-sm text-slate-500 truncate">当前选题：{{ topicTeamResult.topic_title || '未选题' }}</p>
 
               <el-form :model="topicForm" :rules="topicRules" ref="topicFormRef" label-position="top" size="large" class="native-form mt-4">
                 <div class="grid grid-cols-1 gap-x-5 gap-y-3 md:grid-cols-2 lg:gap-y-4">
@@ -243,35 +243,36 @@
               </div>
             </el-form>
 
-            <div v-if="teamResult" class="mt-6 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] sm:p-6">
-              <h3 class="text-xl font-black text-slate-900">{{ teamResult.team_name }}</h3>
-              <p class="mt-2 text-sm text-slate-500">队长：{{ teamResult.captain_name }}（{{ teamResult.captain_student_id }}）</p>
-              <p class="mt-1 text-sm text-slate-500">学院/专业班级：{{ formatText(teamResult.captain_college) }} / {{ formatText(teamResult.captain_major_class) }}</p>
-              <p class="mt-1 text-sm text-slate-500">选题：{{ teamResult.topic_title || '未选题' }}</p>
+            <div v-if="teamResult" class="mt-6 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] sm:p-6 overflow-hidden">
+              <h3 class="text-xl font-black text-slate-900 truncate">{{ teamResult.team_name }}</h3>
+              <p class="mt-2 text-sm text-slate-500 truncate">队长：{{ teamResult.captain_name }}（{{ teamResult.captain_student_id }}）</p>
+              <p class="mt-1 text-sm text-slate-500 truncate">学院/专业班级：{{ formatText(teamResult.captain_college) }} / {{ formatText(teamResult.captain_major_class) }}</p>
+              <p class="mt-1 text-sm text-slate-500 truncate">选题：{{ teamResult.topic_title || '未选题' }}</p>
 
               <el-divider content-position="left">队员信息</el-divider>
               <div v-if="teamResult.members?.length" class="space-y-2">
-                <div v-for="member in teamResult.members" :key="member.id" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-                  {{ member.name }} / {{ member.student_id }} / {{ member.phone }} / {{ member.email || '-' }} / {{ member.college || '-' }} / {{ member.major_class || '-' }}
+                <div v-for="member in teamResult.members" :key="member.id" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 overflow-hidden">
+                  <div class="truncate">{{ member.name }} / {{ member.student_id }} / {{ member.phone }}</div>
+                  <div class="truncate text-xs text-slate-500 mt-1">{{ member.email || '-' }} / {{ member.college || '-' }} / {{ member.major_class || '-' }}</div>
                 </div>
               </div>
               <div v-else class="text-sm text-slate-500">暂无队员（仅队长）</div>
 
               <el-divider content-position="left">验收安排</el-divider>
               <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm overflow-hidden">
                   <div class="font-semibold text-slate-700">第一次验收</div>
-                  <div class="mt-1 text-slate-600">时间：{{ formatText(teamResult.inspection?.first_inspection_time) }}</div>
-                  <div class="text-slate-600">地点：{{ formatText(teamResult.inspection?.first_inspection_location) }}</div>
-                  <div class="text-slate-600">负责人：{{ formatText(teamResult.inspection?.first_inspector) }}</div>
-                  <div class="text-slate-600">备注：{{ formatText(teamResult.inspection?.first_notes) }}</div>
+                  <div class="mt-1 text-slate-600 truncate">时间：{{ formatText(teamResult.inspection?.first_inspection_time) }}</div>
+                  <div class="text-slate-600 truncate">地点：{{ formatText(teamResult.inspection?.first_inspection_location) }}</div>
+                  <div class="text-slate-600 truncate">负责人：{{ formatText(teamResult.inspection?.first_inspector) }}</div>
+                  <div class="text-slate-600 truncate">备注：{{ formatText(teamResult.inspection?.first_notes) }}</div>
                 </div>
-                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm overflow-hidden">
                   <div class="font-semibold text-slate-700">第二次验收</div>
-                  <div class="mt-1 text-slate-600">时间：{{ formatText(teamResult.inspection?.second_inspection_time) }}</div>
-                  <div class="text-slate-600">地点：{{ formatText(teamResult.inspection?.second_inspection_location) }}</div>
-                  <div class="text-slate-600">负责人：{{ formatText(teamResult.inspection?.second_inspector) }}</div>
-                  <div class="text-slate-600">备注：{{ formatText(teamResult.inspection?.second_notes) }}</div>
+                  <div class="mt-1 text-slate-600 truncate">时间：{{ formatText(teamResult.inspection?.second_inspection_time) }}</div>
+                  <div class="text-slate-600 truncate">地点：{{ formatText(teamResult.inspection?.second_inspection_location) }}</div>
+                  <div class="text-slate-600 truncate">负责人：{{ formatText(teamResult.inspection?.second_inspector) }}</div>
+                  <div class="text-slate-600 truncate">备注：{{ formatText(teamResult.inspection?.second_notes) }}</div>
                 </div>
               </div>
 

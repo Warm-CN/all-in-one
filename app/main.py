@@ -7,10 +7,16 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal
 from app.schemas.response import error_response
 from app.models.signup import SignupConfig
+
+# 速率限制器（基于客户端 IP）
+limiter = Limiter(key_func=get_remote_address)
 
 # 导入路由
 from app.api.v1 import auth, signups, room_bookings, admin, users, admin_bookings, schedules, admin_schedules, teams, competitions
@@ -21,6 +27,9 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="基于 FastAPI 的社团统一管理系统 - 支持 RBAC 权限控制",
 )
+
+# 配置速率限制
+app.state.limiter = limiter
 
 # 配置 CORS
 app.add_middleware(
@@ -102,12 +111,24 @@ async def shutdown_event():
 
 # ==================== 全局异常处理 ====================
 
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """速率限制超出处理"""
+    return JSONResponse(
+        status_code=429,
+        content=error_response(429, "请求过于频繁，请稍后再试")
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """全局异常处理，统一返回格式"""
+    """全局异常处理，统一返回格式（不泄露内部信息）"""
+    if settings.DEBUG:
+        import traceback
+        traceback.print_exc()
     return JSONResponse(
         status_code=500,
-        content=error_response(500, f"服务器内部错误: {str(exc)}")
+        content=error_response(500, "服务器内部错误，请联系管理员")
     )
 
 

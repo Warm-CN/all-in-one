@@ -24,6 +24,7 @@
               class="w-full sm:!w-[170px]"
               :disabled-date="disabledDate"
               @change="fetchData"
+              teleported
             />
          <el-button :icon="ArrowRight" circle size="default" @click="changeDate(1)" :disabled="isMaxDate" />
          <el-button type="primary" text bg size="default" @click="goToToday" class="sm:!ml-1" :disabled="isToday">今天</el-button>

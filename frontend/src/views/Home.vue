@@ -95,21 +95,21 @@
                   </div>
                   
                   <div v-else class="space-y-3">
-                     <div v-for="schedule in selectedDateSchedules" :key="schedule.id" 
-                          class="p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-100">
+                     <div v-for="schedule in selectedDateSchedules" :key="schedule.id"
+                          class="p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-100 overflow-hidden">
                         <!-- 时间标记 -->
                         <div class="flex items-center gap-2 mb-2">
-                           <div class="w-2 h-2 rounded-full" :style="{ backgroundColor: schedule.color }"></div>
+                           <div class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: schedule.color }"></div>
                            <span class="text-xs font-mono font-bold text-gray-500">{{ schedule.start_time }} - {{ schedule.end_time }}</span>
                         </div>
-                        
+
                         <!-- 标题 -->
-                        <h4 class="font-bold text-gray-800 mb-1 text-sm">{{ schedule.title }}</h4>
-                        
+                        <h4 class="font-bold text-gray-800 mb-1 text-sm truncate">{{ schedule.title }}</h4>
+
                         <!-- 地点 -->
-                        <div v-if="schedule.location" class="flex items-center gap-1 text-xs text-gray-500">
-                           <el-icon :size="12"><Location /></el-icon>
-                           <span>{{ schedule.location }}</span>
+                        <div v-if="schedule.location" class="flex items-center gap-1 text-xs text-gray-500 min-w-0">
+                           <el-icon :size="12" class="shrink-0"><Location /></el-icon>
+                           <span class="truncate">{{ schedule.location }}</span>
                         </div>
                      </div>
                   </div>
@@ -152,9 +152,9 @@
                </div>
                
                <div v-else class="space-y-3">
-                  <div v-for="(slot, idx) in roomSlots.filter(s => s.status === 'booked')" :key="idx" 
-                       class="relative flex flex-col gap-4 rounded-2xl border border-gray-50 bg-gray-50/30 p-4 transition-all duration-300 hover:border-gray-100 hover:bg-white hover:shadow-lg hover:shadow-gray-100/40 sm:flex-row">
-                     
+                  <div v-for="(slot, idx) in roomSlots.filter(s => s.status === 'booked')" :key="idx"
+                       class="relative flex flex-col gap-4 rounded-2xl border border-gray-50 bg-gray-50/30 p-4 transition-all duration-300 hover:border-gray-100 hover:bg-white hover:shadow-lg hover:shadow-gray-100/40 sm:flex-row overflow-hidden">
+
                      <div class="flex flex-col items-center justify-center min-w-[60px] border-r border-gray-200 pr-4">
                         <span class="text-sm font-bold text-gray-500 font-mono">{{ slot.time.split('-')[0] }}</span>
                         <div class="w-0.5 h-3 bg-gray-200 my-1 rounded-full"></div>
@@ -169,8 +169,8 @@
                            <span class="font-bold text-gray-700 text-sm truncate">{{ slot.user }}</span>
                            <span class="text-[11px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded font-medium shrink-0">{{ slot.dept }}</span>
                         </div>
-                        <div class="flex items-center gap-1 text-xs leading-5 text-gray-400">
-                           <span>{{ slot.remarks }}</span>
+                        <div class="flex items-center gap-1 text-xs leading-5 text-gray-400 min-w-0">
+                           <span class="truncate">{{ slot.remarks }}</span>
                         </div>
                      </div>
                   </div>

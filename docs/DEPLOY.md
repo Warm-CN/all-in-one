@@ -53,9 +53,10 @@ sudo apt install -y git python3-venv python3-pip nodejs npm nginx mysql-server
    DB_USER=club_user
    DB_PASSWORD=your_strong_password
    DB_NAME=club_management
-   SECRET_KEY=dev-secret-key-for-testing
+   SECRET_KEY=<运行 python -c "import secrets; print(secrets.token_hex(32))" 生成>
    BACKEND_CORS_ORIGINS=http://your_domain.com,https://your_domain.com
    ```
+   > **重要**：`SECRET_KEY` 和 `DB_PASSWORD` 不能为空或使用默认值，否则应用将拒绝启动。
 
 4. **初始化数据库**:
    ```bash
@@ -228,9 +229,9 @@ sudo systemctl restart nginx
 
 6. **测试 Nginx 代理是否正常工作**：
    ```bash
-   curl -X POST http://your_server_ip/api/auth/login \
+   curl -X POST http://your_server_ip/api/v1/auth/login \
      -H "Content-Type: application/json" \
-     -d '{"username":"test","password":"test"}'
+     -d '{"student_id":"test","password":"test"}'
    ```
    应该返回 JSON 响应（即使用户名密码错误，也应该有响应）。如果返回 502/404，说明 Nginx 配置有问题。
 

@@ -23,19 +23,19 @@
       />
 
       <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
-        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5">
+        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 overflow-hidden">
           <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">队伍总数</div>
           <div class="mt-1.5 text-[1.45rem] font-black text-slate-900">{{ tableData.length }}</div>
         </div>
-        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5">
+        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 overflow-hidden">
           <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">报名通道</div>
           <div class="mt-1.5 text-[15px] font-semibold" :class="signupStatus.signup_open ? 'text-emerald-700' : 'text-slate-700'">{{ signupStatus.signup_open ? '开启' : '关闭' }}</div>
         </div>
-        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5">
+        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 overflow-hidden">
           <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">选题通道</div>
           <div class="mt-1.5 text-[15px] font-semibold" :class="topicStatus.topic_open ? 'text-emerald-700' : 'text-slate-700'">{{ topicStatus.topic_open ? '开启' : '关闭' }}</div>
         </div>
-        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5">
+        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 overflow-hidden">
           <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">信息修改通道</div>
           <div class="mt-1.5 text-[15px] font-semibold" :class="updateStatus.info_update_open ? 'text-emerald-700' : 'text-slate-700'">{{ updateStatus.info_update_open ? '开启' : '关闭' }}</div>
         </div>
