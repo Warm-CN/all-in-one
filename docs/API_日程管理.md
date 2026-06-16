@@ -331,8 +331,8 @@ POST /api/v1/auth/login
 Content-Type: application/json
 
 {
-  "student_id": "admin",
-  "password": "123456"
+  "student_id": "110",
+  "password": "654321"
 }
 ```
 
@@ -360,7 +360,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### 1. 启动后端服务
 
 ```bash
-cd d:\code\python\all-in-one
+cd d:\code\python\all_in_one
 python main.py
 ```
 

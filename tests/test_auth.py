@@ -4,13 +4,13 @@
 import requests
 import json
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8001"
 
 
 def test_auth_system():
     """测试认证系统"""
     print("=" * 60)
-    print("🧪 开始测试第二阶段：用户认证与权限控制系统")
+    print("🧪 开始测试用户认证与权限控制系统")
     print("=" * 60)
     
     # 1. 测试登录
@@ -18,8 +18,8 @@ def test_auth_system():
     login_response = requests.post(
         f"{BASE_URL}/api/v1/auth/login",
         json={
-            "student_id": "admin",
-            "password": "123456"
+            "student_id": "110",
+            "password": "654321"
         }
     )
     print(f"   状态码: {login_response.status_code}")
@@ -97,6 +97,6 @@ if __name__ == "__main__":
     try:
         test_auth_system()
     except requests.exceptions.ConnectionError:
-        print("❌ 连接失败！请确保应用正在 http://localhost:8000 运行")
+        print("❌ 连接失败！请确保应用正在 http://localhost:8001 运行")
     except Exception as e:
         print(f"❌ 测试出错: {e}")

@@ -6,14 +6,14 @@ import requests
 from datetime import date, timedelta
 
 # 配置
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8001"
 LOGIN_URL = f"{BASE_URL}/api/v1/auth/login"
 BOOKING_URL = f"{BASE_URL}/api/bookings"
 
 # 测试用户凭证（请根据实际情况修改）
 TEST_USER = {
-    "student_id": "admin",
-    "password": "123456"
+    "student_id": "110",
+    "password": "654321"
 }
 
 

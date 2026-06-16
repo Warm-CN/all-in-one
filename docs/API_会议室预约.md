@@ -329,7 +329,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### 1. 启动后端服务
 
 ```bash
-cd d:\code\python\all-in-one
+cd d:\code\python\all_in_one
 python main.py
 ```
 
@@ -342,7 +342,7 @@ python main.py
 ### 3. 使用测试脚本
 
 ```bash
-cd d:\code\python\all-in-one
+cd d:\code\python\all_in_one
 python tests/test_room_bookings.py
 ```
 
