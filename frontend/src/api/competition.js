@@ -30,6 +30,14 @@ export function createCompetitionEvent(data) {
   })
 }
 
+export function updateCompetitionEvent(eventId, data) {
+  return request({
+    url: `/api/v1/competitions/events/${eventId}`,
+    method: 'put',
+    data
+  })
+}
+
 export function createCompetitionTopic(eventId, payload) {
   const formData = new FormData()
   formData.append('title', payload.title)

@@ -72,32 +72,32 @@ const routes = [
             {
                 path: 'wireless-cup',
                 name: 'WirelessCup',
-                component: () => import('@/views/CompetitionCenter.vue'),
+                redirect: '/teams-center',
                 meta: { title: '无线杯', requiresAuth: true, cupType: 'wireless' }
             },
             {
                 path: 'wireless-cup/:eventId',
                 name: 'WirelessCupEvent',
-                component: () => import('@/views/CompetitionCenter.vue'),
+                redirect: (to) => ({ path: '/teams-center', query: { event_id: to.params.eventId } }),
                 meta: { title: '无线杯', requiresAuth: true, cupType: 'wireless' }
             },
             {
                 path: 'telecom-cup',
                 name: 'TelecomCup',
-                component: () => import('@/views/CompetitionCenter.vue'),
+                redirect: '/teams-center',
                 meta: { title: '电信杯', requiresAuth: true, cupType: 'telecom' }
             },
             {
                 path: 'telecom-cup/:eventId',
                 name: 'TelecomCupEvent',
-                component: () => import('@/views/CompetitionCenter.vue'),
+                redirect: (to) => ({ path: '/teams-center', query: { event_id: to.params.eventId } }),
                 meta: { title: '电信杯', requiresAuth: true, cupType: 'telecom' }
             },
             {
                 path: 'teams-center',
                 name: 'TeamsCenter',
                 component: () => import('@/views/TeamManagement.vue'),
-                meta: { title: '竞赛队伍管理', requiresAuth: true }
+                meta: { title: '竞赛队伍', requiresAuth: true }
             },
             {
                 path: 'settings',
@@ -132,20 +132,26 @@ const routes = [
             {
                 path: 'admin/management',
                 name: 'AdminManagement',
-                component: () => import('@/views/AdminManagement.vue'),
-                meta: { title: '后台管理', requiresAuth: true }
+                redirect: '/admin/recruitment',
+                meta: { title: '招新管理', requiresAuth: true }
             },
             {
                 path: 'admin/recruitment',
                 name: 'AdminRecruitment',
-                redirect: '/admin/management',
-                meta: { title: '后台管理', requiresAuth: true }
+                component: () => import('@/views/AdminManagement.vue'),
+                meta: { title: '招新管理', requiresAuth: true }
+            },
+            {
+                path: 'admin/events',
+                name: 'AdminEvents',
+                component: () => import('@/views/EventManagement.vue'),
+                meta: { title: '赛事管理', requiresAuth: true }
             },
             {
                 path: 'admin/contest',
                 name: 'AdminContest',
-                redirect: '/admin/management',
-                meta: { title: '后台管理', requiresAuth: true }
+                redirect: '/admin/events',
+                meta: { title: '赛事管理', requiresAuth: true }
             }
         ]
     },

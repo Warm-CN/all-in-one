@@ -1,35 +1,49 @@
 <template>
-  <div class="apply-page w-full px-3 py-4 sm:px-5 sm:py-7 lg:px-8 lg:py-9">
-    <div class="apply-shell mx-auto flex w-full flex-col items-center">
-      <div class="hero-panel mb-5 w-full rounded-[28px] px-4 py-5 text-center sm:mb-7 sm:px-6 sm:py-7 lg:mb-9 lg:px-8 lg:py-8">
-        <div class="hero-badge-row mb-3 flex flex-wrap items-center justify-center gap-2 sm:mb-4">
-          <span class="hero-badge">{{ currentEvent ? (currentEvent.cup_type === 'telecom' ? 'TELECOM CUP' : 'WIRELESS CUP') : 'COMPETITION PORTAL' }}</span>
-          <span class="hero-badge hero-badge-alt">TEAM PORTAL</span>
+  <div class="apply-page w-full px-3 py-5 sm:px-6 lg:px-8 lg:py-10">
+    <div class="apply-shell mx-auto flex w-full max-w-[1180px] flex-col gap-5 sm:gap-7">
+      <header class="hero-panel grid w-full gap-5 rounded-[28px] px-4 py-5 sm:px-6 sm:py-7 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center lg:px-8 lg:py-8">
+        <div class="min-w-0">
+          <div class="hero-badge-row mb-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <span class="hero-badge">{{ currentEvent ? (currentEvent.cup_type === 'telecom' ? 'TELECOM CUP' : 'WIRELESS CUP') : 'COMPETITION PORTAL' }}</span>
+            <span class="hero-badge hero-badge-alt">TEAM PORTAL</span>
+          </div>
+          <div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
+            <img src="@/assets/images/logo.png" alt="Logo" class="h-16 w-auto shrink-0 object-contain sm:h-20" />
+            <div class="min-w-0">
+              <h1 class="break-words text-3xl font-black leading-tight text-slate-950 sm:text-4xl lg:text-5xl">{{ currentEvent?.display_title || currentEvent?.name || '竞赛组队与选题通道' }}</h1>
+              <p class="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">公开报名、修改队伍、修改选题、查询验收安排统一在这里完成</p>
+            </div>
+          </div>
         </div>
-        <img src="@/assets/images/logo.png" alt="Logo" class="mx-auto h-20 w-auto object-contain sm:h-24" />
-        <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl md:text-5xl">{{ currentEvent?.display_title || currentEvent?.name || '竞赛组队与选题通道' }}</h1>
-        <p class="mx-auto mt-3 max-w-3xl text-base leading-relaxed text-slate-600 sm:text-lg">公开报名、修改队伍、修改选题、查询验收安排统一在这里完成</p>
-      </div>
 
-      <section class="glass-card mx-auto w-full overflow-hidden rounded-[28px] border border-white/60">
-        <div class="bg-white/70 p-3 sm:p-4 lg:p-5">
-          <div class="native-segment mx-auto flex max-w-2xl flex-col rounded-2xl border border-slate-200/80 bg-slate-50 p-1 sm:flex-row">
+        <div class="hero-status rounded-2xl border border-slate-200/80 bg-white/82 p-4 shadow-[0_16px_38px_-32px_rgba(15,23,42,0.36)]">
+          <div class="text-xs font-semibold uppercase text-slate-400">当前比赛</div>
+          <div class="mt-3 break-words text-lg font-black leading-6 text-slate-900">{{ currentEvent?.display_title || currentEvent?.name || '尚未开启' }}</div>
+          <div class="mt-2 text-sm leading-6 text-slate-500">
+            {{ currentEvent ? '当前比赛报名与队伍查询入口已开放' : '请等待管理员设置正在进行的比赛' }}
+          </div>
+        </div>
+      </header>
+
+      <section class="glass-card mx-auto w-full overflow-hidden rounded-[28px] border border-white/70">
+        <div class="surface-header border-b border-slate-200/70 bg-white/75 p-3 sm:p-4 lg:p-5">
+          <div class="native-segment mx-auto grid max-w-3xl grid-cols-1 rounded-2xl border border-slate-200/80 bg-slate-50 p-1 sm:grid-cols-3">
             <button
-              class="flex-1 rounded-xl py-3 text-center text-base font-semibold transition sm:text-lg"
+              class="tab-button rounded-xl px-3 py-3 text-center text-base font-semibold transition"
               :class="activeTab === 'signup' ? 'segment-active' : 'text-slate-500 hover:text-slate-800'"
               @click="handleTabSwitch('signup')"
             >
               我要组队报名
             </button>
             <button
-              class="flex-1 rounded-xl py-3 text-center text-base font-semibold transition sm:text-lg"
+              class="tab-button rounded-xl px-3 py-3 text-center text-base font-semibold transition"
               :class="activeTab === 'topic' ? 'segment-active' : 'text-slate-500 hover:text-slate-800'"
               @click="handleTabSwitch('topic')"
             >
               修改选题
             </button>
             <button
-              class="flex-1 rounded-xl py-3 text-center text-base font-semibold transition sm:text-lg"
+              class="tab-button rounded-xl px-3 py-3 text-center text-base font-semibold transition"
               :class="activeTab === 'query' ? 'segment-active' : 'text-slate-500 hover:text-slate-800'"
               @click="handleTabSwitch('query')"
             >
@@ -38,7 +52,7 @@
           </div>
         </div>
 
-        <div class="p-4 sm:p-7 lg:p-9">
+        <div class="p-4 sm:p-6 lg:p-8">
           <el-alert
             v-if="!currentEvent"
             type="warning"
@@ -47,66 +61,56 @@
             title="当前没有进行中的比赛，请联系管理员在赛事中心设置“正在比赛”后再进行报名。"
           />
 
-          <div class="mb-6 grid grid-cols-1 gap-3 sm:mb-7 lg:grid-cols-3">
-            <div class="rounded-xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm">
-              <span class="font-semibold">报名通道：</span>
-              <span :class="signupStatus.signup_open ? 'text-emerald-600' : 'text-red-500'">{{ signupStatus.signup_open ? '开启' : '关闭' }}</span>
-            </div>
-            <div class="rounded-xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm">
-              <span class="font-semibold">选题通道：</span>
-              <span :class="topicStatus.topic_open ? 'text-emerald-600' : 'text-red-500'">{{ topicStatus.topic_open ? '开启' : '关闭' }}</span>
-            </div>
-            <div class="rounded-xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm">
-              <span class="font-semibold">信息修改：</span>
-              <span :class="updateStatus.info_update_open ? 'text-emerald-600' : 'text-red-500'">{{ updateStatus.info_update_open ? '开启' : '关闭' }}</span>
-            </div>
-          </div>
-
           <div v-show="activeTab === 'signup'" class="mx-auto w-full">
             <el-form ref="signupFormRef" :model="signupForm" :rules="signupRules" label-position="top" size="large" class="native-form">
               <template v-if="!compactSignupMode">
-                <div class="grid grid-cols-1 gap-x-5 gap-y-3 md:grid-cols-2 lg:gap-y-4">
-                  <el-form-item label="队伍名称" prop="team_name">
-                    <el-input v-model="signupForm.team_name" placeholder="请输入队伍名称" />
-                  </el-form-item>
-                  <el-form-item label="队长姓名" prop="captain_name">
-                    <el-input v-model="signupForm.captain_name" />
-                  </el-form-item>
-                  <el-form-item label="队长学号（12位）" prop="captain_student_id">
-                    <el-input v-model="signupForm.captain_student_id" />
-                  </el-form-item>
-                  <el-form-item label="队长手机号" prop="captain_phone">
-                    <el-input v-model="signupForm.captain_phone" />
-                  </el-form-item>
-                  <el-form-item label="队长邮箱" prop="captain_email">
-                    <el-input v-model="signupForm.captain_email" />
-                  </el-form-item>
-                  <el-form-item label="队长学院" prop="captain_college">
-                    <el-input v-model="signupForm.captain_college" placeholder="如：电子与信息学院" />
-                  </el-form-item>
-                  <el-form-item label="队长专业班级" prop="captain_major_class" class="md:col-span-2">
-                    <el-input v-model="signupForm.captain_major_class" placeholder="如：信息工程x班" />
-                  </el-form-item>
+                <div class="form-section">
+                  <div class="section-kicker">队伍与队长信息</div>
+                  <div class="grid grid-cols-1 gap-x-5 gap-y-3 md:grid-cols-2 lg:gap-y-4">
+                    <el-form-item label="队伍名称" prop="team_name">
+                      <el-input v-model="signupForm.team_name" placeholder="请输入队伍名称" />
+                    </el-form-item>
+                    <el-form-item label="队长姓名" prop="captain_name">
+                      <el-input v-model="signupForm.captain_name" />
+                    </el-form-item>
+                    <el-form-item label="队长学号（12位）" prop="captain_student_id">
+                      <el-input v-model="signupForm.captain_student_id" />
+                    </el-form-item>
+                    <el-form-item label="队长手机号" prop="captain_phone">
+                      <el-input v-model="signupForm.captain_phone" />
+                    </el-form-item>
+                    <el-form-item label="队长邮箱" prop="captain_email">
+                      <el-input v-model="signupForm.captain_email" />
+                    </el-form-item>
+                    <el-form-item label="队长学院" prop="captain_college">
+                      <el-input v-model="signupForm.captain_college" placeholder="如：电子与信息学院" />
+                    </el-form-item>
+                    <el-form-item label="队长专业班级" prop="captain_major_class" class="md:col-span-2">
+                      <el-input v-model="signupForm.captain_major_class" placeholder="如：信息工程x班" />
+                    </el-form-item>
+                  </div>
                 </div>
 
-                <el-divider content-position="left">队员信息（最多2人，可不填）</el-divider>
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div v-for="(member, idx) in signupForm.members" :key="idx" class="rounded-2xl border border-slate-200/80 bg-white/90 p-4">
-                    <h4 class="mb-3 font-semibold text-slate-700">队员 {{ idx + 1 }}</h4>
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <el-input v-model="member.name" placeholder="姓名（可留空）" class="sm:col-span-1" />
-                      <el-input v-model="member.student_id" placeholder="学号（12位，可留空）" class="sm:col-span-1" />
-                      <el-input v-model="member.phone" placeholder="手机号（可留空）" class="sm:col-span-1" />
-                      <el-input v-model="member.email" placeholder="邮箱（可留空）" class="sm:col-span-1" />
-                      <el-input v-model="member.college" placeholder="学院（可留空）" class="sm:col-span-1" />
-                      <el-input v-model="member.major_class" placeholder="专业班级（可留空）" class="sm:col-span-1" />
+                <div class="form-section mt-4">
+                  <div class="section-kicker">队员信息（最多2人，可不填）</div>
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div v-for="(member, idx) in signupForm.members" :key="idx" class="member-card rounded-2xl border border-slate-200/80 bg-white/90 p-4">
+                      <h4 class="mb-3 font-semibold text-slate-700">队员 {{ idx + 1 }}</h4>
+                      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <el-input v-model="member.name" placeholder="姓名（可留空）" class="sm:col-span-1" />
+                        <el-input v-model="member.student_id" placeholder="学号（12位，可留空）" class="sm:col-span-1" />
+                        <el-input v-model="member.phone" placeholder="手机号（可留空）" class="sm:col-span-1" />
+                        <el-input v-model="member.email" placeholder="邮箱（可留空）" class="sm:col-span-1" />
+                        <el-input v-model="member.college" placeholder="学院（可留空）" class="sm:col-span-1" />
+                        <el-input v-model="member.major_class" placeholder="专业班级（可留空）" class="sm:col-span-1" />
+                      </div>
                     </div>
                   </div>
                 </div>
               </template>
 
               <template v-else>
-                <el-collapse v-model="signupCollapse" class="zoom-collapse">
+                <el-collapse v-model="signupCollapse" class="zoom-collapse form-section">
                   <el-collapse-item name="basic" title="队伍基础信息">
                     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                       <el-form-item label="队伍名称" prop="team_name">
@@ -159,7 +163,7 @@
 
           <div v-show="activeTab === 'topic'" class="mx-auto w-full">
             <el-form ref="topicQueryFormRef" :model="topicQueryForm" :rules="queryRules" label-position="top" size="large" class="native-form">
-              <div class="rounded-[24px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_-30px_rgba(15,23,42,0.28)] sm:p-5">
+              <div class="form-section rounded-[24px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_-30px_rgba(15,23,42,0.28)] sm:p-5">
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   <el-form-item label="先输入队长学号（12位）" prop="sid">
                     <el-input v-model="topicQueryForm.sid" />
@@ -173,10 +177,10 @@
               </div>
             </el-form>
 
-            <div v-if="topicTeamResult" class="mt-6 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] sm:p-6 overflow-hidden">
-              <h3 class="text-xl font-black text-slate-900 truncate">{{ topicTeamResult.team_name }}</h3>
-              <p class="mt-2 text-sm text-slate-500 truncate">队长：{{ topicTeamResult.captain_name }}（{{ topicTeamResult.captain_student_id }}）</p>
-              <p class="mt-1 text-sm text-slate-500 truncate">当前选题：{{ topicTeamResult.topic_title || '未选题' }}</p>
+            <div v-if="topicTeamResult" class="result-card mt-6 overflow-hidden rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] sm:p-6">
+              <h3 class="break-words text-xl font-black text-slate-900">{{ topicTeamResult.team_name }}</h3>
+              <p class="mt-2 break-words text-sm text-slate-500">队长：{{ topicTeamResult.captain_name }}（{{ topicTeamResult.captain_student_id }}）</p>
+              <p class="mt-1 break-words text-sm text-slate-500">当前选题：{{ topicTeamResult.topic_title || '未选题' }}</p>
 
               <el-form :model="topicForm" :rules="topicRules" ref="topicFormRef" label-position="top" size="large" class="native-form mt-4">
                 <div class="grid grid-cols-1 gap-x-5 gap-y-3 md:grid-cols-2 lg:gap-y-4">
@@ -188,13 +192,13 @@
                       <div
                         v-for="item in topics"
                         :key="item.id"
-                        class="flex items-center justify-between gap-3 rounded-xl border px-3 py-2 transition"
+                        class="topic-option flex flex-col gap-3 rounded-xl border px-3 py-3 transition sm:flex-row sm:items-center sm:justify-between"
                         :class="topicForm.topic_id === item.id ? 'border-sky-500 bg-sky-50' : 'border-slate-200 bg-white hover:border-slate-300'"
                       >
-                        <span class="flex-1 truncate text-left text-sm font-medium text-slate-700">
+                        <span class="min-w-0 flex-1 break-words text-left text-sm font-medium text-slate-700">
                           {{ item.title || '未命名题目' }}
                         </span>
-                        <div class="flex items-center gap-2">
+                        <div class="flex shrink-0 items-center gap-2">
                           <el-button
                             :type="topicForm.topic_id === item.id ? 'primary' : 'default'"
                             size="small"
@@ -229,7 +233,7 @@
 
           <div v-show="activeTab === 'query'" class="mx-auto w-full">
             <el-form ref="queryFormRef" :model="queryForm" :rules="queryRules" label-position="top" size="large" class="native-form">
-              <div class="rounded-[24px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_-30px_rgba(15,23,42,0.28)] sm:p-5">
+              <div class="form-section rounded-[24px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_-30px_rgba(15,23,42,0.28)] sm:p-5">
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
                   <el-form-item label="输入队长或队员学号（12位）" prop="sid">
                     <el-input v-model="queryForm.sid" />
@@ -243,17 +247,17 @@
               </div>
             </el-form>
 
-            <div v-if="teamResult" class="mt-6 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] sm:p-6 overflow-hidden">
-              <h3 class="text-xl font-black text-slate-900 truncate">{{ teamResult.team_name }}</h3>
-              <p class="mt-2 text-sm text-slate-500 truncate">队长：{{ teamResult.captain_name }}（{{ teamResult.captain_student_id }}）</p>
-              <p class="mt-1 text-sm text-slate-500 truncate">学院/专业班级：{{ formatText(teamResult.captain_college) }} / {{ formatText(teamResult.captain_major_class) }}</p>
-              <p class="mt-1 text-sm text-slate-500 truncate">选题：{{ teamResult.topic_title || '未选题' }}</p>
+            <div v-if="teamResult" class="result-card mt-6 overflow-hidden rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)] sm:p-6">
+              <h3 class="break-words text-xl font-black text-slate-900">{{ teamResult.team_name }}</h3>
+              <p class="mt-2 break-words text-sm text-slate-500">队长：{{ teamResult.captain_name }}（{{ teamResult.captain_student_id }}）</p>
+              <p class="mt-1 break-words text-sm text-slate-500">学院/专业班级：{{ formatText(teamResult.captain_college) }} / {{ formatText(teamResult.captain_major_class) }}</p>
+              <p class="mt-1 break-words text-sm text-slate-500">选题：{{ teamResult.topic_title || '未选题' }}</p>
 
               <el-divider content-position="left">队员信息</el-divider>
               <div v-if="teamResult.members?.length" class="space-y-2">
-                <div v-for="member in teamResult.members" :key="member.id" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 overflow-hidden">
-                  <div class="truncate">{{ member.name }} / {{ member.student_id }} / {{ member.phone }}</div>
-                  <div class="truncate text-xs text-slate-500 mt-1">{{ member.email || '-' }} / {{ member.college || '-' }} / {{ member.major_class || '-' }}</div>
+                <div v-for="member in teamResult.members" :key="member.id" class="overflow-hidden rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                  <div class="break-words">{{ member.name }} / {{ member.student_id }} / {{ member.phone }}</div>
+                  <div class="mt-1 break-words text-xs text-slate-500">{{ member.email || '-' }} / {{ member.college || '-' }} / {{ member.major_class || '-' }}</div>
                 </div>
               </div>
               <div v-else class="text-sm text-slate-500">暂无队员（仅队长）</div>
@@ -262,17 +266,15 @@
               <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm overflow-hidden">
                   <div class="font-semibold text-slate-700">第一次验收</div>
-                  <div class="mt-1 text-slate-600 truncate">时间：{{ formatText(teamResult.inspection?.first_inspection_time) }}</div>
-                  <div class="text-slate-600 truncate">地点：{{ formatText(teamResult.inspection?.first_inspection_location) }}</div>
-                  <div class="text-slate-600 truncate">负责人：{{ formatText(teamResult.inspection?.first_inspector) }}</div>
-                  <div class="text-slate-600 truncate">备注：{{ formatText(teamResult.inspection?.first_notes) }}</div>
+                  <div class="mt-1 break-words text-slate-600">时间：{{ formatText(teamResult.inspection?.first_inspection_time) }}</div>
+                  <div class="break-words text-slate-600">地点：{{ formatText(teamResult.inspection?.first_inspection_location) }}</div>
+                  <div class="break-words text-slate-600">备注：{{ formatText(teamResult.inspection?.first_notes) }}</div>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm overflow-hidden">
                   <div class="font-semibold text-slate-700">第二次验收</div>
-                  <div class="mt-1 text-slate-600 truncate">时间：{{ formatText(teamResult.inspection?.second_inspection_time) }}</div>
-                  <div class="text-slate-600 truncate">地点：{{ formatText(teamResult.inspection?.second_inspection_location) }}</div>
-                  <div class="text-slate-600 truncate">负责人：{{ formatText(teamResult.inspection?.second_inspector) }}</div>
-                  <div class="text-slate-600 truncate">备注：{{ formatText(teamResult.inspection?.second_notes) }}</div>
+                  <div class="mt-1 break-words text-slate-600">时间：{{ formatText(teamResult.inspection?.second_inspection_time) }}</div>
+                  <div class="break-words text-slate-600">地点：{{ formatText(teamResult.inspection?.second_inspection_location) }}</div>
+                  <div class="break-words text-slate-600">备注：{{ formatText(teamResult.inspection?.second_notes) }}</div>
                 </div>
               </div>
 
@@ -290,7 +292,7 @@
       </section>
     </div>
 
-    <el-dialog v-model="editVisible" title="修改队伍信息" width="860px" destroy-on-close>
+    <el-dialog v-model="editVisible" title="修改队伍信息" width="min(860px, calc(100vw - 24px))" destroy-on-close>
       <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-position="top" size="large">
         <div class="grid grid-cols-1 gap-x-4 gap-y-1 md:grid-cols-2">
           <el-form-item label="队伍名称" prop="team_name"><el-input v-model="editForm.team_name" /></el-form-item>
@@ -326,7 +328,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="deleteVisible" title="删除队伍" width="640px" destroy-on-close>
+    <el-dialog v-model="deleteVisible" title="删除队伍" width="min(640px, calc(100vw - 24px))" destroy-on-close>
       <el-form ref="deleteFormRef" :model="deleteForm" label-position="top" size="large">
         <el-form-item label="删除理由（至少5个字）">
           <el-input v-model="deleteForm.delete_reason" type="textarea" :rows="3" maxlength="200" show-word-limit />
@@ -758,8 +760,9 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .glass-card {
-  backdrop-filter: blur(6px);
-  box-shadow: 0 28px 70px -46px rgba(15, 23, 42, 0.4);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.92) 100%);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 22px 66px -44px rgba(15, 23, 42, 0.45);
   position: relative;
 }
 
@@ -769,7 +772,7 @@ onBeforeUnmount(() => {
   inset: 0;
   border-radius: 28px;
   padding: 1px;
-  background: linear-gradient(125deg, rgba(14, 165, 233, 0.55), rgba(37, 99, 235, 0.15), rgba(249, 115, 22, 0.42));
+  background: linear-gradient(125deg, rgba(14, 165, 233, 0.5), rgba(37, 99, 235, 0.12), rgba(20, 184, 166, 0.36));
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -782,9 +785,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   min-height: 100%;
   background:
-    radial-gradient(920px 360px at 15% -8%, rgba(14, 165, 233, 0.2), transparent 72%),
-    radial-gradient(880px 340px at 88% -12%, rgba(249, 115, 22, 0.16), transparent 70%),
-    linear-gradient(180deg, #eef4fb 0%, #e9f1fa 100%);
+    linear-gradient(135deg, #eef7ff 0%, #f8fafc 48%, #ecfdf8 100%);
 }
 
 .hero-panel {
@@ -792,22 +793,21 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.7);
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.68)),
-    radial-gradient(540px 220px at 20% -30%, rgba(56, 189, 248, 0.22), transparent 75%),
-    radial-gradient(540px 220px at 85% 130%, rgba(249, 115, 22, 0.2), transparent 75%);
-  box-shadow: 0 22px 56px -46px rgba(30, 41, 59, 0.5);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 249, 255, 0.9) 58%, rgba(236, 253, 245, 0.86));
+  box-shadow: 0 24px 58px -44px rgba(15, 23, 42, 0.45);
 }
 
 .hero-panel::after {
   content: '';
   position: absolute;
-  top: -90px;
-  right: -70px;
-  width: 240px;
-  height: 240px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.2) 0%, rgba(14, 165, 233, 0) 70%);
+  inset: 0;
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.08), transparent 36%, rgba(20, 184, 166, 0.08));
   pointer-events: none;
+}
+
+.hero-panel > * {
+  position: relative;
+  z-index: 1;
 }
 
 .hero-badge {
@@ -818,9 +818,8 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(14, 165, 233, 0.28);
   background: rgba(14, 165, 233, 0.12);
   color: #0f766e;
-  font-size: clamp(10px, 1.1vw, 12px);
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.14em;
   padding: 6px 12px;
 }
 
@@ -841,6 +840,41 @@ onBeforeUnmount(() => {
   line-height: 1.25;
 }
 
+.surface-header {
+  backdrop-filter: blur(8px);
+}
+
+.tab-button {
+  min-height: 48px;
+}
+
+.status-card,
+.form-section,
+.member-card,
+.result-card,
+.topic-option {
+  min-width: 0;
+}
+
+.status-card {
+  box-shadow: 0 12px 28px -28px rgba(15, 23, 42, 0.38);
+}
+
+.form-section {
+  border: 1px solid rgba(226, 232, 240, 0.84);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.74);
+  padding: 18px;
+}
+
+.section-kicker {
+  margin-bottom: 14px;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .native-form :deep(.el-form-item) {
   margin-bottom: 14px;
 }
@@ -851,17 +885,14 @@ onBeforeUnmount(() => {
 }
 
 .hero-panel h1 {
-  font-size: clamp(1.75rem, 4.3vw, 3.2rem);
   line-height: 1.15;
 }
 
 .hero-panel p {
-  font-size: clamp(0.95rem, 1.7vw, 1.15rem);
   line-height: 1.7;
 }
 
 .zoom-collapse {
-  border: none;
   background: transparent;
 }
 
@@ -898,8 +929,28 @@ onBeforeUnmount(() => {
 
 @media (max-width: 768px) {
   .hero-badge {
-    letter-spacing: 0.08em;
     font-size: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .apply-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .hero-panel,
+  .glass-card {
+    border-radius: 22px;
+  }
+
+  .hero-status,
+  .form-section {
+    padding: 14px;
+  }
+
+  .tab-button {
+    min-height: 44px;
   }
 }
 </style>

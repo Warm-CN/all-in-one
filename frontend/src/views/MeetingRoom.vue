@@ -1,19 +1,19 @@
 <template>
   <div class="flex h-full flex-col gap-5">
     <!-- 顶部控制烂 -->
-    <div class="flex shrink-0 flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-      <div class="flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+    <div class="flex shrink-0 flex-col gap-4 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex min-w-0 items-center gap-4">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
            <el-icon :size="20"><Monitor /></el-icon>
         </div>
-        <div>
-           <h1 class="text-lg font-bold text-gray-800">北三会议室</h1>
-           <p class="text-xs text-gray-500">密码锁密码为：812604</p>
+        <div class="min-w-0">
+           <h1 class="truncate text-lg font-bold text-gray-800">北三会议室</h1>
+           <p class="break-words text-xs text-gray-500">密码锁密码为：812604</p>
         </div>
       </div>
       
-      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-         <el-button :icon="ArrowLeft" circle size="default" @click="changeDate(-1)" :disabled="isToday" />
+      <div class="date-toolbar grid w-full min-w-0 grid-cols-[44px_minmax(0,1fr)_44px] gap-2 sm:grid-cols-[44px_minmax(180px,220px)_44px_auto] lg:w-auto lg:justify-end">
+         <el-button :icon="ArrowLeft" circle size="default" class="!h-11 !w-11" @click="changeDate(-1)" :disabled="isToday" />
          <el-date-picker
               v-model="currentDate"
               type="date"
@@ -21,13 +21,13 @@
               format="YYYY年MM月DD日"
               value-format="YYYY-MM-DD"
               :clearable="false"
-              class="w-full sm:!w-[170px]"
+              class="room-date-picker !w-full"
               :disabled-date="disabledDate"
               @change="fetchData"
               teleported
             />
-         <el-button :icon="ArrowRight" circle size="default" @click="changeDate(1)" :disabled="isMaxDate" />
-         <el-button type="primary" text bg size="default" @click="goToToday" class="sm:!ml-1" :disabled="isToday">今天</el-button>
+         <el-button :icon="ArrowRight" circle size="default" class="!h-11 !w-11" @click="changeDate(1)" :disabled="isMaxDate" />
+         <el-button type="primary" text bg size="default" @click="goToToday" class="col-span-3 !h-11 !w-full sm:col-auto sm:!w-auto" :disabled="isToday">今天</el-button>
       </div>
     </div>
 
@@ -56,30 +56,30 @@
 
                  <div v-else class="space-y-3">
                     <div v-for="booking in bookings" :key="booking.id"
-                         class="relative flex flex-col gap-3 overflow-hidden rounded-xl border border-gray-100 bg-white p-4 transition-all group/card hover:border-indigo-100 hover:shadow-sm md:flex-row md:items-center md:justify-between">
+                         class="relative flex min-w-0 flex-col gap-3 overflow-hidden rounded-xl border border-gray-100 bg-white p-4 transition-all group/card hover:border-indigo-100 hover:shadow-sm md:flex-row md:items-center md:justify-between">
                        <!-- 左侧装饰条 -->
                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-l-xl opacity-0 group-hover/card:opacity-100 transition-opacity"></div>
                        
-                       <div class="flex flex-col gap-3 pl-2 sm:flex-row sm:items-center sm:gap-4">
+                       <div class="flex min-w-0 flex-col gap-3 pl-2 sm:flex-row sm:items-center sm:gap-4 md:flex-1">
                           <!-- 时间 -->
-                          <div class="flex items-center gap-2 text-sm font-bold font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded-lg">
+                          <div class="flex shrink-0 items-center gap-2 rounded-lg bg-gray-50 px-2 py-1 font-mono text-sm font-bold text-gray-600">
                              <span>{{ booking.start_time }}</span>
                              <span class="text-gray-300">→</span>
                              <span>{{ booking.end_time }}</span>
                           </div>
 
                           <!-- 用户 -->
-                          <div class="flex items-center gap-2">
+                          <div class="flex min-w-0 items-center gap-2">
                              <el-avatar :size="24" class="!bg-indigo-100 !text-indigo-600 !text-[10px] font-bold">
                                 {{ booking.user_name ? booking.user_name.charAt(0) : 'U' }}
                              </el-avatar>
-                             <span class="font-bold text-gray-700 text-sm">{{ booking.user_name }}</span>
-                             <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{{ booking.user_dept }}</span>
+                             <span class="min-w-0 truncate text-sm font-bold text-gray-700">{{ booking.user_name }}</span>
+                             <span class="max-w-[120px] shrink-0 truncate rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">{{ booking.user_dept }}</span>
                           </div>
                        </div>
                        
                        <!-- 备注 -->
-                       <div class="flex w-full items-center text-xs text-gray-400 md:max-w-[200px] md:justify-end">
+                       <div class="flex min-w-0 w-full items-center break-words text-xs text-gray-400 md:max-w-[220px] md:justify-end md:text-right">
                            {{ booking.remarks || '无备注' }}
                        </div>
                     </div>
@@ -103,10 +103,10 @@
                  
                  <div v-else class="space-y-3">
                     <div v-for="booking in myBookings" :key="booking.id"
-                         class="flex flex-col gap-3 rounded-xl border border-emerald-100 bg-emerald-50/30 p-3.5 transition-all group/my hover:bg-emerald-50/60 sm:flex-row sm:items-center sm:justify-between">
+                         class="flex min-w-0 flex-col gap-3 rounded-xl border border-emerald-100 bg-emerald-50/30 p-3.5 transition-all group/my hover:bg-emerald-50/60 sm:flex-row sm:items-center sm:justify-between">
                        
-                       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                          <div class="flex flex-col items-center min-w-[70px] border-r border-emerald-100 pr-3 mr-1">
+                       <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                          <div class="mr-1 flex shrink-0 flex-col items-center border-emerald-100 sm:min-w-[70px] sm:border-r sm:pr-3">
                              <div class="text-[10px] text-emerald-500 font-bold bg-white px-1.5 rounded-full mb-1 border border-emerald-100 whitespace-nowrap">
                                 {{ dayjs(booking.booking_date).format('MM-DD') }}
                              </div>
@@ -114,8 +114,8 @@
                              <span class="text-[10px] text-emerald-500/80 font-mono mt-0.5">至 {{ booking.end_time }}</span>
                           </div>
                           
-                          <div class="flex flex-col gap-0.5">
-                             <span class="text-sm font-bold text-gray-700">{{ booking.remarks || '无备注' }}</span>
+                          <div class="flex min-w-0 flex-col gap-0.5">
+                             <span class="break-words text-sm font-bold text-gray-700">{{ booking.remarks || '无备注' }}</span>
                              <span class="text-xs text-gray-400">{{ booking.num_people }} 人参与</span>
                              <span v-if="dayjs(booking.booking_date).isSame(dayjs(currentDate), 'day')" class="text-[10px] text-indigo-500 bg-indigo-50 px-1 rounded w-fit mt-0.5">当前选中日期</span>
                           </div>
@@ -131,7 +131,7 @@
                           icon-color="red"
                       >
                         <template #reference>
-                            <el-button type="danger" plain size="small" class="!px-3 !rounded-lg hover:!bg-red-50 hover:!text-red-600 transition-colors">
+                            <el-button type="danger" plain size="small" class="shrink-0 self-start !rounded-lg !px-3 transition-colors hover:!bg-red-50 hover:!text-red-600 sm:self-center">
                                 取消
                             </el-button>
                         </template>
@@ -148,7 +148,7 @@
            <div class="relative flex h-auto min-h-[560px] flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5 lg:h-auto lg:p-6">
               <div v-if="isPastDate || isTooFarFuture" class="absolute inset-0 bg-gray-50/80 z-20 flex flex-col items-center justify-center backdrop-blur-[1px]">
                   <el-icon :size="48" class="text-gray-300 mb-2"><CircleCloseFilled /></el-icon>
-                  <p class="text-gray-500 font-bold">{{ isPastDate ? '无法在过去日期进行预约' : '只能预约未来7天内的日期' }}</p>
+                  <p class="px-6 text-center font-bold text-gray-500">{{ isPastDate ? '无法在过去日期进行预约' : '只能预约未来7天内的日期' }}</p>
                   <el-button type="primary" link @click="goToToday" class="mt-2">返回今天</el-button>
               </div>
 
@@ -159,7 +159,7 @@
 
               <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="flex-1 flex flex-col" :disabled="loading || isPastDate || isTooFarFuture">
                  <el-form-item label="预约日期">
-                    <div class="w-full px-3 py-2 bg-gray-50 rounded-lg text-gray-500 text-sm font-bold border border-gray-200">
+                    <div class="w-full break-words rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-bold text-gray-500">
                         {{ currentDateFormatted }}
                     </div>
                  </el-form-item>
@@ -374,6 +374,33 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.date-toolbar {
+    align-items: stretch;
+}
+
+.date-toolbar :deep(.el-button) {
+    margin-left: 0 !important;
+}
+
+.date-toolbar :deep(.room-date-picker) {
+    min-width: 0;
+}
+
+.date-toolbar :deep(.room-date-picker.el-input),
+.date-toolbar :deep(.room-date-picker.el-date-editor) {
+    width: 100% !important;
+}
+
+.date-toolbar :deep(.el-input__wrapper) {
+    min-width: 0;
+    min-height: 44px !important;
+}
+
+.date-toolbar :deep(.el-input__inner) {
+    min-width: 0;
+    text-align: center;
+}
+
 /* 隐藏 el-input-number 的边框以适应风格 */
 :deep(.el-input__wrapper) {
     box-shadow: 0 0 0 1px #e5e7eb inset;

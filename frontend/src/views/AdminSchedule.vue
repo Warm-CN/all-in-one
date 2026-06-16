@@ -27,7 +27,7 @@
 
         <template #date-cell="{ data }">
           <div @click="handleDateClick(data.day)" 
-               :class="['absolute inset-1.5 flex flex-col justify-start items-center overflow-hidden transition-all duration-300 rounded-xl py-1 border border-transparent hover:border-indigo-200 hover:bg-indigo-50 relative group/cell cursor-pointer', 
+               :class="['absolute inset-1.5 flex flex-col justify-start items-center overflow-hidden transition-all duration-300 rounded-xl py-1 border border-transparent hover:border-indigo-200 hover:bg-indigo-50 group/cell cursor-pointer', 
                isSameDay(data.day, selectedDate) ? '!bg-indigo-100 !border-indigo-300' : '']">
             <!-- 日期数字 -->
             <div class="flex justify-center items-center h-8 w-full mb-0.5 shrink-0">
@@ -54,7 +54,7 @@
     </div>
 
     <!-- 右侧：日程管理 (42%) -->
-    <div class="flex w-full flex-col gap-4 lg:h-full lg:w-[42%]">
+    <div class="flex min-w-0 w-full flex-col gap-4 lg:h-full lg:w-[42%]">
       <!-- 选中日期显示 -->
       <div class="rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-5 text-white shadow-lg sm:px-8">
         <h2 class="text-2xl font-bold mb-1">{{ dayjs(selectedDate).format('MM月DD日') }}</h2>
@@ -81,7 +81,7 @@
               <div class="w-1.5 shrink-0" :style="{ backgroundColor: schedule.color }"></div>
               
               <!-- 内容区域 -->
-              <div class="py-3 pr-3 pl-5 flex-1 min-w-0">
+              <div class="min-w-0 flex-1 py-3 pl-5 pr-3">
                 <!-- 时间 -->
                 <div class="flex items-center gap-2 mb-2">
                   <el-icon :size="14" class="text-gray-400"><Clock /></el-icon>
@@ -89,12 +89,12 @@
                 </div>
               
                 <!-- 标题 -->
-                <h4 class="font-bold text-gray-800 mb-1 text-sm">{{ schedule.title }}</h4>
+                <h4 class="mb-1 break-words text-sm font-bold text-gray-800">{{ schedule.title }}</h4>
               
                 <!-- 地点 -->
-                <div v-if="schedule.location" class="flex items-center gap-1 text-xs text-gray-500 mb-2">
-                  <el-icon :size="12"><Location /></el-icon>
-                  <span>{{ schedule.location }}</span>
+                <div v-if="schedule.location" class="mb-2 flex min-w-0 items-center gap-1 text-xs text-gray-500">
+                  <el-icon :size="12" class="shrink-0"><Location /></el-icon>
+                  <span class="min-w-0 break-words">{{ schedule.location }}</span>
                 </div>
 
                 <!-- 删除按钮 -->

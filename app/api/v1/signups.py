@@ -215,27 +215,39 @@ async def get_active_signup_configs(
     无需登录即可访问
     """
     ensure_fixed_signup_configs(db)
-    query = db.query(SignupConfig).filter(
-        SignupConfig.is_active == True,
-        SignupConfig.category.in_(FIXED_SIGNUP_CATEGORIES)
-    )
-    
-    # 按分类筛选
-    if category:
-        query = query.filter(SignupConfig.category == category)
-    
-    # 只显示报名时间内的活动
     now = datetime.now()
-    query = query.filter(
-        SignupConfig.start_time <= now,
-        SignupConfig.end_time >= now
-    )
-    
-    configs = query.all()
+
+    if category == "recruitment":
+        configs = (
+            db.query(SignupConfig)
+            .filter(SignupConfig.category == "recruitment")
+            .order_by(SignupConfig.created_at.desc())
+            .all()
+        )
+    else:
+        query = db.query(SignupConfig).filter(
+            SignupConfig.is_active == True,
+            SignupConfig.category.in_(FIXED_SIGNUP_CATEGORIES)
+        )
+
+        # 按分类筛选
+        if category:
+            query = query.filter(SignupConfig.category == category)
+
+        # 只显示报名时间内的活动
+        query = query.filter(
+            SignupConfig.start_time <= now,
+            SignupConfig.end_time >= now
+        )
+
+        configs = query.all()
     
     return success_response(
         data=[{
+            "can_submit": bool(c.is_active and c.start_time <= now <= c.end_time),
             "id": c.id,
+            "is_active": c.is_active,
+            "is_preview": not bool(c.is_active and c.start_time <= now <= c.end_time),
             "title": c.title,
             "description": c.description,
             "category": c.category,

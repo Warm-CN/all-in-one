@@ -1,97 +1,175 @@
 <template>
-  <div class="flex h-full min-h-0 flex-col gap-5 pb-2 sm:gap-6 sm:pb-3">
-    <section class="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 pb-5 pt-6 shadow-[0_14px_34px_-28px_rgba(15,23,42,0.22)] sm:px-6 sm:pb-6 sm:pt-7 lg:px-7 lg:pb-7 lg:pt-8">
-      <div class="flex flex-col gap-5 2xl:flex-row 2xl:items-start 2xl:justify-between">
+  <div class="team-management-page flex h-full min-h-0 flex-col gap-5 pb-2 sm:gap-6 sm:pb-3">
+    <section class="rounded-2xl border border-slate-200 bg-white px-4 py-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)] sm:px-6 sm:py-6">
+      <div class="flex min-w-0 flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
         <div class="min-w-0">
-          <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-blue-600">TEAM CENTER</span>
-          <h2 class="mt-3 max-w-full pt-1 text-[1.95rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">队伍管理中心</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-500">成员可查询与导出，管理员可维护通道状态与验收安排。</p>
-          <p v-if="activeEventName || eventNameForm.name" class="mt-1 text-xs font-semibold text-blue-600">当前操控比赛：{{ eventNameForm.name || activeEventName }}</p>
-        </div>
-
-        <div class="flex flex-col gap-2 sm:flex-row 2xl:justify-end">
-          <el-button type="success" :loading="exporting" class="!h-11 !rounded-2xl !px-5" @click="handleExport">导出队伍 Excel</el-button>
-        </div>
-      </div>
-
-      <el-alert
-        v-if="noActiveEvent"
-        class="mt-4"
-        type="warning"
-        :closable="false"
-        title="没有正在进行的比赛，请先在赛事中心将某个比赛设为“正在比赛”后再进入队伍管理。"
-      />
-
-      <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-4">
-        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 overflow-hidden">
-          <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">队伍总数</div>
-          <div class="mt-1.5 text-[1.45rem] font-black text-slate-900">{{ tableData.length }}</div>
-        </div>
-        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 overflow-hidden">
-          <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">报名通道</div>
-          <div class="mt-1.5 text-[15px] font-semibold" :class="signupStatus.signup_open ? 'text-emerald-700' : 'text-slate-700'">{{ signupStatus.signup_open ? '开启' : '关闭' }}</div>
-        </div>
-        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 overflow-hidden">
-          <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">选题通道</div>
-          <div class="mt-1.5 text-[15px] font-semibold" :class="topicStatus.topic_open ? 'text-emerald-700' : 'text-slate-700'">{{ topicStatus.topic_open ? '开启' : '关闭' }}</div>
-        </div>
-        <div class="rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 overflow-hidden">
-          <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">信息修改通道</div>
-          <div class="mt-1.5 text-[15px] font-semibold" :class="updateStatus.info_update_open ? 'text-emerald-700' : 'text-slate-700'">{{ updateStatus.info_update_open ? '开启' : '关闭' }}</div>
-        </div>
-      </div>
-
-      <div v-if="userStore.isAdmin && activeEventId" class="mt-4 rounded-2xl border border-slate-200/80 bg-white/90 p-4">
-        <div class="mb-2 text-sm font-semibold text-slate-700">修改比赛名称</div>
-        <div class="flex flex-col gap-3 sm:flex-row">
-          <el-input v-model="eventNameForm.name" placeholder="请输入新的比赛名称" clearable class="sm:flex-1" />
-          <el-button type="primary" class="!h-11 !rounded-2xl !px-6" :loading="savingEventName" @click="saveEventName">保存比赛名称</el-button>
+          <span class="inline-flex max-w-full items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.16em] text-blue-600">
+            COMPETITION TEAMS
+          </span>
+          <h2 class="mt-3 text-[1.85rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">竞赛队伍</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-500">选择比赛后查看报名队伍信息，并按当前筛选条件导出报名数据或导入验收信息。</p>
         </div>
       </div>
     </section>
 
-    <section v-if="userStore.isAdmin" class="rounded-[24px] border border-slate-200/90 bg-[linear-gradient(180deg,#f8fbff_0%,#f8fafc_100%)] px-5 pb-7 pt-5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.2)] sm:px-6 sm:pb-8 sm:pt-6">
-      <h3 class="text-lg font-semibold text-slate-800">通道总控（管理员）</h3>
-      <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <el-switch v-model="configForm.signup_open" active-text="报名开启" inactive-text="报名关闭" />
-        <el-switch v-model="configForm.topic_open" active-text="选题开启" inactive-text="选题关闭" />
-        <el-switch v-model="configForm.info_update_open" active-text="信息修改开启" inactive-text="信息修改关闭" />
+    <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_28px_-30px_rgba(15,23,42,0.18)] sm:p-5">
+      <div class="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div class="min-w-0 xl:max-w-xl">
+          <h3 class="text-lg font-bold text-slate-900">选择比赛</h3>
+          <p class="mt-1 text-sm text-slate-500">选择后，下方整页展示对应比赛的报名队伍信息。</p>
+        </div>
       </div>
-      <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <el-date-picker v-model="configForm.signup_close_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" placeholder="报名截止时间" />
-        <el-date-picker v-model="configForm.topic_close_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" placeholder="选题截止时间" />
-        <el-date-picker v-model="configForm.info_update_close_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" placeholder="信息修改截止时间" />
+
+      <div v-if="eventsLoading" class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <el-skeleton v-for="item in 4" :key="item" animated>
+          <template #template>
+            <div class="rounded-xl border border-slate-100 p-4">
+              <el-skeleton-item variant="h3" class="!w-3/5" />
+              <el-skeleton-item variant="text" class="!mt-3 !w-full" />
+              <el-skeleton-item variant="text" class="!mt-2 !w-4/5" />
+            </div>
+          </template>
+        </el-skeleton>
       </div>
-      <div class="mt-6 flex justify-end border-t border-slate-200/70 pt-4">
-        <el-button type="primary" class="!h-11 !rounded-2xl !px-6" :loading="savingConfig" @click="saveConfig">保存通道配置</el-button>
+
+      <div v-else-if="!events.length" class="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+        暂无比赛
+      </div>
+
+      <div v-else class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <button
+          v-for="item in events"
+          :key="item.id"
+          type="button"
+          class="competition-card rounded-xl border p-4 text-left"
+          :class="selectedEventId === item.id ? 'border-blue-300 bg-blue-50/70' : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30'"
+          @click="selectEvent(item)"
+        >
+          <span class="flex flex-wrap items-center gap-2">
+            <el-tag :type="cupTagType(item.cup_type)" effect="plain">{{ cupLabel(item.cup_type) }}</el-tag>
+            <el-tag :type="item.is_current ? 'success' : 'info'" effect="light">
+              {{ item.is_current ? '进行中' : '未进行' }}
+            </el-tag>
+          </span>
+          <span class="mt-3 block text-base font-bold leading-snug text-slate-900 break-words">{{ item.name }}</span>
+          <span class="mt-3 grid grid-cols-3 gap-2 text-center">
+            <span class="rounded-lg bg-slate-50 px-2 py-2">
+              <span class="block text-[11px] font-semibold text-slate-500">队伍</span>
+              <span class="mt-1 block text-sm font-black text-slate-900">{{ item.team_count || 0 }}</span>
+            </span>
+            <span class="rounded-lg bg-slate-50 px-2 py-2">
+              <span class="block text-[11px] font-semibold text-slate-500">人数</span>
+              <span class="mt-1 block text-sm font-black text-slate-900">{{ item.total_people || 0 }}</span>
+            </span>
+            <span class="rounded-lg bg-slate-50 px-2 py-2">
+              <span class="block text-[11px] font-semibold text-slate-500">选题</span>
+              <span class="mt-1 block text-sm font-black text-slate-900">{{ item.topic_count || 0 }}</span>
+            </span>
+          </span>
+        </button>
       </div>
     </section>
 
-    <section class="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.18)] sm:p-6">
-      <div class="mt-1 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px_auto]">
+    <section v-if="selectedEvent" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_28px_-30px_rgba(15,23,42,0.18)] sm:p-5">
+      <div class="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <el-tag :type="cupTagType(selectedEvent.cup_type)" effect="plain">{{ cupLabel(selectedEvent.cup_type) }}</el-tag>
+            <el-tag :type="selectedEvent.is_current ? 'success' : 'info'" effect="light">
+              {{ selectedEvent.is_current ? '进行中' : '未进行' }}
+            </el-tag>
+          </div>
+          <h3 class="mt-3 text-2xl font-black leading-snug text-slate-900 break-words">{{ selectedEvent.name }}</h3>
+          <p class="mt-1 text-xs leading-5 text-slate-400 break-all">模块标识：{{ selectedEvent.module_key }}</p>
+        </div>
+
+        <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-auto lg:min-w-[360px]">
+          <el-button type="success" :icon="Download" :loading="exporting" @click="handleExport">
+            导出报名信息
+          </el-button>
+          <el-upload
+            v-if="userStore.isAdmin"
+            :show-file-list="false"
+            accept=".xlsx"
+            :http-request="handleInspectionImport"
+            class="w-full"
+            :disabled="importing"
+          >
+            <el-button type="primary" plain :icon="Upload" :loading="importing" class="w-full">
+              导入验收信息
+            </el-button>
+          </el-upload>
+        </div>
+      </div>
+
+      <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="rounded-xl bg-slate-50 px-3 py-3 text-center">
+          <div class="text-xs font-semibold text-slate-500">报名队伍</div>
+          <div class="mt-1 text-xl font-black text-slate-900">{{ tableData.length }}</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 px-3 py-3 text-center">
+          <div class="text-xs font-semibold text-slate-500">报名人数</div>
+          <div class="mt-1 text-xl font-black text-slate-900">{{ selectedEvent.total_people || 0 }}</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 px-3 py-3 text-center">
+          <div class="text-xs font-semibold text-slate-500">选题数量</div>
+          <div class="mt-1 text-xl font-black text-slate-900">{{ topics.length }}</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 px-3 py-3 text-center">
+          <div class="text-xs font-semibold text-slate-500">报名时间</div>
+          <div class="mt-1 text-xs font-bold leading-5 text-slate-900">{{ formatRange(selectedEvent.signup_start_at, selectedEvent.signup_end_at) }}</div>
+        </div>
+      </div>
+    </section>
+
+    <el-alert
+      v-else
+      type="info"
+      :closable="false"
+      title="请先选择一个比赛"
+    />
+
+    <section v-if="selectedEvent" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_28px_-30px_rgba(15,23,42,0.18)] sm:p-5">
+      <div class="mb-4 flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div class="min-w-0">
+          <h3 class="text-lg font-bold text-slate-900">筛选报名队伍</h3>
+          <p class="mt-1 text-sm text-slate-500">当前筛选会同步作用于 Excel 导出。</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_280px_220px_auto]">
         <el-input v-model="filters.keyword" placeholder="队伍名 / 队长姓名 / 学号" clearable @keyup.enter="fetchList" />
         <el-select v-model="filters.topic_id" placeholder="按题目筛选" clearable class="w-full">
-          <el-option v-for="item in topics" :key="item.id" :label="`${item.code} - ${item.title}`" :value="item.id" />
+          <el-option v-for="item in topics" :key="item.id" :label="topicLabel(item)" :value="item.id" />
         </el-select>
-        <div class="flex flex-col gap-2 sm:flex-row xl:justify-end">
-          <el-button type="primary" class="!h-11 !rounded-2xl !px-6" @click="fetchList">查询</el-button>
-          <el-button class="!h-11 !rounded-2xl !px-6" @click="resetFilters">重置</el-button>
+        <el-select v-model="filters.delete_status" placeholder="删除申请状态" clearable class="w-full">
+          <el-option label="正常队伍" value="normal" />
+          <el-option label="待确认删除" value="pending" />
+        </el-select>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:justify-end">
+          <el-button type="primary" :icon="Search" @click="fetchList">查询</el-button>
+          <el-button @click="resetFilters">重置</el-button>
         </div>
       </div>
     </section>
 
-    <section class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] shadow-[0_16px_38px_-32px_rgba(15,23,42,0.2)]">
-      <div class="flex flex-col gap-3 border-b border-slate-200/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <h3 class="text-lg font-semibold text-slate-800">队伍列表</h3>
-        <div class="text-xs font-medium text-slate-400">仅管理员可维护验收安排</div>
+    <section class="flex min-h-[560px] flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_16px_38px_-32px_rgba(15,23,42,0.2)]">
+      <div class="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <h3 class="text-lg font-bold text-slate-900">报名队伍信息</h3>
+        <div class="text-xs font-medium text-slate-400">{{ selectedEvent ? `已载入 ${tableData.length} 支队伍` : '未选择比赛' }}</div>
       </div>
-      <div class="flex h-full min-h-0 flex-col p-4 sm:p-5">
-        <div class="min-h-0 flex-1 overflow-auto rounded-[24px] border border-slate-200/80 bg-white">
-          <el-table :data="tableData" border stripe height="100%" v-loading="loading" style="min-width: 1700px">
+      <div v-if="!selectedEvent" class="flex min-h-[360px] items-center justify-center px-4 py-10 text-center text-sm text-slate-500">
+        选择比赛后显示该比赛的报名队伍
+      </div>
+      <div v-else class="flex h-full min-h-0 flex-col p-4 sm:p-5">
+        <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-white">
+          <el-table :data="tableData" border stripe height="100%" v-loading="loading" style="min-width: 1850px">
             <el-table-column prop="team_name" label="队伍名称" min-width="160" />
-            <el-table-column label="队长信息" min-width="220">
+            <el-table-column prop="competition_track" label="赛道/组别" min-width="120">
+              <template #default="{ row }">{{ row.competition_track || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="队长信息" min-width="230">
               <template #default="{ row }">
-                <div>{{ row.captain_name }} / {{ row.captain_student_id }}</div>
+                <div class="font-semibold text-slate-800">{{ row.captain_name }} / {{ row.captain_student_id }}</div>
                 <div class="text-xs text-slate-500">{{ row.captain_phone }}</div>
                 <div class="text-xs text-slate-500">{{ row.captain_college || '-' }} / {{ row.captain_major_class || '-' }}</div>
               </template>
@@ -112,93 +190,41 @@
                 <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="topic_title" label="选题" min-width="180" />
-            <el-table-column label="删除状态" min-width="220">
+            <el-table-column prop="topic_title" label="选题" min-width="180">
+              <template #default="{ row }">{{ row.topic_title || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="状态" min-width="190">
               <template #default="{ row }">
                 <div v-if="row.delete_requested" class="space-y-1">
-                  <el-tag type="warning" size="small">待管理员确认删除</el-tag>
-                  <div class="text-xs text-slate-500">申请时间：{{ row.delete_requested_at || '-' }}</div>
-                  <div class="text-xs text-slate-500">理由：{{ row.delete_reason || '-' }}</div>
+                  <el-tag type="warning" size="small">待确认删除</el-tag>
+                  <div class="text-xs text-slate-500">申请时间：{{ formatDate(row.delete_requested_at, '-') }}</div>
                 </div>
                 <el-tag v-else type="success" size="small">正常</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="一验" min-width="260">
+            <el-table-column label="一验安排" min-width="250">
               <template #default="{ row }">
                 <div class="whitespace-pre-wrap text-xs leading-6 text-slate-600">
-                  时间：{{ row.inspection?.first_inspection_time || '待安排' }}
+                  时间：{{ formatDate(row.inspection?.first_inspection_time, '待安排') }}
                   {{ '\n' }}地点：{{ row.inspection?.first_inspection_location || '待安排' }}
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="二验" min-width="260">
+            <el-table-column label="二验安排" min-width="250">
               <template #default="{ row }">
                 <div class="whitespace-pre-wrap text-xs leading-6 text-slate-600">
-                  时间：{{ row.inspection?.second_inspection_time || '待安排' }}
+                  时间：{{ formatDate(row.inspection?.second_inspection_time, '待安排') }}
                   {{ '\n' }}地点：{{ row.inspection?.second_inspection_location || '待安排' }}
                 </div>
               </template>
             </el-table-column>
-            <el-table-column v-if="userStore.isAdmin" label="操作" min-width="140" fixed="right">
-              <template #default="{ row }">
-                <div class="flex flex-wrap gap-2">
-                  <el-button link type="primary" @click="openTopicDialog(row)">修改选题</el-button>
-                  <el-button link type="primary" @click="openInspectionDialog(row)">维护验收</el-button>
-                  <el-popconfirm
-                    v-if="row.delete_requested"
-                    title="确认彻底删除该队伍？删除后不可恢复"
-                    confirm-button-text="确认删除"
-                    cancel-button-text="取消"
-                    @confirm="handleConfirmDelete(row)"
-                  >
-                    <template #reference>
-                      <el-button link type="danger">确认删除</el-button>
-                    </template>
-                  </el-popconfirm>
-                </div>
-              </template>
+            <el-table-column label="报名时间" min-width="160">
+              <template #default="{ row }">{{ formatDate(row.created_at, '-') }}</template>
             </el-table-column>
           </el-table>
         </div>
       </div>
     </section>
-
-    <el-dialog v-model="inspectionVisible" title="维护验收安排" width="760px" destroy-on-close>
-      <el-form :model="inspectionForm" label-position="top" size="large">
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <el-form-item label="第一次验收时间"><el-date-picker v-model="inspectionForm.first_inspection_time" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" class="w-full" /></el-form-item>
-          <el-form-item label="第一次验收地点"><el-input v-model="inspectionForm.first_inspection_location" /></el-form-item>
-          <el-form-item label="第一次验收负责人"><el-input v-model="inspectionForm.first_inspector" /></el-form-item>
-          <el-form-item label="第一次验收备注"><el-input v-model="inspectionForm.first_notes" /></el-form-item>
-          <el-form-item label="第二次验收时间"><el-date-picker v-model="inspectionForm.second_inspection_time" type="datetime" value-format="YYYY-MM-DDTHH:mm:ss" class="w-full" /></el-form-item>
-          <el-form-item label="第二次验收地点"><el-input v-model="inspectionForm.second_inspection_location" /></el-form-item>
-          <el-form-item label="第二次验收负责人"><el-input v-model="inspectionForm.second_inspector" /></el-form-item>
-          <el-form-item label="第二次验收备注"><el-input v-model="inspectionForm.second_notes" /></el-form-item>
-        </div>
-      </el-form>
-      <template #footer>
-        <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <el-button @click="inspectionVisible = false">取消</el-button>
-          <el-button type="primary" :loading="savingInspection" @click="submitInspection">保存</el-button>
-        </div>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="topicVisible" title="修改队伍选题" width="560px" destroy-on-close>
-      <el-form :model="topicForm" label-position="top" size="large">
-        <el-form-item label="新题目">
-          <el-select v-model="topicForm.topic_id" placeholder="请选择题目" class="w-full">
-            <el-option v-for="item in topics" :key="item.id" :label="`${item.code} - ${item.title}`" :value="item.id" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <el-button @click="topicVisible = false">取消</el-button>
-          <el-button type="primary" :loading="savingInspection" @click="submitTopic">保存</el-button>
-        </div>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -207,109 +233,166 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
-import { getCurrentCompetitionEvent, updateCompetitionEventName } from '@/api/competition'
+import { Download, Search, Upload } from '@element-plus/icons-vue'
+import { getCompetitionEvents } from '@/api/competition'
 import {
-  batchUpdateTeamTopic,
-  confirmDeleteTeam,
   exportTeams,
   getSignupStatus,
   getTeams,
-  getTeamUpdateStatus,
-  getTopicStatus,
   getTopics,
-  updateTeamChannelConfig,
-  updateTeamInspection
+  importTeamInspections,
 } from '@/api/team'
 
 const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
-const activeModuleKey = computed(() => (route.query.module_key || '').toString())
-const activeEventName = computed(() => (route.query.event_name || '').toString())
-const activeEventId = computed(() => {
-  const raw = Number(route.query.event_id)
-  return Number.isInteger(raw) && raw > 0 ? raw : null
-})
 
+const eventsLoading = ref(false)
 const loading = ref(false)
 const exporting = ref(false)
-const savingConfig = ref(false)
-const savingInspection = ref(false)
-const savingEventName = ref(false)
-const noActiveEvent = ref(false)
+const importing = ref(false)
 
+const events = ref([])
+const selectedEventId = ref(null)
 const tableData = ref([])
 const topics = ref([])
-const eventNameForm = reactive({
-  name: ''
-})
+
+const selectedEvent = computed(() => events.value.find((item) => item.id === selectedEventId.value) || null)
+const activeModuleKey = computed(() => selectedEvent.value?.module_key || '')
 
 const signupStatus = reactive({ signup_open: false, signup_close_at: null })
-const topicStatus = reactive({ topic_open: false, topic_close_at: null })
-const updateStatus = reactive({ info_update_open: false, info_update_close_at: null })
-
-const configForm = reactive({
-  signup_open: false,
-  topic_open: false,
-  info_update_open: false,
-  signup_close_at: null,
-  topic_close_at: null,
-  info_update_close_at: null
-})
 
 const filters = reactive({
   keyword: '',
-  topic_id: null
+  topic_id: null,
+  delete_status: ''
 })
 
-const inspectionVisible = ref(false)
-const editingTeamId = ref(null)
-const topicVisible = ref(false)
-const topicForm = reactive({
-  team_id: null,
-  topic_id: null
+const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
 })
-const inspectionForm = reactive({
-  first_inspection_time: null,
-  first_inspection_location: '',
-  first_inspector: '',
-  first_notes: '',
-  second_inspection_time: null,
-  second_inspection_location: '',
-  second_inspector: '',
-  second_notes: ''
-})
+
+const getErrorMessage = (error, fallback) => {
+  const detail = error?.response?.data?.detail
+  return error?.response?.data?.msg || (typeof detail === 'string' ? detail : '') || error?.message || fallback
+}
+
+const cupLabel = (type) => (type === 'telecom' ? '电信杯' : '无线杯')
+const cupTagType = (type) => (type === 'telecom' ? 'warning' : 'primary')
+const topicLabel = (item) => `${item.code || item.id} - ${item.title}`
+
+const formatDate = (value, fallback = '未设置') => {
+  if (!value) return fallback
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return String(value)
+  return dateTimeFormatter.format(date)
+}
+
+const formatRange = (start, end) => `${formatDate(start)} 至 ${formatDate(end)}`
+
+const toSortableTime = (value) => {
+  const time = new Date(value || 0).getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+const sortEvents = (items) => {
+  return [...items].sort((left, right) => {
+    if (!!right.is_current !== !!left.is_current) return right.is_current ? 1 : -1
+    return toSortableTime(right.created_at) - toSortableTime(left.created_at)
+  })
+}
+
+const buildListParams = () => {
+  const params = {
+    module_key: activeModuleKey.value
+  }
+  if (filters.keyword) params.keyword = filters.keyword
+  if (filters.topic_id) params.topic_id = filters.topic_id
+  if (filters.delete_status === 'pending') params.delete_requested = true
+  if (filters.delete_status === 'normal') params.delete_requested = false
+  return params
+}
+
+const resetContextData = () => {
+  tableData.value = []
+  topics.value = []
+  Object.assign(signupStatus, { signup_open: false, signup_close_at: null })
+}
+
+const fetchEvents = async () => {
+  eventsLoading.value = true
+  try {
+    const [wirelessRes, telecomRes] = await Promise.all([
+      getCompetitionEvents('wireless'),
+      getCompetitionEvents('telecom')
+    ])
+    const wirelessEvents = Array.isArray(wirelessRes.data) ? wirelessRes.data : []
+    const telecomEvents = Array.isArray(telecomRes.data) ? telecomRes.data : []
+    events.value = sortEvents([...wirelessEvents, ...telecomEvents])
+
+    const routeEventId = Number(route.query.event_id)
+    const preferred = events.value.find((item) => item.id === routeEventId)
+      || events.value.find((item) => item.is_current)
+      || events.value[0]
+      || null
+
+    if (preferred) {
+      await selectEvent(preferred, { resetTopicFilter: false })
+    } else {
+      selectedEventId.value = null
+      resetContextData()
+    }
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '获取比赛列表失败'))
+  } finally {
+    eventsLoading.value = false
+  }
+}
+
+const selectEvent = async (event, options = {}) => {
+  if (!event?.id) return
+  const { resetTopicFilter = true, syncRoute = true } = options
+
+  selectedEventId.value = event.id
+  if (resetTopicFilter) filters.topic_id = null
+
+  if (syncRoute) {
+    await router.replace({
+      path: '/teams-center',
+      query: {
+        event_id: String(event.id),
+        module_key: event.module_key,
+        event_name: event.display_title || event.portal_title || event.name,
+        cup_type: event.cup_type,
+      }
+    })
+  }
+
+  await loadBaseData()
+  await fetchList()
+}
 
 const loadBaseData = async () => {
   if (!activeModuleKey.value) {
-    topics.value = []
-    Object.assign(signupStatus, { signup_open: false, signup_close_at: null })
-    Object.assign(topicStatus, { topic_open: false, topic_close_at: null })
-    Object.assign(updateStatus, { info_update_open: false, info_update_close_at: null })
+    resetContextData()
     return
   }
 
   try {
-    const [signupRes, topicRes, updateRes, topicsRes] = await Promise.all([
+    const [signupRes, topicsRes] = await Promise.all([
       getSignupStatus({ module_key: activeModuleKey.value }),
-      getTopicStatus({ module_key: activeModuleKey.value }),
-      getTeamUpdateStatus({ module_key: activeModuleKey.value }),
       getTopics({ only_active: false, module_key: activeModuleKey.value })
     ])
 
     Object.assign(signupStatus, signupRes.data || {})
-    Object.assign(topicStatus, topicRes.data || {})
-    Object.assign(updateStatus, updateRes.data || {})
     topics.value = Array.isArray(topicsRes.data) ? topicsRes.data : []
-
-    configForm.signup_open = !!signupStatus.signup_open
-    configForm.topic_open = !!topicStatus.topic_open
-    configForm.info_update_open = !!updateStatus.info_update_open
-    configForm.signup_close_at = signupStatus.signup_close_at
-    configForm.topic_close_at = topicStatus.topic_close_at
-    configForm.info_update_close_at = updateStatus.info_update_close_at
   } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '初始化失败')
+    ElMessage.error(getErrorMessage(error, '初始化比赛信息失败'))
   }
 }
 
@@ -321,14 +404,10 @@ const fetchList = async () => {
 
   loading.value = true
   try {
-    const params = {}
-    if (filters.keyword) params.keyword = filters.keyword
-    if (filters.topic_id) params.topic_id = filters.topic_id
-    params.module_key = activeModuleKey.value
-    const res = await getTeams(params)
+    const res = await getTeams(buildListParams())
     tableData.value = Array.isArray(res.data) ? res.data : []
   } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '获取队伍列表失败')
+    ElMessage.error(getErrorMessage(error, '获取队伍列表失败'))
   } finally {
     loading.value = false
   }
@@ -337,220 +416,97 @@ const fetchList = async () => {
 const resetFilters = () => {
   filters.keyword = ''
   filters.topic_id = null
+  filters.delete_status = ''
   fetchList()
 }
 
-const saveConfig = async () => {
-  if (!userStore.isAdmin) return
-  if (!activeModuleKey.value) {
-    ElMessage.warning('当前没有进行中的比赛，无法保存通道配置')
-    return
-  }
-  savingConfig.value = true
-  try {
-    await updateTeamChannelConfig({
-      module_key: activeModuleKey.value,
-      signup_open: configForm.signup_open,
-      topic_open: configForm.topic_open,
-      info_update_open: configForm.info_update_open,
-      signup_close_at: configForm.signup_close_at,
-      topic_close_at: configForm.topic_close_at,
-      info_update_close_at: configForm.info_update_close_at
-    })
-    ElMessage.success('通道配置已保存')
-    await loadBaseData()
-  } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '保存失败')
-  } finally {
-    savingConfig.value = false
-  }
-}
-
-const saveEventName = async () => {
-  if (!userStore.isAdmin) return
-  if (!activeEventId.value) {
-    ElMessage.warning('未找到比赛ID，请从赛事中心进入本页面后再修改名称')
-    return
-  }
-
-  const name = (eventNameForm.name || '').trim()
-  if (!name) {
-    ElMessage.warning('请输入比赛名称')
-    return
-  }
-
-  savingEventName.value = true
-  try {
-    await updateCompetitionEventName(activeEventId.value, name)
-    ElMessage.success('比赛名称已更新')
-  } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '更新失败')
-  } finally {
-    savingEventName.value = false
-  }
-}
-
 const handleExport = async () => {
-  if (!activeModuleKey.value) {
-    ElMessage.warning('当前没有进行中的比赛，无法导出')
+  if (!selectedEvent.value || !activeModuleKey.value) {
+    ElMessage.warning('请先选择比赛')
     return
   }
   exporting.value = true
   try {
-    const params = {}
-    if (filters.keyword) params.keyword = filters.keyword
-    if (filters.topic_id) params.topic_id = filters.topic_id
-    params.module_key = activeModuleKey.value
-    const blobData = await exportTeams(params)
+    const blobData = await exportTeams(buildListParams())
     const blob = new Blob([blobData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
+    const safeName = (selectedEvent.value.name || '竞赛队伍').replace(/[\\/:*?"<>|]/g, '_')
     link.href = url
-    link.download = '队伍数据导出.xlsx'
+    link.download = `${safeName}_报名信息.xlsx`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
   } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '导出失败')
+    ElMessage.error(getErrorMessage(error, '导出失败'))
   } finally {
     exporting.value = false
   }
 }
 
-const openInspectionDialog = (row) => {
-  editingTeamId.value = row.id
-  inspectionForm.first_inspection_time = row.inspection?.first_inspection_time || null
-  inspectionForm.first_inspection_location = row.inspection?.first_inspection_location || ''
-  inspectionForm.first_inspector = row.inspection?.first_inspector || ''
-  inspectionForm.first_notes = row.inspection?.first_notes || ''
-  inspectionForm.second_inspection_time = row.inspection?.second_inspection_time || null
-  inspectionForm.second_inspection_location = row.inspection?.second_inspection_location || ''
-  inspectionForm.second_inspector = row.inspection?.second_inspector || ''
-  inspectionForm.second_notes = row.inspection?.second_notes || ''
-  inspectionVisible.value = true
-}
-
-const openTopicDialog = (row) => {
-  topicForm.team_id = row.id
-  topicForm.topic_id = row.topic_id || null
-  topicVisible.value = true
-}
-
-const submitTopic = async () => {
-  if (!topicForm.team_id || !topicForm.topic_id) {
-    ElMessage.warning('请选择要设置的题目')
+const handleInspectionImport = async (uploadRequest) => {
+  if (!userStore.isAdmin || !selectedEvent.value || !activeModuleKey.value) return
+  const file = uploadRequest?.file
+  if (!file) {
+    ElMessage.warning('请选择 xlsx 文件')
     return
   }
 
-  savingInspection.value = true
+  importing.value = true
   try {
-    await batchUpdateTeamTopic({
-      team_ids: [topicForm.team_id],
-      topic_id: topicForm.topic_id
-    })
-    ElMessage.success('选题修改成功')
-    topicVisible.value = false
+    const res = await importTeamInspections(file, activeModuleKey.value)
+    if (typeof uploadRequest?.onSuccess === 'function') uploadRequest.onSuccess(res)
+    ElMessage.success(res.msg || '导入成功')
     await fetchList()
   } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '修改失败')
+    if (typeof uploadRequest?.onError === 'function') uploadRequest.onError(error)
+    ElMessage.error(getErrorMessage(error, '导入失败'))
   } finally {
-    savingInspection.value = false
+    importing.value = false
   }
 }
 
-const submitInspection = async () => {
-  if (!editingTeamId.value || !userStore.isAdmin) return
-  savingInspection.value = true
-  try {
-    await updateTeamInspection(editingTeamId.value, { ...inspectionForm })
-    ElMessage.success('验收安排已保存')
-    inspectionVisible.value = false
-    await fetchList()
-  } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '保存失败')
-  } finally {
-    savingInspection.value = false
-  }
-}
-
-const handleConfirmDelete = async (row) => {
-  if (!userStore.isAdmin || !row?.id) return
-  savingInspection.value = true
-  try {
-    await confirmDeleteTeam(row.id)
-    ElMessage.success('已彻底删除该队伍')
-    await fetchList()
-  } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '删除失败')
-  } finally {
-    savingInspection.value = false
-  }
-}
-
-const ensureCurrentEventContext = async () => {
-  if (activeModuleKey.value) {
-    noActiveEvent.value = false
-    return
-  }
-
-  try {
-    const res = await getCurrentCompetitionEvent()
-    const event = res.data
-    if (!event?.module_key) {
-      noActiveEvent.value = true
-      tableData.value = []
-      topics.value = []
-      Object.assign(signupStatus, { signup_open: false, signup_close_at: null })
-      Object.assign(topicStatus, { topic_open: false, topic_close_at: null })
-      Object.assign(updateStatus, { info_update_open: false, info_update_close_at: null })
-      return
-    }
-
-    noActiveEvent.value = false
-    await router.replace({
-      path: route.path,
-      query: {
-        ...route.query,
-        module_key: event.module_key,
-        event_id: String(event.id),
-        event_name: event.display_title || event.name,
-        cup_type: event.cup_type,
-      },
-    })
-  } catch (error) {
-    noActiveEvent.value = true
-    tableData.value = []
-    topics.value = []
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '获取当前进行中比赛失败')
-  }
-}
-
-onMounted(async () => {
-  await ensureCurrentEventContext()
-  if (noActiveEvent.value) return
-  await loadBaseData()
-  await fetchList()
-})
+onMounted(fetchEvents)
 
 watch(
-  () => route.query.module_key,
-  async () => {
-    if (!route.query.module_key) {
-      await ensureCurrentEventContext()
-      if (noActiveEvent.value) return
-    }
-    await loadBaseData()
-    await fetchList()
+  () => route.query.event_id,
+  async (value) => {
+    if (!events.value.length) return
+    const eventId = Number(value)
+    if (!eventId || eventId === selectedEventId.value) return
+    const event = events.value.find((item) => item.id === eventId)
+    if (event) await selectEvent(event, { resetTopicFilter: true, syncRoute: false })
   }
-)
-
-watch(
-  () => route.query.event_name,
-  () => {
-    eventNameForm.name = activeEventName.value
-  },
-  { immediate: true }
 )
 </script>
+
+<style scoped>
+.team-management-page {
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+.competition-card {
+  min-width: 0;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.competition-card:hover {
+  box-shadow: 0 12px 26px -28px rgba(15, 23, 42, 0.45);
+}
+
+.competition-card:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.team-management-page :deep(.el-upload) {
+  width: 100%;
+}
+
+.team-management-page :deep(.el-form-item) {
+  min-width: 0;
+}
+</style>

@@ -9,9 +9,9 @@
           <div class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-lg shadow-indigo-600/15">
             <img :src="logo" alt="Logo" class="h-full w-full object-contain" />
           </div>
-          <div>
+          <div class="min-w-0">
             <div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Club Suite</div>
-            <div class="text-base font-bold tracking-tight text-slate-800">无线协 ALL IN ONE</div>
+            <div class="max-w-[162px] truncate text-base font-bold tracking-tight text-slate-800">无线协 ALL IN ONE</div>
           </div>
         </div>
       </div>
@@ -33,17 +33,9 @@
             <el-icon><UserFilled /></el-icon>
             <span>招新面试</span>
           </el-menu-item>
-          <el-menu-item index="/wireless-cup" class="menu-item">
-            <el-icon><Trophy /></el-icon>
-            <span>无线杯</span>
-          </el-menu-item>
-          <el-menu-item index="/telecom-cup" class="menu-item">
-            <el-icon><Medal /></el-icon>
-            <span>电信杯</span>
-          </el-menu-item>
           <el-menu-item index="/teams-center" class="menu-item">
-            <el-icon><Medal /></el-icon>
-            <span>竞赛队伍管理</span>
+            <el-icon><Trophy /></el-icon>
+            <span>竞赛队伍</span>
           </el-menu-item>
           <el-menu-item index="/contacts" class="menu-item">
             <el-icon><Notebook /></el-icon>
@@ -64,9 +56,13 @@
               <el-icon><Setting /></el-icon>
               <span>会议室管理</span>
             </el-menu-item>
-            <el-menu-item index="/admin/management" class="menu-item">
+            <el-menu-item index="/admin/recruitment" class="menu-item">
+              <el-icon><UserFilled /></el-icon>
+              <span>招新管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/events" class="menu-item">
               <el-icon><DataLine /></el-icon>
-              <span>后台管理</span>
+              <span>赛事管理</span>
             </el-menu-item>
           </template>
         </el-menu>
@@ -195,9 +191,9 @@
           <div class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-lg shadow-indigo-600/15">
             <img :src="logo" alt="Logo" class="h-full w-full object-contain" />
           </div>
-          <div>
+          <div class="min-w-0">
             <div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Club Suite</div>
-            <div class="text-base font-bold tracking-tight text-slate-800">无线协 ALL IN ONE</div>
+            <div class="max-w-[190px] truncate text-base font-bold tracking-tight text-slate-800">无线协 ALL IN ONE</div>
           </div>
         </div>
       </div>
@@ -224,17 +220,9 @@
             <el-icon><UserFilled /></el-icon>
             <span>招新面试</span>
           </el-menu-item>
-          <el-menu-item index="/wireless-cup" class="menu-item">
-            <el-icon><Trophy /></el-icon>
-            <span>无线杯</span>
-          </el-menu-item>
-          <el-menu-item index="/telecom-cup" class="menu-item">
-            <el-icon><Medal /></el-icon>
-            <span>电信杯</span>
-          </el-menu-item>
           <el-menu-item index="/teams-center" class="menu-item">
-            <el-icon><Medal /></el-icon>
-            <span>竞赛队伍管理</span>
+            <el-icon><Trophy /></el-icon>
+            <span>竞赛队伍</span>
           </el-menu-item>
           <el-menu-item index="/contacts" class="menu-item">
             <el-icon><Notebook /></el-icon>
@@ -255,9 +243,13 @@
               <el-icon><Setting /></el-icon>
               <span>会议室管理</span>
             </el-menu-item>
-            <el-menu-item index="/admin/management" class="menu-item">
+            <el-menu-item index="/admin/recruitment" class="menu-item">
+              <el-icon><UserFilled /></el-icon>
+              <span>招新管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/events" class="menu-item">
               <el-icon><DataLine /></el-icon>
-              <span>后台管理</span>
+              <span>赛事管理</span>
             </el-menu-item>
           </template>
         </el-menu>
@@ -281,7 +273,6 @@ import {
   CaretBottom,
   Setting,
   Trophy,
-  Medal,
   Notebook,
   DataLine,
   SwitchButton,
@@ -359,6 +350,14 @@ onMounted(() => {
 :deep(.el-menu-item) {
   height: 48px;
   line-height: 48px;
+  min-width: 0;
+}
+
+:deep(.el-menu-item span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 :deep(.el-menu-item.is-active) {
