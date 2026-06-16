@@ -38,6 +38,9 @@
         <div class="min-w-0">
           <div class="flex min-w-0 flex-wrap items-center gap-2">
             <el-tag :type="cupTagType(currentEvent.cup_type)" effect="plain">{{ cupLabel(currentEvent.cup_type) }}</el-tag>
+            <el-tag :type="currentEvent.signup_open ? 'success' : 'info'" effect="light">
+              {{ currentEvent.signup_open ? '报名页开放' : '报名页关闭' }}
+            </el-tag>
             <h4 class="min-w-0 text-xl font-bold leading-snug text-slate-900">{{ currentEvent.name }}</h4>
           </div>
           <p class="mt-2 text-sm leading-6 text-slate-500 break-words">
@@ -120,6 +123,9 @@
                   <el-tag :type="item.is_current ? 'success' : 'info'" effect="light">
                     {{ item.is_current ? '进行中' : '未进行' }}
                   </el-tag>
+                  <el-tag :type="item.signup_open ? 'success' : 'info'" effect="light">
+                    {{ item.signup_open ? '报名页开放' : '报名页关闭' }}
+                  </el-tag>
                 </div>
                 <h4 class="mt-3 text-base font-bold leading-snug text-slate-900 break-words">{{ item.name }}</h4>
                 <p class="mt-1 text-xs leading-5 text-slate-500 break-words">
@@ -174,14 +180,24 @@
                 <el-tag :type="selectedEvent.is_current ? 'success' : 'info'" effect="light">
                   {{ selectedEvent.is_current ? '进行中' : '未进行' }}
                 </el-tag>
+                <el-tag :type="selectedEvent.signup_open ? 'success' : 'info'" effect="light">
+                  {{ selectedEvent.signup_open ? '报名页开放' : '报名页关闭' }}
+                </el-tag>
               </div>
               <h3 class="mt-3 text-2xl font-black leading-snug text-slate-900 break-words">{{ selectedEvent.name }}</h3>
               <p class="mt-1 text-xs leading-5 text-slate-400 break-all">模块标识：{{ selectedEvent.module_key }}</p>
             </div>
 
-            <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-auto">
+            <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
               <el-button type="primary" :icon="Right" @click="goTeamsCenter(selectedEvent)">
                 队伍管理
+              </el-button>
+              <el-button
+                :type="selectedEvent.signup_open ? 'danger' : 'success'"
+                :loading="signupOpenSavingId === selectedEvent.id"
+                @click="toggleSignupOpen(selectedEvent)"
+              >
+                {{ selectedEvent.signup_open ? '关闭报名页面' : '开放报名页面' }}
               </el-button>
               <el-button :loading="activeSavingId === selectedEvent.id" @click="toggleEventCurrent(selectedEvent)">
                 {{ selectedEvent.is_current ? '取消进行中' : '设为进行中' }}
@@ -417,6 +433,7 @@ import {
   getCurrentCompetitionEvent,
   updateCompetitionActiveState,
   updateCompetitionEvent,
+  updateCompetitionSignupOpenState,
   updateCompetitionTopic,
 } from '@/api/competition'
 
@@ -428,6 +445,7 @@ const creating = ref(false)
 const savingDetails = ref(false)
 const savingTopic = ref(false)
 const activeSavingId = ref(null)
+const signupOpenSavingId = ref(null)
 
 const createDialogVisible = ref(false)
 const events = ref([])
@@ -681,6 +699,21 @@ const toggleEventCurrent = async (event) => {
     ElMessage.error(getErrorMessage(error, '更新比赛状态失败'))
   } finally {
     activeSavingId.value = null
+  }
+}
+
+const toggleSignupOpen = async (event) => {
+  if (!event?.id) return
+
+  signupOpenSavingId.value = event.id
+  try {
+    await updateCompetitionSignupOpenState(event.id, !event.signup_open)
+    ElMessage.success(event.signup_open ? '报名页面已关闭' : '报名页面已开放')
+    await fetchDashboard()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '更新报名页面状态失败'))
+  } finally {
+    signupOpenSavingId.value = null
   }
 }
 

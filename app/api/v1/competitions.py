@@ -115,11 +115,16 @@ class CompetitionActiveStateRequest(BaseModel):
     is_current: bool
 
 
+class CompetitionSignupOpenRequest(BaseModel):
+    signup_open: bool
+
+
 def _build_module_key(cup_type: str) -> str:
     return f"{cup_type}_cup_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:6]}"
 
 
 def _event_to_dict(db: Session, event: CompetitionEvent) -> dict:
+    cfg = db.query(TeamChannelConfig).filter(TeamChannelConfig.module_key == event.module_key).first()
     team_count = db.query(func.count(Team.id)).filter(Team.module_key == event.module_key).scalar() or 0
     member_count = (
         db.query(func.count(TeamMember.id))
@@ -157,6 +162,7 @@ def _event_to_dict(db: Session, event: CompetitionEvent) -> dict:
         "signup_end_at": event.signup_end_at.isoformat() if event.signup_end_at else None,
         "topic_open_at": event.topic_open_at.isoformat() if event.topic_open_at else None,
         "topic_end_at": event.topic_end_at.isoformat() if event.topic_end_at else None,
+        "signup_open": bool(cfg.signup_open) if cfg else False,
         "cycle_start_at": event.cycle_start_at.isoformat() if event.cycle_start_at else None,
         "cycle_end_at": event.cycle_end_at.isoformat() if event.cycle_end_at else None,
         "is_current": bool(event.is_current),
@@ -371,6 +377,30 @@ async def update_active_state(
 
     db.commit()
     return success_response(msg="状态切换成功")
+
+
+@router.put("/competitions/events/{event_id}/signup-open", response_model=dict, summary="切换比赛报名页面开放状态")
+async def update_signup_open_state(
+    event_id: int,
+    req: CompetitionSignupOpenRequest,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    event = db.query(CompetitionEvent).filter(CompetitionEvent.id == event_id).first()
+    if not event:
+        return error_response(404, "比赛不存在")
+
+    cfg = db.query(TeamChannelConfig).filter(TeamChannelConfig.module_key == event.module_key).first()
+    if not cfg:
+        cfg = TeamChannelConfig(module_key=event.module_key, signup_open=False)
+        db.add(cfg)
+
+    cfg.signup_open = req.signup_open
+    cfg.signup_close_at = event.signup_end_at
+    cfg.updated_by = current_user.id
+    db.commit()
+    db.refresh(event)
+    return success_response(data=_event_to_dict(db, event), msg="报名页面状态已更新")
 
 
 @router.post("/competitions/events/{event_id}/topics", response_model=dict, summary="添加选题")

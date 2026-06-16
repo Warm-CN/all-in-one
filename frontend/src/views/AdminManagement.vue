@@ -14,11 +14,11 @@
 
         <div
           class="status-card rounded-2xl border px-5 py-4"
-          :class="form.is_active ? 'border-emerald-200 bg-emerald-50/75' : 'border-amber-200 bg-amber-50/75'"
+          :class="form.is_active ? 'border-emerald-200 bg-emerald-50/75' : 'border-slate-200 bg-slate-50'"
         >
           <div class="text-xs font-semibold uppercase text-slate-400">报名入口</div>
-          <div class="mt-2 text-lg font-bold" :class="form.is_active ? 'text-emerald-700' : 'text-amber-700'">
-            {{ form.is_active ? '开放中' : '预览版' }}
+          <div class="mt-2 text-lg font-bold" :class="form.is_active ? 'text-emerald-700' : 'text-slate-700'">
+            {{ form.is_active ? '开放中' : '已关闭' }}
           </div>
         </div>
       </div>
@@ -58,10 +58,10 @@
               <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="min-w-0">
                   <div class="text-sm font-semibold text-slate-700">
-                    {{ form.is_active ? '当前允许正式访问公开报名入口' : '当前公开报名入口为预览版' }}
+                    {{ form.is_active ? '当前允许访问公开报名入口' : '当前公开报名入口已关闭' }}
                   </div>
                   <p class="mt-1 text-xs leading-5 text-slate-500">
-                    开放时可正式提交报名；关闭时公开页面仍可访问，但仅显示为预览版。
+                    开放时可访问并提交报名；关闭时公开报名表不会展示。
                   </p>
                 </div>
                 <el-switch v-model="form.is_active" active-text="开放" inactive-text="关闭" />
@@ -94,8 +94,8 @@
           </div>
           <div>
             <div class="text-xs font-semibold uppercase text-slate-400">入口状态</div>
-            <div class="mt-1 text-base font-semibold" :class="form.is_active ? 'text-emerald-700' : 'text-amber-700'">
-              {{ form.is_active ? '开放中' : '预览版' }}
+            <div class="mt-1 text-base font-semibold" :class="form.is_active ? 'text-emerald-700' : 'text-slate-700'">
+              {{ form.is_active ? '开放中' : '已关闭' }}
             </div>
           </div>
         </div>

@@ -89,3 +89,11 @@ export function updateCompetitionActiveState(eventId, isCurrent) {
     data: { is_current: isCurrent }
   })
 }
+
+export function updateCompetitionSignupOpenState(eventId, signupOpen) {
+  return request({
+    url: `/api/v1/competitions/events/${eventId}/signup-open`,
+    method: 'put',
+    data: { signup_open: signupOpen }
+  })
+}

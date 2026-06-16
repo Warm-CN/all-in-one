@@ -306,7 +306,7 @@ def _ensure_channel_config(db: Session, module_key: str) -> TeamChannelConfig:
 
     cfg = TeamChannelConfig(
         module_key=module_key,
-        signup_open=True,
+        signup_open=False,
         topic_open=False,
         info_update_open=True,
         signup_close_at=None,

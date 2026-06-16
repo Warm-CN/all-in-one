@@ -10,7 +10,7 @@
           <div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
             <img src="@/assets/images/logo.png" alt="Logo" class="h-16 w-auto shrink-0 object-contain sm:h-20" />
             <div class="min-w-0">
-              <h1 class="break-words text-3xl font-black leading-tight text-slate-950 sm:text-4xl lg:text-5xl">{{ currentEvent?.display_title || currentEvent?.name || '竞赛组队与选题通道' }}</h1>
+              <h1 class="break-words text-3xl font-black leading-tight text-slate-950 sm:text-4xl lg:text-5xl">{{ currentEvent?.display_title || currentEvent?.name || '赛事报名与组队中心' }}</h1>
               <p class="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">公开报名、修改队伍、修改选题、查询验收安排统一在这里完成</p>
             </div>
           </div>
@@ -20,7 +20,7 @@
           <div class="text-xs font-semibold uppercase text-slate-400">当前比赛</div>
           <div class="mt-3 break-words text-lg font-black leading-6 text-slate-900">{{ currentEvent?.display_title || currentEvent?.name || '尚未开启' }}</div>
           <div class="mt-2 text-sm leading-6 text-slate-500">
-            {{ currentEvent ? '当前比赛报名与队伍查询入口已开放' : '请等待管理员设置正在进行的比赛' }}
+            {{ currentEvent ? (signupStatus.signup_open ? '报名页面已开放，可提交组队信息' : '报名页面暂未开放，可查询队伍信息') : '请等待管理员设置正在进行的比赛' }}
           </div>
         </div>
       </header>
@@ -62,6 +62,13 @@
           />
 
           <div v-show="activeTab === 'signup'" class="mx-auto w-full">
+            <el-alert
+              v-if="currentEvent && !signupStatus.signup_open"
+              type="info"
+              :closable="false"
+              class="mb-5"
+              title="当前比赛报名页面暂未开放，请等待管理员开放后再提交组队报名。"
+            />
             <el-form ref="signupFormRef" :model="signupForm" :rules="signupRules" label-position="top" size="large" class="native-form">
               <template v-if="!compactSignupMode">
                 <div class="form-section">
@@ -155,7 +162,7 @@
                 </el-collapse>
               </template>
 
-              <el-button type="primary" class="mt-7 h-12 w-full rounded-xl text-base font-semibold sm:mt-8" :loading="signupLoading" @click="submitSignup">
+              <el-button type="primary" class="mt-7 h-12 w-full rounded-xl text-base font-semibold sm:mt-8" :loading="signupLoading" :disabled="!signupStatus.signup_open || !currentEvent" @click="submitSignup">
                 提交组队报名
               </el-button>
             </el-form>
@@ -235,7 +242,7 @@
             <el-form ref="queryFormRef" :model="queryForm" :rules="queryRules" label-position="top" size="large" class="native-form">
               <div class="form-section rounded-[24px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_-30px_rgba(15,23,42,0.28)] sm:p-5">
                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-                  <el-form-item label="输入队长或队员学号（12位）" prop="sid">
+                  <el-form-item label="输入队员学号（12位）" prop="sid">
                     <el-input v-model="queryForm.sid" />
                   </el-form-item>
                   <div class="flex items-end">

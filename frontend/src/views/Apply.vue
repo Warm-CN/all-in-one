@@ -9,7 +9,7 @@
               <div class="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold uppercase text-cyan-700">
                 RECRUITMENT PORTAL
               </div>
-              <h1 class="mt-3 break-words text-3xl font-black leading-tight text-slate-950 sm:text-4xl lg:text-5xl">协会招新报名通道</h1>
+              <h1 class="mt-3 break-words text-3xl font-black leading-tight text-slate-950 sm:text-4xl lg:text-5xl">社团招新报名中心</h1>
             </div>
           </div>
           <p class="mx-auto mt-4 max-w-3xl text-center text-base leading-7 text-slate-600 sm:mx-0 sm:text-left sm:text-lg">
@@ -18,14 +18,12 @@
         </div>
 
         <div class="hero-summary rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-[0_16px_38px_-32px_rgba(15,23,42,0.35)]">
-          <div class="text-xs font-semibold uppercase" :class="previewMode ? 'text-amber-600' : 'text-slate-400'">
-            {{ previewMode ? '预览版' : '当前状态' }}
-          </div>
+          <div class="text-xs font-semibold uppercase text-slate-400">当前状态</div>
           <div class="mt-3 text-lg font-black leading-6 text-slate-900">
             {{ activeConfig ? activeConfig.title : '等待活动开放' }}
           </div>
           <div class="mt-2 text-sm leading-6 text-slate-500">
-            {{ activeConfig ? (previewMode ? '当前为预览版，暂不接收正式报名' : `截止：${formatDate(activeConfig.end_time)}`) : '已报名同学可继续查询进度' }}
+            {{ activeConfig ? `截止：${formatDate(activeConfig.end_time)}` : '已报名同学可继续查询进度' }}
           </div>
         </div>
       </header>
@@ -62,24 +60,17 @@
               <p class="mt-2 text-slate-500">如果你已提交过报名，仍然可以通过进度查询查看审核与面试信息。</p>
               <div class="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                 <el-button type="primary" size="large" class="!w-full sm:!w-auto" @click="activeTab = 'query'">去进度查询</el-button>
-                <el-button plain size="large" class="!w-full sm:!w-auto" @click="enablePreviewMode">预览报名页效果</el-button>
               </div>
             </div>
 
             <el-form v-else ref="formRef" :model="form" :rules="rules" label-position="top" size="large" class="native-form">
-              <div
-                class="status-strip mb-5 rounded-2xl border p-4 text-sm leading-6 sm:p-5"
-                :class="previewMode ? 'border-amber-200 bg-amber-50/90 text-amber-900' : 'border-sky-100 bg-sky-50/90 text-sky-900'"
-              >
+              <div class="status-strip mb-5 rounded-2xl border border-sky-100 bg-sky-50/90 p-4 text-sm leading-6 text-sky-900 sm:p-5">
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div class="min-w-0">
-                    <div class="text-xs font-semibold uppercase" :class="previewMode ? 'text-amber-700' : 'text-sky-600'">{{ previewMode ? '预览版' : '正在报名' }}</div>
-                    <div class="mt-1 break-words text-base font-bold" :class="previewMode ? 'text-amber-950' : 'text-sky-950'">{{ activeConfig.title }}</div>
+                    <div class="text-xs font-semibold uppercase text-sky-600">正在报名</div>
+                    <div class="mt-1 break-words text-base font-bold text-sky-950">{{ activeConfig.title }}</div>
                   </div>
-                  <div class="rounded-xl bg-white/85 px-3 py-2 text-xs font-semibold" :class="previewMode ? 'text-amber-700' : 'text-sky-700'">截止：{{ formatDate(activeConfig.end_time) }}</div>
-                </div>
-                <div v-if="previewMode" class="mt-2 text-xs font-semibold text-amber-700">
-                  当前为预览版，仅用于展示报名页面，暂不接收真实报名数据。
+                  <div class="rounded-xl bg-white/85 px-3 py-2 text-xs font-semibold text-sky-700">截止：{{ formatDate(activeConfig.end_time) }}</div>
                 </div>
               </div>
 
@@ -150,8 +141,8 @@
                 </el-form-item>
               </div>
 
-              <el-button type="primary" class="mt-5 h-12 w-full rounded-xl text-base font-semibold" :loading="submitting" :disabled="previewMode" @click="submitForm">
-                {{ previewMode ? '预览版不可提交' : '提交报名' }}
+              <el-button type="primary" class="mt-5 h-12 w-full rounded-xl text-base font-semibold" :loading="submitting" @click="submitForm">
+                提交报名
               </el-button>
             </el-form>
           </div>
@@ -200,7 +191,7 @@
                       <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase text-slate-500">
                         APPLICATION
                       </span>
-                      <el-tag :type="statusTagType(item.current_stage)" effect="dark" class="w-fit">{{ item.status_desc }}</el-tag>
+                      <el-tag :type="statusTagType(item.status)" effect="dark" class="w-fit">{{ item.status_desc }}</el-tag>
                     </div>
                     <h3 class="mt-3 text-xl font-black leading-[1.2] text-slate-900">{{ item.activity_title }}</h3>
                     <p class="mt-2 text-sm text-slate-500">提交时间：{{ formatDate(item.submitted_at) }}</p>
@@ -236,41 +227,20 @@
                   </div>
                 </div>
 
-                <div v-if="item.current_stage === 'first_round'" class="mt-5">
+                <div class="mt-5">
                   <div class="mb-3 text-xs font-semibold uppercase text-slate-400">面试安排</div>
                   <div class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
                     <div class="rounded-[22px] border border-slate-200/70 bg-slate-50/85 p-4">
-                      <div class="text-sm font-semibold text-slate-700">一面-第一志愿</div>
+                      <div class="text-sm font-semibold text-slate-700">一面</div>
                       <div class="mt-2 leading-7 text-slate-900">时间：{{ item.first_choice_interview_time ? formatDate(item.first_choice_interview_time) : '待通知' }}</div>
                       <div class="leading-7 text-slate-900">地点：{{ item.first_choice_interview_location || '待通知' }}</div>
                     </div>
                     <div class="rounded-[22px] border border-slate-200/70 bg-slate-50/85 p-4">
-                      <div class="text-sm font-semibold text-slate-700">一面-第二志愿</div>
-                      <div class="mt-2 leading-7 text-slate-900">时间：{{ item.second_choice_interview_time ? formatDate(item.second_choice_interview_time) : '待通知' }}</div>
-                      <div class="leading-7 text-slate-900">地点：{{ item.second_choice_interview_location || '待通知' }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-else-if="item.current_stage === 'second_round'" class="mt-5">
-                  <div class="mb-3 text-xs font-semibold uppercase text-slate-400">面试安排</div>
-                  <div class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-                    <div class="rounded-[22px] border border-slate-200/70 bg-slate-50/85 p-4">
-                      <div class="text-sm font-semibold text-slate-700">二面志愿</div>
-                      <div class="mt-2 leading-7 text-slate-900">{{ item.second_round_department || '待通知' }}</div>
-                    </div>
-                    <div class="rounded-[22px] border border-slate-200/70 bg-slate-50/85 p-4">
-                      <div class="text-sm font-semibold text-slate-700">二面安排</div>
+                      <div class="text-sm font-semibold text-slate-700">二面</div>
+                      <div class="mt-2 leading-7 text-slate-900">部门：{{ item.second_round_department || '待通知' }}</div>
                       <div class="mt-2 leading-7 text-slate-900">时间：{{ item.second_round_interview_time ? formatDate(item.second_round_interview_time) : '待通知' }}</div>
                       <div class="leading-7 text-slate-900">地点：{{ item.second_round_interview_location || '待通知' }}</div>
                     </div>
-                  </div>
-                </div>
-
-                <div v-else class="mt-5">
-                  <div class="mb-3 text-xs font-semibold uppercase text-slate-400">当前结果</div>
-                  <div class="rounded-[22px] border border-slate-200/70 bg-slate-50/85 p-4 text-sm text-slate-700">
-                    当前结果：<span class="font-semibold text-slate-900">{{ item.status_desc }}</span>
                   </div>
                 </div>
 
@@ -366,7 +336,6 @@ const submitting = ref(false)
 const querying = ref(false)
 const hasQueried = ref(false)
 const activeConfig = ref(null)
-const previewMode = ref(false)
 const queryResults = ref([])
 
 const formRef = ref(null)
@@ -444,36 +413,19 @@ onMounted(async () => {
     const res = await getActiveConfigs({ category: 'recruitment' })
     if (Array.isArray(res.data) && res.data.length > 0) {
       activeConfig.value = res.data[0]
-      previewMode.value = !!activeConfig.value.is_preview || activeConfig.value.can_submit === false
-    } else if (import.meta.env.DEV) {
-      enablePreviewMode()
     }
   } catch (error) {
     ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '获取招新活动失败')
-    if (import.meta.env.DEV) {
-      enablePreviewMode()
-    }
   } finally {
     loadingConfigs.value = false
   }
 })
 
-const enablePreviewMode = () => {
-  previewMode.value = true
-  activeConfig.value = {
-    id: null,
-    title: '2026 春季招新（预览）',
-    end_time: dayjs().add(15, 'day').toISOString(),
-    can_submit: false,
-    is_preview: true
-  }
-}
-
 const submitForm = async () => {
   if (!formRef.value || !activeConfig.value) return
 
-  if (previewMode.value || activeConfig.value.can_submit === false) {
-    ElMessage.warning('当前为预览版，暂不接收正式报名。')
+  if (activeConfig.value.can_submit === false) {
+    ElMessage.warning('当前报名入口未开放。')
     return
   }
 
