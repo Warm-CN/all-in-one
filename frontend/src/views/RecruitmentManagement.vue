@@ -7,7 +7,7 @@
             RECRUITMENT
           </span>
           <h2 class="recruitment-hero-title mt-3 max-w-full pt-1 text-[1.95rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">
-            招新面试
+            招新报名
           </h2>
         </div>
 
@@ -23,25 +23,19 @@
             </el-button>
           </el-upload>
           <el-button type="success" @click="handleExport" :loading="exporting" class="!h-11 !w-full !rounded-2xl !px-5 sm:!w-auto">
-            下载面试模板
+            下载报名信息
           </el-button>
         </div>
       </div>
 
-      <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div class="stat-card rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 shadow-[0_10px_24px_-26px_rgba(15,23,42,0.24)]">
           <div class="stat-card__label text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">报名人数</div>
           <div class="stat-card__value mt-1.5 text-[1.45rem] font-black text-slate-900">{{ tableData.length }}</div>
         </div>
-        <div class="stat-card rounded-[20px] border border-slate-200/80 bg-white/92 px-4 py-3.5 shadow-[0_10px_24px_-26px_rgba(15,23,42,0.24)]">
-          <div class="stat-card__label text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">当前阶段</div>
-          <div class="stat-card__value mt-1.5 text-[15px] font-semibold text-slate-800">
-            {{ stageOptions.find((item) => item.value === configForm.current_stage)?.label || '未设置' }}
-          </div>
-        </div>
         <div
           class="stat-card rounded-[20px] border px-4 py-3.5 shadow-[0_10px_24px_-26px_rgba(15,23,42,0.24)]"
-          :class="configForm.is_active ? 'border-emerald-200 bg-emerald-50/80' : 'border-slate-200/80 bg-slate-50/95'"
+          :class="configForm.is_active ? 'border-emerald-200 bg-emerald-50/80' : 'border-amber-200 bg-amber-50/80'"
         >
           <div class="stat-card__label text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">当前状态</div>
           <div class="stat-card__value mt-1.5 text-[15px] font-semibold" :class="configForm.is_active ? 'text-emerald-700' : 'text-slate-700'">
@@ -83,11 +77,6 @@
             <el-table-column prop="name" label="姓名" min-width="100" />
             <el-table-column prop="student_id" label="学号" min-width="120" />
             <el-table-column prop="phone" label="手机号" min-width="130" />
-            <el-table-column prop="current_stage_desc" label="当前阶段" min-width="130">
-              <template #default="{ row }">
-                <el-tag :type="stageTagType(row.current_stage)">{{ row.current_stage_desc || '-' }}</el-tag>
-              </template>
-            </el-table-column>
             <el-table-column prop="first_choice" label="第一志愿" min-width="140" />
             <el-table-column prop="second_choice" label="第二志愿" min-width="140" />
             <el-table-column label="面试安排" min-width="280">
@@ -153,17 +142,11 @@
         </div>
 
         <div class="grid grid-cols-1 gap-x-4 gap-y-1 md:grid-cols-2">
-          <el-form-item label="一面-第一志愿时间">
+          <el-form-item label="一面时间">
             <el-input v-model="editForm.first_choice_interview_time" placeholder="如：2026-04-03 19:00" />
           </el-form-item>
-          <el-form-item label="一面-第一志愿地点">
+          <el-form-item label="一面地点">
             <el-input v-model="editForm.first_choice_interview_location" placeholder="如：主楼A201" />
-          </el-form-item>
-          <el-form-item label="一面-第二志愿时间">
-            <el-input v-model="editForm.second_choice_interview_time" placeholder="如：2026-04-04 19:00" />
-          </el-form-item>
-          <el-form-item label="一面-第二志愿地点">
-            <el-input v-model="editForm.second_choice_interview_location" placeholder="如：主楼A202" />
           </el-form-item>
           <el-form-item label="二面部门">
             <el-select v-model="editForm.second_round_department" class="w-full" clearable placeholder="请选择二面部门">
@@ -216,18 +199,10 @@ const exporting = ref(false)
 const importing = ref(false)
 const tableData = ref([])
 
-const stageOptions = [
-  { label: '报名阶段', value: 'registration' },
-  { label: '第一轮面试', value: 'first_round' },
-  { label: '第二轮面试', value: 'second_round' },
-  { label: '已结束', value: 'ended' }
-]
-
 const configForm = reactive({
   title: '',
   start_time: '',
   end_time: '',
-  current_stage: 'registration',
   is_active: false
 })
 
@@ -256,8 +231,6 @@ const editForm = reactive({
   intro: '',
   first_choice_interview_time: '',
   first_choice_interview_location: '',
-  second_choice_interview_time: '',
-  second_choice_interview_location: '',
   second_round_department: '',
   second_round_interview_time: '',
   second_round_interview_location: '',
@@ -284,7 +257,6 @@ const fetchRecruitmentConfig = async () => {
     configForm.title = cfg.title || ''
     configForm.start_time = (cfg.start_time || '').slice(0, 19)
     configForm.end_time = (cfg.end_time || '').slice(0, 19)
-    configForm.current_stage = cfg.current_stage || 'registration'
     configForm.is_active = !!cfg.is_active
   } catch (error) {
     ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '获取招新配置失败')
@@ -331,8 +303,6 @@ const openEdit = (row) => {
   editForm.intro = data['自我介绍'] || ''
   editForm.first_choice_interview_time = row.first_choice_interview_time || ''
   editForm.first_choice_interview_location = row.first_choice_interview_location || ''
-  editForm.second_choice_interview_time = row.second_choice_interview_time || ''
-  editForm.second_choice_interview_location = row.second_choice_interview_location || ''
   editForm.second_round_department = row.second_round_department || ''
   editForm.second_round_interview_time = row.second_round_interview_time || ''
   editForm.second_round_interview_location = row.second_round_interview_location || ''
@@ -354,8 +324,6 @@ const submitEdit = async () => {
       review_notes: editForm.review_notes,
       first_choice_interview_time: editForm.first_choice_interview_time || null,
       first_choice_interview_location: editForm.first_choice_interview_location || null,
-      second_choice_interview_time: editForm.second_choice_interview_time || null,
-      second_choice_interview_location: editForm.second_choice_interview_location || null,
       second_round_department: editForm.second_round_department || null,
       second_round_interview_time: editForm.second_round_interview_time || null,
       second_round_interview_location: editForm.second_round_interview_location || null,
@@ -412,7 +380,7 @@ const handleExport = async () => {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = '招新面试模板.xlsx'
+    link.download = '招新报名信息.xlsx'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -452,34 +420,13 @@ const handleImportUpload = async (uploadRequest) => {
   }
 }
 
-const stageTagType = (stage) => {
-  if (stage === 'registration') return 'info'
-  if (stage === 'second_round') return 'warning'
-  if (stage === 'ended') return 'danger'
-  return 'info'
-}
-
 const formatInterviewPlan = (row) => {
-  if (row.current_stage === 'registration') {
-    return '当前处于报名阶段'
-  }
-
-  if (row.current_stage === 'second_round') {
-    const dept = row.second_round_department || '-'
-    const time = row.second_round_interview_time || '待安排'
-    const location = row.second_round_interview_location || '待安排'
-    return `二面（${dept}）\n时间：${time}\n地点：${location}`
-  }
-
-  if (row.current_stage === 'ended') {
-    return '招新流程已结束'
-  }
-
   const firstTime = row.first_choice_interview_time || '待安排'
   const firstLocation = row.first_choice_interview_location || '待安排'
-  const secondTime = row.second_choice_interview_time || '待安排'
-  const secondLocation = row.second_choice_interview_location || '待安排'
-  return `一面-第一志愿\n时间：${firstTime}\n地点：${firstLocation}\n\n一面-第二志愿\n时间：${secondTime}\n地点：${secondLocation}`
+  const secondDept = row.second_round_department || '-'
+  const secondTime = row.second_round_interview_time || '待安排'
+  const secondLocation = row.second_round_interview_location || '待安排'
+  return `一面\n时间：${firstTime}\n地点：${firstLocation}\n\n二面（${secondDept}）\n时间：${secondTime}\n地点：${secondLocation}`
 }
 
 onMounted(() => {

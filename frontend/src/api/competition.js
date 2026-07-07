@@ -30,6 +30,14 @@ export function createCompetitionEvent(data) {
   })
 }
 
+export function updateCompetitionEvent(eventId, data) {
+  return request({
+    url: `/api/v1/competitions/events/${eventId}`,
+    method: 'put',
+    data
+  })
+}
+
 export function createCompetitionTopic(eventId, payload) {
   const formData = new FormData()
   formData.append('title', payload.title)
@@ -79,5 +87,13 @@ export function updateCompetitionActiveState(eventId, isCurrent) {
     url: `/api/v1/competitions/events/${eventId}/active-state`,
     method: 'put',
     data: { is_current: isCurrent }
+  })
+}
+
+export function updateCompetitionSignupOpenState(eventId, signupOpen) {
+  return request({
+    url: `/api/v1/competitions/events/${eventId}/signup-open`,
+    method: 'put',
+    data: { signup_open: signupOpen }
   })
 }

@@ -64,6 +64,45 @@ class CompetitionEventCreateRequest(BaseModel):
         return value
 
 
+class CompetitionEventUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    portal_title: Optional[str] = None
+    signup_start_at: Optional[datetime] = None
+    signup_end_at: Optional[datetime] = None
+    topic_open_at: Optional[datetime] = None
+    topic_end_at: Optional[datetime] = None
+    cycle_start_at: Optional[datetime] = None
+    cycle_end_at: Optional[datetime] = None
+    planned_topic_count: Optional[int] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_update_name(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("比赛名称不能为空")
+        return value
+
+    @field_validator("portal_title")
+    @classmethod
+    def validate_update_portal_title(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("报名页展示名称不能为空")
+        return value
+
+    @field_validator("planned_topic_count")
+    @classmethod
+    def validate_update_topic_count(cls, value: Optional[int]) -> Optional[int]:
+        if value is not None and value < 0:
+            raise ValueError("计划题目数量不能小于 0")
+        return value
+
+
 class CompetitionPortalConfigRequest(BaseModel):
     portal_title: str
 
@@ -76,11 +115,16 @@ class CompetitionActiveStateRequest(BaseModel):
     is_current: bool
 
 
+class CompetitionSignupOpenRequest(BaseModel):
+    signup_open: bool
+
+
 def _build_module_key(cup_type: str) -> str:
     return f"{cup_type}_cup_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:6]}"
 
 
 def _event_to_dict(db: Session, event: CompetitionEvent) -> dict:
+    cfg = db.query(TeamChannelConfig).filter(TeamChannelConfig.module_key == event.module_key).first()
     team_count = db.query(func.count(Team.id)).filter(Team.module_key == event.module_key).scalar() or 0
     member_count = (
         db.query(func.count(TeamMember.id))
@@ -118,6 +162,7 @@ def _event_to_dict(db: Session, event: CompetitionEvent) -> dict:
         "signup_end_at": event.signup_end_at.isoformat() if event.signup_end_at else None,
         "topic_open_at": event.topic_open_at.isoformat() if event.topic_open_at else None,
         "topic_end_at": event.topic_end_at.isoformat() if event.topic_end_at else None,
+        "signup_open": bool(cfg.signup_open) if cfg else False,
         "cycle_start_at": event.cycle_start_at.isoformat() if event.cycle_start_at else None,
         "cycle_end_at": event.cycle_end_at.isoformat() if event.cycle_end_at else None,
         "is_current": bool(event.is_current),
@@ -229,6 +274,48 @@ async def create_event(
     return success_response(data={"event_id": event.id, "module_key": event.module_key}, msg="比赛创建成功")
 
 
+@router.put("/competitions/events/{event_id}", response_model=dict, summary="更新比赛基础信息")
+async def update_event(
+    event_id: int,
+    req: CompetitionEventUpdateRequest,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    event = db.query(CompetitionEvent).filter(CompetitionEvent.id == event_id).first()
+    if not event:
+        return error_response(404, "比赛不存在")
+
+    fields_set = req.model_fields_set
+
+    if "name" in fields_set:
+        if req.name is None:
+            return error_response(400, "比赛名称不能为空")
+        event.name = req.name
+
+    if "portal_title" in fields_set:
+        event.portal_title = req.portal_title
+
+    date_fields = [
+        "signup_start_at",
+        "signup_end_at",
+        "topic_open_at",
+        "topic_end_at",
+        "cycle_start_at",
+        "cycle_end_at",
+    ]
+    for field in date_fields:
+        if field in fields_set:
+            setattr(event, field, getattr(req, field))
+
+    if "planned_topic_count" in fields_set and req.planned_topic_count is not None:
+        event.planned_topic_count = req.planned_topic_count
+
+    _sync_channel_config_by_event(db, event)
+    db.commit()
+    db.refresh(event)
+    return success_response(data=_event_to_dict(db, event), msg="比赛信息更新成功")
+
+
 @router.put("/competitions/events/{event_id}/portal-config", response_model=dict, summary="设置报名页显示名称")
 async def update_portal_config(
     event_id: int,
@@ -290,6 +377,30 @@ async def update_active_state(
 
     db.commit()
     return success_response(msg="状态切换成功")
+
+
+@router.put("/competitions/events/{event_id}/signup-open", response_model=dict, summary="切换比赛报名页面开放状态")
+async def update_signup_open_state(
+    event_id: int,
+    req: CompetitionSignupOpenRequest,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    event = db.query(CompetitionEvent).filter(CompetitionEvent.id == event_id).first()
+    if not event:
+        return error_response(404, "比赛不存在")
+
+    cfg = db.query(TeamChannelConfig).filter(TeamChannelConfig.module_key == event.module_key).first()
+    if not cfg:
+        cfg = TeamChannelConfig(module_key=event.module_key, signup_open=False)
+        db.add(cfg)
+
+    cfg.signup_open = req.signup_open
+    cfg.signup_close_at = event.signup_end_at
+    cfg.updated_by = current_user.id
+    db.commit()
+    db.refresh(event)
+    return success_response(data=_event_to_dict(db, event), msg="报名页面状态已更新")
 
 
 @router.post("/competitions/events/{event_id}/topics", response_model=dict, summary="添加选题")

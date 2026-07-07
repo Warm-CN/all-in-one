@@ -2,14 +2,14 @@
 竞赛队伍模块路由
 公开端 + 成员端 + 管理端
 """
-from datetime import datetime
+from datetime import date, datetime
 from io import BytesIO
 from typing import List, Optional
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import Response
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
@@ -223,6 +223,102 @@ class TopicUpsertRequest(BaseModel):
     max_teams: Optional[int] = None
 
 
+def _normalize_excel_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M")
+    if isinstance(value, date):
+        return value.strftime("%Y-%m-%d")
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return str(int(value)) if value.is_integer() else str(value).strip()
+    return str(value).strip()
+
+
+def _parse_excel_datetime(value) -> Optional[datetime]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time())
+
+    text = _normalize_excel_text(value)
+    if not text:
+        return None
+
+    text = text.replace("T", " ").replace("Z", "").strip()
+    for fmt in (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d %H:%M",
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+    ):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _header_index_map(sheet) -> dict:
+    headers = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True), [])
+    return {
+        _normalize_excel_text(header): index
+        for index, header in enumerate(headers)
+        if _normalize_excel_text(header)
+    }
+
+
+def _first_cell_value(row, header_map: dict, names: List[str]):
+    for name in names:
+        index = header_map.get(name)
+        if index is not None and index < len(row):
+            return row[index]
+    return None
+
+
+def _find_topic_by_excel_value(db: Session, module_key: str, value) -> Optional[TopicOption]:
+    text = _normalize_excel_text(value)
+    if not text:
+        return None
+
+    query = db.query(TopicOption)
+    if module_key:
+        query = query.filter(TopicOption.module_key == module_key)
+
+    if text.isdigit():
+        topic = query.filter(TopicOption.id == int(text)).first()
+        if topic:
+            return topic
+
+    candidates = [text]
+    if " - " in text:
+        left, right = text.split(" - ", 1)
+        candidates.extend([left.strip(), right.strip()])
+    if "-" in text:
+        left, right = text.split("-", 1)
+        candidates.extend([left.strip(), right.strip()])
+
+    for candidate in [item for item in candidates if item]:
+        topic = query.filter(TopicOption.code == candidate).first()
+        if topic:
+            return topic
+        topic = query.filter(TopicOption.title == candidate).first()
+        if topic:
+            return topic
+
+    return None
+
+
 def _ensure_channel_config(db: Session, module_key: str) -> TeamChannelConfig:
     cfg = db.query(TeamChannelConfig).filter(TeamChannelConfig.module_key == module_key).first()
     if cfg:
@@ -230,7 +326,7 @@ def _ensure_channel_config(db: Session, module_key: str) -> TeamChannelConfig:
 
     cfg = TeamChannelConfig(
         module_key=module_key,
-        signup_open=True,
+        signup_open=False,
         topic_open=False,
         info_update_open=True,
         signup_close_at=None,
@@ -684,6 +780,7 @@ async def list_teams(
     keyword: Optional[str] = None,
     topic_id: Optional[int] = None,
     module_key: Optional[str] = None,
+    delete_requested: Optional[bool] = None,
     current_user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
@@ -698,6 +795,8 @@ async def list_teams(
         query = query.filter(Team.topic_id == topic_id)
     if module_key:
         query = query.filter(Team.module_key == module_key)
+    if delete_requested is not None:
+        query = query.filter(Team.delete_requested == delete_requested)
 
     teams = query.order_by(Team.created_at.desc()).all()
     return success_response(data=[_team_to_dict(team) for team in teams], msg=f"获取成功，共 {len(teams)} 条")
@@ -725,6 +824,7 @@ async def export_teams(
     keyword: Optional[str] = None,
     topic_id: Optional[int] = None,
     module_key: Optional[str] = None,
+    delete_requested: Optional[bool] = None,
     current_user: User = Depends(require_member),
     db: Session = Depends(get_db),
 ):
@@ -739,6 +839,8 @@ async def export_teams(
         query = query.filter(Team.topic_id == topic_id)
     if module_key:
         query = query.filter(Team.module_key == module_key)
+    if delete_requested is not None:
+        query = query.filter(Team.delete_requested == delete_requested)
 
     teams = query.order_by(Team.created_at.desc()).all()
 
@@ -772,11 +874,9 @@ async def export_teams(
         "队员人数",
         "一验时间",
         "一验地点",
-        "一验负责人",
         "一验备注",
         "二验时间",
         "二验地点",
-        "二验负责人",
         "二验备注",
     ]
     sheet.append(headers)
@@ -817,11 +917,9 @@ async def export_teams(
                 len(team.members),
                 assignment.first_inspection_time.strftime("%Y-%m-%d %H:%M") if assignment and assignment.first_inspection_time else "",
                 assignment.first_inspection_location if assignment else "",
-                assignment.first_inspector if assignment else "",
                 assignment.first_notes if assignment else "",
                 assignment.second_inspection_time.strftime("%Y-%m-%d %H:%M") if assignment and assignment.second_inspection_time else "",
                 assignment.second_inspection_location if assignment else "",
-                assignment.second_inspector if assignment else "",
                 assignment.second_notes if assignment else "",
             ]
         )
@@ -852,15 +950,55 @@ async def export_teams(
         "W": 10,
         "X": 20,
         "Y": 20,
-        "Z": 16,
-        "AA": 28,
+        "Z": 28,
+        "AA": 20,
         "AB": 20,
-        "AC": 20,
-        "AD": 16,
-        "AE": 28,
+        "AC": 28,
     }
     for col, width in widths.items():
         sheet.column_dimensions[col].width = width
+
+    example_sheet = workbook.create_sheet("填写示例")
+    example_sheet.append(headers)
+    example_sheet.append(
+        [
+            "请保留真实队伍ID",
+            "示例队伍",
+            "软件组",
+            "张三",
+            "202600000001",
+            "13800000000",
+            "example@example.com",
+            "信息学院",
+            "计科2601",
+            "李四",
+            "202600000002",
+            "13800000001",
+            "",
+            "信息学院",
+            "计科2601",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "示例题目",
+            "submitted",
+            1,
+            "2026-06-20 19:00",
+            "创新楼 A101",
+            "请携带作品与答辩材料",
+            "2026-06-27 19:00",
+            "创新楼 A102",
+            "二验备注示例",
+        ]
+    )
+    for cell in example_sheet[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    for col, width in widths.items():
+        example_sheet.column_dimensions[col].width = width
 
     buffer = BytesIO()
     workbook.save(buffer)
@@ -871,6 +1009,288 @@ async def export_teams(
         content=buffer.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers=headers,
+    )
+
+
+@router.post("/teams/import", response_model=dict, summary="管理员导入队伍报名信息")
+async def import_teams(
+    module_key: str = DEFAULT_MODULE_KEY,
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+        return error_response(400, "请上传 xlsx 文件")
+
+    content = await file.read()
+    if not content:
+        return error_response(400, "上传文件为空")
+
+    try:
+        workbook = load_workbook(BytesIO(content), data_only=True)
+    except Exception:
+        return error_response(400, "Excel 文件解析失败，请检查文件格式")
+
+    sheet = workbook.active
+    header_map = _header_index_map(sheet)
+    rows = list(sheet.iter_rows(min_row=2, values_only=True))
+    if not rows:
+        return error_response(400, "Excel 中没有可导入的数据")
+
+    member_headers_exist = any(
+        name in header_map
+        for name in ["队员1-姓名", "队员1姓名", "队员2-姓名", "队员2姓名"]
+    )
+
+    created = 0
+    updated = 0
+    unchanged = 0
+    skipped = 0
+    errors = []
+
+    for row_number, row in enumerate(rows, start=2):
+        if not any(_normalize_excel_text(cell) for cell in row):
+            continue
+
+        team_id_text = _normalize_excel_text(_first_cell_value(row, header_map, ["队伍ID", "队伍编号", "team_id", "ID"]))
+        team_name = _normalize_excel_text(_first_cell_value(row, header_map, ["队伍名称", "team_name"]))
+        competition_track = _normalize_excel_text(_first_cell_value(row, header_map, ["赛道", "组别", "competition_track"]))
+        captain_name = _normalize_excel_text(_first_cell_value(row, header_map, ["队长姓名", "captain_name"]))
+        captain_student_id = _normalize_excel_text(_first_cell_value(row, header_map, ["队长学号", "captain_student_id"]))
+        captain_phone = _normalize_excel_text(_first_cell_value(row, header_map, ["队长手机号", "队长电话", "captain_phone"]))
+        captain_email = _normalize_excel_text(_first_cell_value(row, header_map, ["队长邮箱", "captain_email"]))
+        captain_college = _normalize_excel_text(_first_cell_value(row, header_map, ["队长学院", "captain_college"]))
+        captain_major_class = _normalize_excel_text(_first_cell_value(row, header_map, ["队长专业班级", "队长班级", "captain_major_class"]))
+
+        if not team_name or not captain_name or not captain_student_id or not captain_phone:
+            skipped += 1
+            errors.append(f"第 {row_number} 行：队伍名称、队长姓名、队长学号、队长手机号为必填")
+            continue
+
+        team = None
+        if team_id_text:
+            try:
+                team_id = int(float(team_id_text))
+                team = db.query(Team).filter(Team.id == team_id, Team.module_key == module_key).first()
+            except ValueError:
+                errors.append(f"第 {row_number} 行：队伍ID格式不正确")
+
+        if not team:
+            team = db.query(Team).filter(
+                Team.captain_student_id == captain_student_id,
+                Team.module_key == module_key,
+            ).first()
+
+        topic = _find_topic_by_excel_value(
+            db,
+            module_key,
+            _first_cell_value(row, header_map, ["选题", "题目", "topic_title", "topic_id"]),
+        )
+
+        is_new = team is None
+        row_changed = False
+
+        if is_new:
+            team = Team(
+                team_name=team_name,
+                competition_track=competition_track or None,
+                module_key=module_key,
+                captain_name=captain_name,
+                captain_student_id=captain_student_id,
+                captain_phone=captain_phone,
+                captain_email=captain_email or None,
+                captain_college=captain_college or None,
+                captain_major_class=captain_major_class or None,
+                topic_id=topic.id if topic else None,
+                status=TeamStatus.SUBMITTED,
+            )
+            db.add(team)
+            db.flush()
+            row_changed = True
+        else:
+            updates = {
+                "team_name": team_name,
+                "competition_track": competition_track or None,
+                "captain_name": captain_name,
+                "captain_student_id": captain_student_id,
+                "captain_phone": captain_phone,
+                "captain_email": captain_email or None,
+                "captain_college": captain_college or None,
+                "captain_major_class": captain_major_class or None,
+            }
+            if topic:
+                updates["topic_id"] = topic.id
+
+            for field_name, field_value in updates.items():
+                if getattr(team, field_name) != field_value:
+                    setattr(team, field_name, field_value)
+                    row_changed = True
+
+        if member_headers_exist:
+            member_payloads = []
+            for index in [1, 2]:
+                name = _normalize_excel_text(_first_cell_value(row, header_map, [f"队员{index}-姓名", f"队员{index}姓名"]))
+                student_id = _normalize_excel_text(_first_cell_value(row, header_map, [f"队员{index}-学号", f"队员{index}学号"]))
+                phone = _normalize_excel_text(_first_cell_value(row, header_map, [f"队员{index}-手机号", f"队员{index}手机号", f"队员{index}-电话"]))
+                email = _normalize_excel_text(_first_cell_value(row, header_map, [f"队员{index}-邮箱", f"队员{index}邮箱"]))
+                college = _normalize_excel_text(_first_cell_value(row, header_map, [f"队员{index}-学院", f"队员{index}学院"]))
+                major_class = _normalize_excel_text(_first_cell_value(row, header_map, [f"队员{index}-专业班级", f"队员{index}专业班级", f"队员{index}-班级"]))
+
+                if not any([name, student_id, phone, email, college, major_class]):
+                    continue
+                if not name or not student_id or not phone:
+                    errors.append(f"第 {row_number} 行：队员{index}姓名、学号、手机号不完整，已跳过该队员")
+                    continue
+
+                member_payloads.append({
+                    "name": name,
+                    "student_id": student_id,
+                    "phone": phone,
+                    "email": email or None,
+                    "college": college or None,
+                    "major_class": major_class or None,
+                })
+
+            existing_members = [
+                {
+                    "name": member.name,
+                    "student_id": member.student_id,
+                    "phone": member.phone,
+                    "email": member.email,
+                    "college": member.college,
+                    "major_class": member.major_class,
+                }
+                for member in sorted(team.members, key=lambda item: item.id)
+            ]
+            if existing_members != member_payloads:
+                db.query(TeamMember).filter(TeamMember.team_id == team.id).delete()
+                for member_data in member_payloads:
+                    db.add(TeamMember(team_id=team.id, **member_data))
+                row_changed = True
+
+        if is_new:
+            created += 1
+        elif row_changed:
+            updated += 1
+        else:
+            unchanged += 1
+
+    db.commit()
+    return success_response(
+        data={
+            "created": created,
+            "updated": updated,
+            "unchanged": unchanged,
+            "skipped": skipped,
+            "errors": errors[:20],
+        },
+        msg=f"导入完成，新增 {created} 条，更新 {updated} 条，未变化 {unchanged} 条，跳过 {skipped} 条",
+    )
+
+
+@router.post("/teams/inspection-import", response_model=dict, summary="管理员导入队伍验收安排")
+async def import_team_inspections(
+    module_key: Optional[str] = None,
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+        return error_response(400, "请上传 xlsx 文件")
+
+    content = await file.read()
+    if not content:
+        return error_response(400, "上传文件为空")
+
+    try:
+        workbook = load_workbook(BytesIO(content), data_only=True)
+    except Exception:
+        return error_response(400, "Excel 文件解析失败，请检查文件格式")
+
+    sheet = workbook.active
+    header_map = _header_index_map(sheet)
+    rows = list(sheet.iter_rows(min_row=2, values_only=True))
+    if not rows:
+        return error_response(400, "Excel 中没有可导入的数据")
+
+    updated = 0
+    unchanged = 0
+    skipped = 0
+    errors = []
+
+    def base_team_query():
+        query = db.query(Team)
+        if module_key:
+            query = query.filter(Team.module_key == module_key)
+        return query
+
+    for row_number, row in enumerate(rows, start=2):
+        if not any(_normalize_excel_text(cell) for cell in row):
+            continue
+
+        team = None
+        team_id_text = _normalize_excel_text(_first_cell_value(row, header_map, ["队伍ID", "队伍编号", "team_id", "ID"]))
+        captain_sid = _normalize_excel_text(_first_cell_value(row, header_map, ["队长学号", "captain_student_id", "学号"]))
+        team_name = _normalize_excel_text(_first_cell_value(row, header_map, ["队伍名称", "team_name"]))
+
+        if team_id_text:
+            try:
+                team_id = int(float(team_id_text))
+                team = base_team_query().filter(Team.id == team_id).first()
+            except ValueError:
+                errors.append(f"第 {row_number} 行：队伍ID格式不正确")
+
+        if not team and captain_sid:
+            team = base_team_query().filter(Team.captain_student_id == captain_sid).first()
+
+        if not team and team_name:
+            team = base_team_query().filter(Team.team_name == team_name).first()
+
+        if not team:
+            skipped += 1
+            errors.append(f"第 {row_number} 行：未匹配到队伍")
+            continue
+
+        assignment = db.query(InspectionAssignment).filter(InspectionAssignment.team_id == team.id).first()
+        if not assignment:
+            assignment = InspectionAssignment(team_id=team.id, assigned_by=current_user.id)
+            db.add(assignment)
+
+        updates = {
+            "first_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["一验时间", "第一次验收时间", "first_inspection_time"])),
+            "first_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["一验地点", "第一次验收地点", "first_inspection_location"])),
+            "first_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["一验备注", "第一次验收备注", "first_notes"])),
+            "second_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["二验时间", "第二次验收时间", "second_inspection_time"])),
+            "second_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["二验地点", "第二次验收地点", "second_inspection_location"])),
+            "second_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["二验备注", "第二次验收备注", "second_notes"])),
+        }
+
+        row_changed = False
+        for field_name, field_value in updates.items():
+            if field_value in (None, ""):
+                continue
+            if getattr(assignment, field_name) != field_value:
+                setattr(assignment, field_name, field_value)
+                row_changed = True
+
+        if row_changed:
+            assignment.inspection_time = assignment.first_inspection_time
+            assignment.inspection_location = assignment.first_inspection_location
+            assignment.notes = assignment.first_notes
+            assignment.assigned_by = current_user.id
+            updated += 1
+        else:
+            unchanged += 1
+
+    db.commit()
+    return success_response(
+        data={
+            "updated": updated,
+            "unchanged": unchanged,
+            "skipped": skipped,
+            "errors": errors[:20],
+        },
+        msg=f"导入完成，更新 {updated} 条，未变化 {unchanged} 条，跳过 {skipped} 条",
     )
 
 

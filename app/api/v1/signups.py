@@ -30,6 +30,14 @@ STAGE_LABEL_MAP = {
     InterviewStage.REJECTED: "已淘汰",
 }
 
+APPLICATION_STATUS_LABELS = {
+    ApplicationStatus.SUBMITTED: "已提交",
+    ApplicationStatus.REVIEWING: "审核中",
+    ApplicationStatus.ACCEPTED: "已通过",
+    ApplicationStatus.REJECTED: "未通过",
+    ApplicationStatus.CANCELLED: "已取消",
+}
+
 FIXED_SIGNUP_CATEGORIES = ["recruitment", "wireless_cup", "telecom_cup"]
 
 FIXED_SIGNUP_DEFAULTS = {
@@ -47,15 +55,6 @@ FIXED_SIGNUP_DEFAULTS = {
     },
 }
 
-SYSTEM_STAGE_LABELS = {
-    "registration": "报名阶段",
-    "first_round": "第一轮面试",
-    "second_round": "第二轮面试",
-    "ended": "已结束",
-}
-
-ALLOWED_SYSTEM_STAGES = set(SYSTEM_STAGE_LABELS.keys())
-
 DEFAULT_FORM_FIELDS = [
     {"name": "姓名", "type": "text", "required": True},
     {"name": "手机号", "type": "text", "required": True},
@@ -70,8 +69,7 @@ DEFAULT_FORM_FIELDS = [
 
 EXCEL_TEMPLATE_HEADERS = [
     "姓名", "学号", "手机号", "邮箱", "学院", "专业班级", "第一志愿", "第二志愿", "服从调剂", "自我介绍",
-    "当前阶段", "一面-第一志愿时间", "一面-第一志愿地点", "一面-第二志愿时间", "一面-第二志愿地点",
-    "二面部门", "二面时间", "二面地点", "备注"
+    "一面时间", "一面地点", "二面部门", "二面时间", "二面地点", "备注"
 ]
 
 
@@ -81,44 +79,32 @@ def stage_to_label(stage: Optional[InterviewStage]) -> str:
     return STAGE_LABEL_MAP.get(stage, STAGE_LABEL_MAP[InterviewStage.FIRST_ROUND])
 
 
-def normalize_stage(value: Any) -> Optional[InterviewStage]:
-    if value is None:
-        return None
-
-    text = str(value).strip().lower()
-    if not text:
-        return None
-
-    stage_map = {
-        "first_round": InterviewStage.FIRST_ROUND,
-        "first round": InterviewStage.FIRST_ROUND,
-        "第一轮": InterviewStage.FIRST_ROUND,
-        "第一轮面试": InterviewStage.FIRST_ROUND,
-        "一轮": InterviewStage.FIRST_ROUND,
-        "一面": InterviewStage.FIRST_ROUND,
-        "second_round": InterviewStage.SECOND_ROUND,
-        "second round": InterviewStage.SECOND_ROUND,
-        "第二轮": InterviewStage.SECOND_ROUND,
-        "第二轮面试": InterviewStage.SECOND_ROUND,
-        "二轮": InterviewStage.SECOND_ROUND,
-        "二面": InterviewStage.SECOND_ROUND,
-        "accepted": InterviewStage.ACCEPTED,
-        "已录用": InterviewStage.ACCEPTED,
-        "通过": InterviewStage.ACCEPTED,
-        "rejected": InterviewStage.REJECTED,
-        "已淘汰": InterviewStage.REJECTED,
-        "未通过": InterviewStage.REJECTED,
-        "落选": InterviewStage.REJECTED,
-    }
-    return stage_map.get(text)
-
-
 def normalize_text(value: Any) -> str:
     if value is None:
         return ""
     if isinstance(value, datetime):
         return value.strftime("%Y-%m-%d %H:%M")
     return str(value).strip()
+
+
+def excel_header_map(sheet) -> Dict[str, int]:
+    return {
+        normalize_text(cell.value): index
+        for index, cell in enumerate(sheet[1])
+        if normalize_text(cell.value)
+    }
+
+
+def excel_cell_value(row, header_map: Dict[str, int], names, fallback_index: Optional[int] = None) -> str:
+    for name in names:
+        index = header_map.get(name)
+        if index is not None and index < len(row):
+            return normalize_text(row[index])
+
+    if fallback_index is not None and fallback_index < len(row):
+        return normalize_text(row[fallback_index])
+
+    return ""
 
 
 def ensure_fixed_signup_configs(db: Session):
@@ -165,14 +151,8 @@ def fill_export_sheet(sheet, applications):
             form_data.get("第二志愿", ""),
             form_data.get("服从调剂", ""),
             form_data.get("自我介绍", ""),
-            SYSTEM_STAGE_LABELS.get(
-                app.signup_config.current_stage if app.signup_config else "registration",
-                "报名阶段"
-            ),
             app.first_choice_interview_time or "",
             app.first_choice_interview_location or "",
-            app.second_choice_interview_time or "",
-            app.second_choice_interview_location or "",
             app.second_round_department or "",
             app.second_round_interview_time or "",
             app.second_round_interview_location or "",
@@ -190,15 +170,59 @@ def fill_export_sheet(sheet, applications):
         "H": 14,
         "I": 12,
         "J": 34,
-        "K": 14,
+        "K": 20,
         "L": 20,
-        "M": 20,
+        "M": 14,
         "N": 20,
         "O": 20,
-        "P": 14,
-        "Q": 20,
-        "R": 20,
-        "S": 30,
+        "P": 30,
+    }
+    for col, width in column_widths.items():
+        sheet.column_dimensions[col].width = width
+
+
+def fill_example_sheet(sheet):
+    sheet.append(EXCEL_TEMPLATE_HEADERS)
+    sheet.append([
+        "张三",
+        "202600000001",
+        "13800000000",
+        "example@example.com",
+        "信息学院",
+        "计科2601",
+        "科创部",
+        "宣传部",
+        "是",
+        "喜欢技术实践，参加过校内项目。",
+        "2026-06-20 19:00",
+        "创新楼 A101",
+        "科创部",
+        "2026-06-27 19:00",
+        "创新楼 A102",
+        "请提前 10 分钟到场",
+    ])
+
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    column_widths = {
+        "A": 12,
+        "B": 16,
+        "C": 16,
+        "D": 24,
+        "E": 16,
+        "F": 18,
+        "G": 14,
+        "H": 14,
+        "I": 12,
+        "J": 34,
+        "K": 20,
+        "L": 20,
+        "M": 14,
+        "N": 20,
+        "O": 20,
+        "P": 30,
     }
     for col, width in column_widths.items():
         sheet.column_dimensions[col].width = width
@@ -215,35 +239,36 @@ async def get_active_signup_configs(
     无需登录即可访问
     """
     ensure_fixed_signup_configs(db)
+    now = datetime.now()
+
     query = db.query(SignupConfig).filter(
         SignupConfig.is_active == True,
         SignupConfig.category.in_(FIXED_SIGNUP_CATEGORIES)
     )
-    
+
     # 按分类筛选
     if category:
         query = query.filter(SignupConfig.category == category)
-    
+
     # 只显示报名时间内的活动
-    now = datetime.now()
     query = query.filter(
         SignupConfig.start_time <= now,
         SignupConfig.end_time >= now
     )
-    
+
     configs = query.all()
     
     return success_response(
         data=[{
+            "can_submit": bool(c.is_active and c.start_time <= now <= c.end_time),
             "id": c.id,
+            "is_active": c.is_active,
             "title": c.title,
             "description": c.description,
             "category": c.category,
             "start_time": c.start_time.isoformat(),
             "end_time": c.end_time.isoformat(),
             "max_participants": c.max_participants,
-            "current_stage": c.current_stage,
-            "current_stage_desc": SYSTEM_STAGE_LABELS.get(c.current_stage, c.current_stage),
             "form_fields": c.form_fields
         } for c in configs],
         msg="获取成功"
@@ -265,7 +290,6 @@ class AdminUpdateApplicationRequest(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     status: Optional[ApplicationStatus] = None
-    current_stage: Optional[InterviewStage] = None
     review_notes: Optional[str] = None
     interview_time: Optional[str] = None
     interview_location: Optional[str] = None
@@ -297,7 +321,6 @@ class AdminSignupConfigUpdateRequest(BaseModel):
     is_active: Optional[bool] = None
     description: Optional[str] = None
     max_participants: Optional[int] = None
-    current_stage: Optional[str] = None
 
 
 @router.get("/admin/configs", response_model=dict, summary="管理员查看报名配置")
@@ -322,8 +345,6 @@ async def get_admin_signup_configs(
             "end_time": c.end_time.isoformat(),
             "max_participants": c.max_participants,
             "is_active": c.is_active,
-            "current_stage": c.current_stage,
-            "current_stage_desc": SYSTEM_STAGE_LABELS.get(c.current_stage, c.current_stage),
             "form_fields": c.form_fields
         } for c in configs],
         msg=f"获取成功，共 {len(configs)} 条"
@@ -371,11 +392,6 @@ async def update_signup_config(
         config.description = req.description
     if req.max_participants is not None:
         config.max_participants = req.max_participants
-    if req.current_stage is not None:
-        if req.current_stage not in ALLOWED_SYSTEM_STAGES:
-            return error_response(400, "系统阶段非法")
-        config.current_stage = req.current_stage
-
     db.commit()
     return success_response(msg="修改成功")
 
@@ -439,8 +455,7 @@ async def update_application(
     if not app_record:
         return error_response(404, "记录不存在")
     
-    current_stage = app_record.current_stage or InterviewStage.FIRST_ROUND
-    if app_record.status != ApplicationStatus.SUBMITTED or current_stage != InterviewStage.FIRST_ROUND:
+    if app_record.status != ApplicationStatus.SUBMITTED:
         return error_response(400, "当前状态不允许修改报名信息")
         
     app_record.form_data = req.form_data
@@ -492,11 +507,8 @@ async def get_applications(
             "phone": app.phone,
             "form_data": app.form_data,
             "status": app.status.value,
-            "current_stage": app.signup_config.current_stage if app.signup_config else "registration",
-            "current_stage_desc": SYSTEM_STAGE_LABELS.get(
-                app.signup_config.current_stage if app.signup_config else "registration",
-                "报名阶段"
-            ),
+            "current_stage": app.current_stage.value if app.current_stage else "first_round",
+            "current_stage_desc": stage_to_label(app.current_stage),
             "review_notes": app.review_notes,
             "interview_time": app.interview_time,
             "interview_location": app.interview_location,
@@ -546,11 +558,8 @@ async def get_internal_applications(
             "first_choice": (app.form_data or {}).get("第一志愿", ""),
             "second_choice": (app.form_data or {}).get("第二志愿", ""),
             "form_data": app.form_data,
-            "current_stage": app.signup_config.current_stage if app.signup_config else "registration",
-            "current_stage_desc": SYSTEM_STAGE_LABELS.get(
-                app.signup_config.current_stage if app.signup_config else "registration",
-                "报名阶段"
-            ),
+            "current_stage": app.current_stage.value if app.current_stage else "first_round",
+            "current_stage_desc": stage_to_label(app.current_stage),
             "college": (app.form_data or {}).get("学院", ""),
             "major": (app.form_data or {}).get("专业班级", ""),
             "adjust": (app.form_data or {}).get("服从调剂", ""),
@@ -595,16 +604,17 @@ async def export_applications(
 
     workbook = Workbook()
     sheet = workbook.active
-    sheet.title = "招新面试模板"
+    sheet.title = "招新报名信息"
     fill_export_sheet(sheet, applications)
+
+    example_sheet = workbook.create_sheet("填写示例")
+    fill_example_sheet(example_sheet)
 
     help_sheet = workbook.create_sheet("填写说明")
     help_sheet.append(["字段", "说明"])
-    help_sheet.append(["当前阶段", "可填写：第一轮面试/第二轮面试/已录用/已淘汰"])
-    help_sheet.append(["一面-第一志愿时间/地点", "第一轮面试第一志愿安排"])
-    help_sheet.append(["一面-第二志愿时间/地点", "第一轮面试第二志愿安排"])
-    help_sheet.append(["二面部门", "第二轮仅保留一个志愿部门"])
-    help_sheet.append(["二面时间/地点", "第二轮面试安排"])
+    help_sheet.append(["一面时间/地点", "第一次面试安排，可按示例格式填写"])
+    help_sheet.append(["二面部门", "第二次面试对应部门"])
+    help_sheet.append(["二面时间/地点", "第二次面试安排，可按示例格式填写"])
     help_sheet.append(["备注", "会写入系统通知信息"])
     help_sheet.append(["导入规则", "只更新 Excel 中填写了内容的单元格；留空不会清空系统里已有安排"])
     for cell in help_sheet[1]:
@@ -617,7 +627,7 @@ async def export_applications(
     workbook.save(buffer)
     buffer.seek(0)
 
-    filename = f"recruitment_interview_template_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = f"recruitment_applications_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     encoded_filename = quote(filename)
     headers = {
         "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
@@ -648,6 +658,7 @@ async def import_applications_interview_info(
         return error_response(400, "Excel 文件解析失败，请检查模板格式")
 
     sheet = workbook.active
+    header_map = excel_header_map(sheet)
     rows = list(sheet.iter_rows(min_row=2, values_only=True))
     if not rows:
         return error_response(400, "Excel 中没有可导入的数据")
@@ -657,7 +668,7 @@ async def import_applications_interview_info(
     unchanged = 0
 
     for row in rows:
-        student_id = normalize_text(row[1] if len(row) > 1 else "")
+        student_id = excel_cell_value(row, header_map, ["学号", "student_id"], 1)
         if not student_id:
             skipped += 1
             continue
@@ -671,13 +682,11 @@ async def import_applications_interview_info(
 
         row_changed = False
         field_updates = {
-            "first_choice_interview_time": normalize_text(row[11] if len(row) > 11 else ""),
-            "first_choice_interview_location": normalize_text(row[12] if len(row) > 12 else ""),
-            "second_choice_interview_time": normalize_text(row[13] if len(row) > 13 else ""),
-            "second_choice_interview_location": normalize_text(row[14] if len(row) > 14 else ""),
-            "second_round_department": normalize_text(row[15] if len(row) > 15 else ""),
-            "second_round_interview_time": normalize_text(row[16] if len(row) > 16 else ""),
-            "second_round_interview_location": normalize_text(row[17] if len(row) > 17 else ""),
+            "first_choice_interview_time": excel_cell_value(row, header_map, ["一面时间", "第一次面试时间", "一面-第一志愿时间", "first_choice_interview_time"], 10),
+            "first_choice_interview_location": excel_cell_value(row, header_map, ["一面地点", "第一次面试地点", "一面-第一志愿地点", "first_choice_interview_location"], 11),
+            "second_round_department": excel_cell_value(row, header_map, ["二面部门", "第二次面试部门", "second_round_department"], 12),
+            "second_round_interview_time": excel_cell_value(row, header_map, ["二面时间", "第二次面试时间", "second_round_interview_time"], 13),
+            "second_round_interview_location": excel_cell_value(row, header_map, ["二面地点", "第二次面试地点", "second_round_interview_location"], 14),
         }
 
         # 更安全的导入策略：只有 Excel 中明确填写的字段才会覆盖数据库中的现有值。
@@ -688,12 +697,12 @@ async def import_applications_interview_info(
                 setattr(app_record, field_name, field_value)
                 row_changed = True
 
-        notes_text = normalize_text(row[18] if len(row) > 18 else "")
+        notes_text = excel_cell_value(row, header_map, ["备注", "通知备注", "review_notes"], 15)
         if notes_text and app_record.review_notes != notes_text:
             app_record.review_notes = notes_text
             row_changed = True
 
-        # 历史字段兼容：仅在一面第一志愿被明确填写时才同步默认展示字段，避免空单元格误清空。
+        # 历史字段兼容：仅在一面被明确填写时才同步默认展示字段，避免空单元格误清空。
         first_choice_time = field_updates["first_choice_interview_time"]
         if first_choice_time and app_record.interview_time != app_record.first_choice_interview_time:
             app_record.interview_time = app_record.first_choice_interview_time
@@ -753,17 +762,13 @@ async def admin_update_application(
         app_record.second_round_interview_time = req.second_round_interview_time
     if req.second_round_interview_location is not None:
         app_record.second_round_interview_location = req.second_round_interview_location
-        if app_record.current_stage == InterviewStage.SECOND_ROUND:
-            app_record.interview_location = req.second_round_interview_location
     if req.form_data is not None:
         app_record.form_data = req.form_data
 
-    if req.first_choice_interview_time is not None and app_record.current_stage == InterviewStage.FIRST_ROUND:
+    if req.first_choice_interview_time is not None:
         app_record.interview_time = req.first_choice_interview_time
-    if req.first_choice_interview_location is not None and app_record.current_stage == InterviewStage.FIRST_ROUND:
+    if req.first_choice_interview_location is not None:
         app_record.interview_location = req.first_choice_interview_location
-    if req.second_round_interview_time is not None and app_record.current_stage == InterviewStage.SECOND_ROUND:
-        app_record.interview_time = req.second_round_interview_time
 
     db.commit()
     db.refresh(app_record)
@@ -807,23 +812,15 @@ async def query_application_status(
         
     results = []
     for app in apps:
-        system_stage = app.signup_config.current_stage if app.signup_config else "registration"
-        status_desc = SYSTEM_STAGE_LABELS.get(system_stage, "报名阶段")
-
-        interview_time = None
-        interview_location = None
-        if system_stage == "first_round":
-            interview_time = app.first_choice_interview_time or app.second_choice_interview_time
-            interview_location = app.first_choice_interview_location or app.second_choice_interview_location
-        elif system_stage == "second_round":
-            interview_time = app.second_round_interview_time
-            interview_location = app.second_round_interview_location
+        status_desc = APPLICATION_STATUS_LABELS.get(app.status, app.status.value)
+        interview_time = app.first_choice_interview_time or app.interview_time
+        interview_location = app.first_choice_interview_location or app.interview_location
         
         results.append({
             "id": app.id,
             "activity_title": app.signup_config.title if app.signup_config else "招新活动",
             "status": app.status.value,
-            "current_stage": system_stage,
+            "current_stage": app.current_stage.value if app.current_stage else "first_round",
             "status_desc": status_desc,
             "form_data": app.form_data,
             "notes": app.review_notes or "暂无通知，请稍后再次查询或关注短信",

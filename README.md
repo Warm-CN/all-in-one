@@ -1,121 +1,78 @@
-# 社团统一管理系统 (All-In-One Club Management System)
+# 社团统一管理系统
 
-本项目是一个功能齐全的社团管理平台，旨在简化社团的日常运营、用户认证、会议室预约及活动报名等流程。系统采用前后端分离架构，提供完善的角色权限控制 (RBAC)。
+这是一个基于 FastAPI + Vue 3 的社团统一管理系统，当前包含用户认证、成员管理、会议室预约、日程管理、招新报名、竞赛队伍与赛事管理等模块。
 
-## 🚀 功能特性
+## 技术栈
 
-- **身份认证与权限管理**
-  - 基于 JWT 的安全认证系统。
-  - 多级角色控制：`Visitor (游客)`, `Member (成员)`, `Admin (管理员)`。
-  - 完善的登录、注册及个人信息管理功能。
-- **会议室预约系统**
-  - 实时查看会议室详情与空闲状态。
-  - 预约申请提交、审批及历史记录查询。
-- **日程管理**
-  - 集成可视化日历日程管理功能，支持查看与发布个人/团队日程。
-- **报名与招新系统**
-  - 支持招新面试管理、报名申请及数据统计。
-- **管理后台**
-  - 用户权限分配、预约审批、成员管理等全局配置功能。
-- **响应式适配**
-  - 针对移动端进行了深度适配，支持在手机上顺畅操作各项功能。
+| 层级 | 技术 |
+|------|------|
+| 后端 | FastAPI, SQLAlchemy, Pydantic, JWT, SlowAPI |
+| 数据库 | MySQL 8.x, PyMySQL |
+| 前端 | Vue 3, Vite, Pinia, Vue Router, Element Plus, Tailwind CSS |
+| 部署 | Nginx, systemd, Uvicorn |
 
-## 🛠 技术栈
+## 快速启动
 
-### 后端 (Backend)
-- **框架**: FastAPI (高性能 Python Web 框架)
-- **数据库**: MySQL / SQLite
-- **ORM**: SQLAlchemy (2.0+)
-- **数据库迁移**: Alembic
-- **安全认证**: python-jose (JWT), Passlib (Bcrypt 密码哈希)
-- **核心依赖**: Pydantic, Uvicorn
+### 后端
 
-### 前端 (Frontend)
-- **框架**: Vue 3 (Composition API)
-- **构建工具**: Vite
-- **UI 组件库**: Element Plus
-- **样式**: Tailwind CSS
-- **状态管理**: Pinia
-- **路由**: Vue Router
-- **网络请求**: Axios
-
-## 📂 项目结构
-
-```text
-├── alembic/              # 数据库迁移文件
-├── app/                  # 后端核心代码
-│   ├── api/v1/           # API 接口路由
-│   ├── core/             # 配置文件、数据库初始化、安全配置
-│   ├── models/           # SQLAlchemy 数据模型
-│   ├── schemas/          # Pydantic 数据验证模型
-│   └── services/         # 业务逻辑层
-├── docs/                 # 项目详细开发文档
-├── frontend/             # Vue 3 前端工程
-│   ├── src/api/          # 前端接口请求
-│   ├── src/views/        # 页面组件
-│   ├── src/store/        # Pinia 状态树
-│   └── src/layout/       # 全局布局组件
-├── scripts/              # 数据库初始化及工具脚本
-├── main.py               # 后端入口文件
-└── requirements.txt      # 后端依赖配置
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
 ```
 
-## 🚥 快速开始
+编辑 `.env`，至少填写 `DB_PASSWORD` 和 `SECRET_KEY`，并确保 MySQL 中存在 `club_management` 数据库。
 
-### 1. 克隆项目
-```bash
-git clone git@github.com:Warm-CN/all-in-one.git
-cd all-in-one
+```powershell
+python main.py
 ```
 
-### 2. 后端配置与启动
-1. **创建虚拟环境** (推荐使用 Python 3.10+):
-   ```bash
-   python -m venv .venv
-   # Windows:
-   .venv\Scripts\activate
-   # Linux/macOS:
-   source .venv/bin/activate
-   ```
-2. **安装依赖**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **数据库初始化**:
-   - 运行重建数据库脚本:
-     ```bash
-     python scripts/rebuild_database.py
-     ```
-   - 初始化管理员账户:
-     ```bash
-     python scripts/init_admin.py
-     ```
-4. **启动服务**:
-   ```bash
-   python main.py
-   ```
-   接口文档访问地址: [http://localhost:8001/docs](http://localhost:8001/docs)
+后端默认运行在 `http://localhost:8001`，接口文档为 `http://localhost:8001/docs`。
 
-### 3. 前端启动
-1. **进入前端目录**:
-   ```bash
-   cd frontend
-   ```
-2. **安装依赖**:
-   ```bash
-   npm install
-   ```
-3. **运行开发服务器**:
-   ```bash
-   npm run dev
-   ```
-   
+### 前端
 
-## 📖 开发指南
-更多详细信息请参阅 `docs/` 目录下的相关文档：
-- [后端开发指南](docs/后端开发指南.md)
-- [配置指南](docs/配置指南.md)
-- [认证系统使用指南](docs/第二阶段-认证系统使用指南.md)
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
-## 📄 许可证
-© 2026 All In One. 仅供内部学习与参考使用。
+前端开发服务器默认运行在 `http://localhost:3000`，并通过 Vite 代理请求 `http://localhost:8001`。
+
+### 初始化管理员
+
+首次建库后运行：
+
+```powershell
+python scripts/init_admin.py
+```
+
+默认管理员账号：
+
+| 字段 | 值 |
+|------|----|
+| 学号 | `110` |
+| 密码 | `654321` |
+
+登录后请尽快修改默认密码。
+
+## 文档索引
+
+| 文档 | 用途 |
+|------|------|
+| [docs/DEPLOY.md](docs/DEPLOY.md) | 服务器部署、升级、备份、Nginx、systemd、HTTPS、排错 |
+| [docs/配置指南.md](docs/配置指南.md) | 本地/生产环境变量、数据库、前后端配置 |
+| [docs/后端开发指南.md](docs/后端开发指南.md) | 后端目录结构、模型、权限、接口概览 |
+| [frontend/README.md](frontend/README.md) | 前端目录、环境变量、构建说明 |
+| [docs/API_会议室预约.md](docs/API_会议室预约.md) | 会议室预约接口细节 |
+| [docs/API_日程管理.md](docs/API_日程管理.md) | 日程查询与管理接口细节 |
+
+## 生产部署入口
+
+服务器部署请优先阅读 [docs/DEPLOY.md](docs/DEPLOY.md)。生产环境建议：
+
+- 后端仅监听 `127.0.0.1:8001`，由 Nginx 对外转发。
+- 前端使用 `npm run build` 生成 `frontend/dist`，由 Nginx 托管。
+- `.env` 中 `DEBUG=False`，`SECRET_KEY` 使用随机强密钥。
+- 部署前备份数据库与 `uploads/`。

@@ -123,6 +123,38 @@ export function exportTeams(params) {
 }
 
 /**
+ * 管理员导入队伍报名信息
+ */
+export function importTeams(file, moduleKey) {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return request({
+        url: '/api/v1/teams/import',
+        method: 'post',
+        params: moduleKey ? { module_key: moduleKey } : undefined,
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+}
+
+/**
+ * 管理员导入队伍验收安排
+ */
+export function importTeamInspections(file, moduleKey) {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return request({
+        url: '/api/v1/teams/inspection-import',
+        method: 'post',
+        params: moduleKey ? { module_key: moduleKey } : undefined,
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+}
+
+/**
  * 管理员查看队伍详情
  */
 export function getTeamDetail(teamId) {

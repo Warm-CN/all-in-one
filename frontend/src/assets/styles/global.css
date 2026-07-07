@@ -33,6 +33,20 @@
         min-height: 100%;
     }
 
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+
+    p {
+        overflow-wrap: anywhere;
+    }
+
     /* 全局滚动条样式 */
     ::-webkit-scrollbar {
         width: 6px;
@@ -91,14 +105,56 @@
 .el-button {
     border-radius: 12px !important;
     font-weight: 500 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px;
+    max-width: 100%;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.el-button:not(.is-circle) {
+.el-button:not(.is-circle):not(.is-link):not(.is-text),
+.el-button.is-text.is-has-bg:not(.is-circle) {
     min-height: 40px;
+    height: auto !important;
     white-space: normal !important;
     line-height: 1.25 !important;
     padding: 10px 16px !important;
+}
+
+.el-button.el-button--small:not(.is-circle):not(.is-link):not(.is-text),
+.el-button.el-button--small.is-text.is-has-bg:not(.is-circle) {
+    min-height: 32px;
+    padding: 6px 12px !important;
+}
+
+.el-button.el-button--large:not(.is-circle):not(.is-link):not(.is-text),
+.el-button.el-button--large.is-text.is-has-bg:not(.is-circle) {
+    min-height: 48px;
+    padding: 12px 18px !important;
+}
+
+.el-button.is-circle {
+    flex: 0 0 auto;
+}
+
+.el-button.is-link,
+.el-button.is-text:not(.is-has-bg) {
+    min-height: 0;
+    height: auto;
+    padding: 4px 6px !important;
+    line-height: 1.35 !important;
+}
+
+.el-button>span {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 /* 普通/默认按钮：移除生硬边框，使用柔和阴影和背景 */
@@ -240,7 +296,19 @@
 .el-date-editor.el-input,
 .el-date-editor.el-input__wrapper,
 .el-input-number {
+    min-width: 0;
     max-width: 100%;
+}
+
+.el-date-editor.el-input,
+.el-date-editor.el-input__wrapper {
+    width: 100%;
+}
+
+.el-input__inner,
+.el-select__selected-item,
+.el-date-editor .el-range-input {
+    min-width: 0;
 }
 
 .el-textarea__inner {
@@ -250,6 +318,28 @@
 .el-table .cell {
     line-height: 1.5;
     word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.el-table .cell,
+.el-tag,
+.el-alert__title,
+.el-message-box__message,
+.el-dialog__title {
+    max-width: 100%;
+}
+
+.el-tag,
+.el-alert__title,
+.el-message-box__message,
+.el-dialog__title {
+    white-space: normal;
+    line-height: 1.35;
+}
+
+.el-form-item,
+.el-form-item__content {
+    min-width: 0;
 }
 
 .mobile-radio-group {
@@ -257,9 +347,17 @@
 }
 
 @media (max-width: 640px) {
-    .el-button:not(.is-circle) {
+    .el-button:not(.is-circle):not(.is-link):not(.is-text),
+    .el-button.is-text.is-has-bg:not(.is-circle) {
         min-height: 42px;
+        height: auto !important;
         padding: 10px 14px !important;
+    }
+
+    .el-button.el-button--small:not(.is-circle):not(.is-link):not(.is-text),
+    .el-button.el-button--small.is-text.is-has-bg:not(.is-circle) {
+        min-height: 34px;
+        padding: 7px 12px !important;
     }
 
     .el-dialog {

@@ -1,224 +1,219 @@
 <template>
-  <div class="admin-management-page flex h-full min-h-0 flex-col gap-6">
-    <section class="flex flex-col gap-5 pt-2 2xl:flex-row 2xl:items-start 2xl:justify-between">
-      <div class="max-w-3xl">
-        <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold tracking-[0.18em] text-blue-600">
-          ACTIVITY CONTROL
-        </span>
-        <h2 class="mt-3 text-2xl font-bold leading-[1.2] text-slate-800 sm:text-3xl">后台管理</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-500 sm:text-base">
-          统一管理无线杯、电信杯比赛历史；可设置当前“正在比赛”，并进入竞赛后台管理。
-        </p>
-      </div>
+  <div class="recruitment-admin-page flex h-full flex-col gap-6">
+    <section class="rounded-[24px] border border-slate-200/90 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)] sm:p-6 lg:p-7">
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+          <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
+            RECRUITMENT ADMIN
+          </span>
+          <h2 class="mt-3 text-2xl font-bold leading-[1.25] text-slate-800 sm:text-3xl">招新管理</h2>
+          <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
+            管理招新报名活动名称、报名开始时间和报名结束时间。保存后会同步影响公开招新报名页面。
+          </p>
+        </div>
 
-      <div class="grid w-full grid-cols-1 gap-3 sm:grid-cols-3 2xl:w-[390px] 2xl:flex-none">
-        <div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-          <div class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">当前活动</div>
-          <div class="mt-2 text-lg font-semibold text-slate-800">{{ selectedCategoryMeta.label }}</div>
-        </div>
-        <div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-          <div class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">历史比赛数</div>
-          <div class="mt-2 text-lg font-semibold text-slate-800">{{ competitionEvents.length }}</div>
-        </div>
         <div
-          class="rounded-2xl border px-4 py-4 shadow-sm"
-          :class="activeEvent ? 'border-emerald-200 bg-emerald-50/70' : 'border-slate-200 bg-slate-50'"
+          class="status-card rounded-2xl border px-5 py-4"
+          :class="form.is_active ? 'border-emerald-200 bg-emerald-50/75' : 'border-slate-200 bg-slate-50'"
         >
-          <div class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">当前状态</div>
-          <div class="mt-2 text-lg font-semibold" :class="activeEvent ? 'text-emerald-600' : 'text-slate-700'">
-            {{ activeEvent ? '存在进行中比赛' : '暂无进行中比赛' }}
+          <div class="text-xs font-semibold uppercase text-slate-400">报名入口</div>
+          <div class="mt-2 text-lg font-bold" :class="form.is_active ? 'text-emerald-700' : 'text-slate-700'">
+            {{ form.is_active ? '开放中' : '已关闭' }}
           </div>
         </div>
       </div>
     </section>
 
-    <section class="rounded-[24px] border border-slate-200/90 bg-[linear-gradient(180deg,#f8fbff_0%,#f8fafc_100%)] p-5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.2)] sm:p-6">
-      <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 class="text-sm font-semibold text-slate-700">活动分类切换</h3>
-          <p class="text-xs leading-5 text-slate-500">选择无线杯或电信杯查看历史赛事并进入竞赛后台管理。</p>
-        </div>
-      </div>
+    <section class="grid min-h-0 flex-1 grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div class="rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-[0_14px_36px_-30px_rgba(15,23,42,0.2)] sm:p-6 lg:p-7" v-loading="loading">
+        <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="admin-form">
+          <el-form-item label="活动名称" prop="title">
+            <el-input v-model="form.title" placeholder="请输入招新活动名称" />
+          </el-form-item>
 
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <el-button
-          v-for="item in categoryOptions"
-          :key="item.value"
-          :type="selectedCategory === item.value ? 'primary' : 'default'"
-          class="category-button !ml-0 !h-auto !justify-start !rounded-[18px] !px-5 !py-4"
-          @click="selectCategory(item.value)"
-        >
-          <div class="flex min-w-0 flex-col items-start text-left">
-            <span class="text-sm font-semibold">{{ item.label }}</span>
-            <span class="mt-1 text-xs opacity-70">
-              {{ item.value === selectedCategory ? '当前正在查看' : '点击切换' }}
-            </span>
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <el-form-item label="报名开始时间" prop="start_time">
+              <el-date-picker
+                v-model="form.start_time"
+                type="datetime"
+                value-format="YYYY-MM-DDTHH:mm:ss"
+                placeholder="选择报名开始时间"
+                class="w-full"
+              />
+            </el-form-item>
+
+            <el-form-item label="报名结束时间" prop="end_time">
+              <el-date-picker
+                v-model="form.end_time"
+                type="datetime"
+                value-format="YYYY-MM-DDTHH:mm:ss"
+                placeholder="选择报名结束时间"
+                class="w-full"
+              />
+            </el-form-item>
           </div>
-        </el-button>
-      </div>
-    </section>
 
-    <section
-      class="rounded-[24px] border border-slate-200/90 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.18)] sm:p-6"
-      v-loading="eventsLoading"
-    >
-      <div class="mb-4 flex items-center justify-between">
-        <h3 class="text-lg font-semibold text-slate-800">比赛历史（{{ selectedCategoryMeta.label }}）</h3>
-        <el-button class="!rounded-xl" @click="fetchCompetitionEvents">刷新</el-button>
-      </div>
-
-      <el-alert
-        v-if="!isCompetitionCategory"
-        type="info"
-        :closable="false"
-        title="招新不在此页面维护比赛历史，请切换到无线杯或电信杯。"
-      />
-
-      <div v-else-if="!competitionEvents.length && !eventsLoading" class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-        暂无比赛历史，请先在赛事中心创建比赛。
-      </div>
-
-      <div v-else class="history-scroll max-h-[62vh] overflow-y-auto pr-1">
-        <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <article v-for="item in competitionEvents" :key="item.id" class="rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.4)]">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <h4 class="text-base font-semibold text-slate-900">{{ item.name }}</h4>
-                <p class="mt-1 text-xs text-slate-500">报名页标题：{{ item.display_title }}</p>
-                <p class="mt-1 text-xs text-slate-500">模块标识：{{ item.module_key }}</p>
-              </div>
-              <el-tag :type="item.is_current ? 'success' : 'info'">{{ item.is_current ? '正在比赛' : '已结束' }}</el-tag>
-            </div>
-
-            <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-              <div class="rounded-xl bg-slate-50 px-2 py-2">
-                <div class="font-semibold text-slate-700">队伍数</div>
-                <div class="mt-1 text-sm font-bold text-slate-900">{{ item.team_count }}</div>
-              </div>
-              <div class="rounded-xl bg-slate-50 px-2 py-2">
-                <div class="font-semibold text-slate-700">报名人数</div>
-                <div class="mt-1 text-sm font-bold text-slate-900">{{ item.total_people }}</div>
-              </div>
-              <div class="rounded-xl bg-slate-50 px-2 py-2">
-                <div class="font-semibold text-slate-700">选题数</div>
-                <div class="mt-1 text-sm font-bold text-slate-900">{{ item.topic_count }}（不限）</div>
+          <el-form-item label="报名入口">
+            <div class="switch-panel rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4 sm:px-5">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-slate-700">
+                    {{ form.is_active ? '当前允许访问公开报名入口' : '当前公开报名入口已关闭' }}
+                  </div>
+                  <p class="mt-1 text-xs leading-5 text-slate-500">
+                    开放时可访问并提交报名；关闭时公开报名表不会展示。
+                  </p>
+                </div>
+                <el-switch v-model="form.is_active" active-text="开放" inactive-text="关闭" />
               </div>
             </div>
+          </el-form-item>
 
-            <div class="mt-4 flex flex-wrap gap-2">
-              <el-button type="primary" class="!rounded-xl" @click="goContestAdmin(item)">竞赛后台管理</el-button>
-              <el-button class="!rounded-xl" :loading="activatingId === item.id" @click="toggleActive(item)">
-                {{ item.is_current ? '设为已结束' : '设为正在比赛' }}
-              </el-button>
+          <div class="mt-5 flex flex-col gap-3 rounded-[20px] border border-dashed border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-slate-700">保存招新活动设置</div>
+              <p class="mt-1 text-xs leading-5 text-slate-500">请确认活动名称和报名时间无误后保存。</p>
             </div>
-          </article>
+            <el-button type="primary" class="!w-full sm:!w-auto" :loading="saving" @click="submitForm">
+              保存设置
+            </el-button>
+          </div>
+        </el-form>
+      </div>
+
+      <aside class="rounded-[24px] border border-slate-200/90 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.18)] sm:p-6">
+        <div class="text-sm font-semibold text-slate-700">当前配置</div>
+        <div class="mt-5 space-y-5">
+          <div>
+            <div class="text-xs font-semibold uppercase text-slate-400">活动名称</div>
+            <div class="mt-1 break-words text-base font-semibold text-slate-800">{{ form.title || '未设置' }}</div>
+          </div>
+          <div>
+            <div class="text-xs font-semibold uppercase text-slate-400">报名时间</div>
+            <div class="mt-1 break-words text-sm leading-6 text-slate-600">{{ dateRangeText }}</div>
+          </div>
+          <div>
+            <div class="text-xs font-semibold uppercase text-slate-400">入口状态</div>
+            <div class="mt-1 text-base font-semibold" :class="form.is_active ? 'text-emerald-700' : 'text-slate-700'">
+              {{ form.is_active ? '开放中' : '已关闭' }}
+            </div>
+          </div>
         </div>
-      </div>
+      </aside>
     </section>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
-import { getCompetitionEvents, updateCompetitionActiveState } from '@/api/competition'
+import { getAdminSignupConfigs, updateAdminSignupConfig } from '@/api/recruitment'
 
-const router = useRouter()
+const loading = ref(false)
+const saving = ref(false)
+const formRef = ref(null)
+const configId = ref(null)
 
-const categoryOptions = [
-  { label: '招新', value: 'recruitment' },
-  { label: '无线杯', value: 'wireless_cup' },
-  { label: '电信杯', value: 'telecom_cup' }
-]
-
-const selectedCategory = ref('wireless_cup')
-const eventsLoading = ref(false)
-const activatingId = ref(null)
-const competitionEvents = ref([])
-
-const selectedCategoryMeta = computed(() => {
-  return categoryOptions.find((item) => item.value === selectedCategory.value) || categoryOptions[0]
+const form = reactive({
+  title: '',
+  start_time: '',
+  end_time: '',
+  is_active: false
 })
 
-const isCompetitionCategory = computed(() => {
-  return selectedCategory.value === 'wireless_cup' || selectedCategory.value === 'telecom_cup'
+const rules = reactive({
+  title: [{ required: true, message: '请输入活动名称', trigger: 'blur' }],
+  start_time: [{ required: true, message: '请选择报名开始时间', trigger: 'change' }],
+  end_time: [{ required: true, message: '请选择报名结束时间', trigger: 'change' }]
 })
 
-const competitionCupType = computed(() => {
-  if (selectedCategory.value === 'wireless_cup') return 'wireless'
-  if (selectedCategory.value === 'telecom_cup') return 'telecom'
-  return ''
+const dateRangeText = computed(() => {
+  if (!form.start_time || !form.end_time) {
+    return '请先设置报名开始和结束时间'
+  }
+
+  return `${dayjs(form.start_time).format('YYYY-MM-DD HH:mm')} - ${dayjs(form.end_time).format('YYYY-MM-DD HH:mm')}`
 })
 
-const activeEvent = computed(() => competitionEvents.value.find((item) => item.is_current) || null)
+const loadRecruitmentConfig = async () => {
+  loading.value = true
+  try {
+    const res = await getAdminSignupConfigs({ category: 'recruitment' })
+    const list = Array.isArray(res.data) ? res.data : []
+    if (!list.length) {
+      ElMessage.warning('未找到招新活动配置')
+      return
+    }
 
-const fetchCompetitionEvents = async () => {
-  if (!isCompetitionCategory.value || !competitionCupType.value) {
-    competitionEvents.value = []
+    const cfg = list[0]
+    configId.value = cfg.id
+    form.title = cfg.title || ''
+    form.start_time = (cfg.start_time || '').slice(0, 19)
+    form.end_time = (cfg.end_time || '').slice(0, 19)
+    form.is_active = !!cfg.is_active
+  } catch (error) {
+    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '加载招新配置失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const submitForm = async () => {
+  if (!formRef.value || !configId.value) return
+
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  if (dayjs(form.start_time).isAfter(dayjs(form.end_time))) {
+    ElMessage.error('报名结束时间必须晚于报名开始时间')
     return
   }
 
-  eventsLoading.value = true
+  saving.value = true
   try {
-    const res = await getCompetitionEvents(competitionCupType.value)
-    competitionEvents.value = Array.isArray(res.data) ? res.data : []
+    await updateAdminSignupConfig(configId.value, {
+      title: form.title,
+      start_time: form.start_time,
+      end_time: form.end_time,
+      is_active: form.is_active
+    })
+    ElMessage.success('招新活动设置已保存')
+    await loadRecruitmentConfig()
   } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '获取比赛历史失败')
+    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '保存失败')
   } finally {
-    eventsLoading.value = false
+    saving.value = false
   }
 }
 
-const toggleActive = async (event) => {
-  activatingId.value = event.id
-  try {
-    await updateCompetitionActiveState(event.id, !event.is_current)
-    ElMessage.success('比赛状态已更新')
-    await fetchCompetitionEvents()
-  } catch (error) {
-    ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '状态更新失败')
-  } finally {
-    activatingId.value = null
-  }
-}
-
-const goContestAdmin = async (event) => {
-  await router.push({
-    path: '/admin/contest',
-    query: {
-      module_key: event.module_key,
-      event_id: event.id,
-      event_name: event.display_title || event.name,
-      cup_type: event.cup_type
-    }
-  })
-}
-
-const selectCategory = async (category) => {
-  selectedCategory.value = category
-  await fetchCompetitionEvents()
-}
-
-onMounted(async () => {
-  await fetchCompetitionEvents()
+onMounted(() => {
+  loadRecruitmentConfig()
 })
 </script>
 
 <style scoped>
-.admin-management-page {
+.recruitment-admin-page {
   min-height: 100%;
 }
 
-.category-button :deep(.el-button__text) {
-  width: 100%;
+.status-card,
+.switch-panel {
+  min-width: 0;
 }
 
-.category-button {
-  box-shadow: 0 10px 24px -22px rgba(15, 23, 42, 0.24);
+.status-card {
+  min-height: 86px;
+  width: min(100%, 260px);
 }
 
-.history-scroll {
-  scrollbar-gutter: stable;
+.admin-form :deep(.el-form-item) {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1023px) {
+  .status-card {
+    width: 100%;
+  }
 }
 </style>

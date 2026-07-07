@@ -1,284 +1,521 @@
-# Ubuntu 云服务器部署指南 (FastAPI + Vue 3)
+# Ubuntu 服务器部署指南
 
-本指南介绍如何将本项目部署到 Ubuntu 云服务器上，使用 **Nginx** 作为 Web 服务器，**Gunicorn + Uvicorn** 作为后端应用服务器，并使用 **Systemd** 进行进程管理。
+本文档面向 Ubuntu 22.04/24.04 云服务器，部署方式为：
 
-## 1. 准备工作
+- Nginx 对外提供前端静态文件与反向代理。
+- FastAPI 后端通过 Uvicorn 监听 `127.0.0.1:8001`。
+- systemd 管理后端进程。
+- MySQL 保存业务数据。
 
-### 系统更新与基础包
+示例部署目录统一使用 `/var/www/all-in-one`。命令中的域名、用户名、数据库密码请替换为你的实际值。
+
+## 1. 部署前检查
+
+需要准备：
+
+| 项 | 示例 |
+|----|------|
+| 服务器系统 | Ubuntu 22.04 LTS 或 24.04 LTS |
+| 域名 | `club.example.com`，没有域名可先用公网 IP |
+| 后端端口 | `127.0.0.1:8001` |
+| 前端目录 | `/var/www/all-in-one/frontend/dist` |
+| 数据库 | `club_management` |
+| 数据库用户 | `club_user` |
+
+安全组/防火墙至少开放：
+
+- `22/tcp`：SSH
+- `80/tcp`：HTTP
+- `443/tcp`：HTTPS
+
+不要把 `8001` 暴露到公网。
+
+## 2. 安装系统依赖
+
 ```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y git python3-venv python3-pip nodejs npm nginx mysql-server
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y git curl nginx mysql-server python3 python3-venv python3-pip
 ```
 
-### 环境依赖
-- **Python**: 3.10+
-- **Node.js**: 18+
-- **MySQL**: 8.0+
+安装 Node.js 20：
 
-## 2. 数据库配置
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v
+npm -v
+```
 
-1. 登录 MySQL: `sudo mysql`
-2. 创建数据库并分配权限：
-   ```sql
-   CREATE DATABASE club_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   CREATE USER 'club_user'@'localhost' IDENTIFIED BY 'your_strong_password';
-   GRANT ALL PRIVILEGES ON club_management.* TO 'club_user'@'localhost';
-   FLUSH PRIVILEGES;
-   EXIT;
-   ```
+## 3. 配置 MySQL
 
-## 3. 获取代码与后端设置
+建议先执行安全初始化：
 
-1. **克隆项目**:
-   ```bash
-   cd /var/www
-   sudo git clone git@github.com:Warm-CN/all-in-one.git
-   sudo chown -R $USER:$USER all-in-one
-   cd all-in-one
-   ```
+```bash
+sudo mysql_secure_installation
+```
 
-2. **后端环境**:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   pip install gunicorn uvicorn
-   ```
+创建数据库与应用用户：
 
-3. **配置环境变量**:
-   创建 `.env` 文件并填入测试预览环境配置：
-   ```text
-   DEBUG=True # 测试环境开启调试模式以方便查看报错
-   DB_HOST=localhost
-   DB_USER=club_user
-   DB_PASSWORD=your_strong_password
-   DB_NAME=club_management
-   SECRET_KEY=dev-secret-key-for-testing
-   BACKEND_CORS_ORIGINS=http://your_domain.com,https://your_domain.com
-   ```
+```bash
+sudo mysql
+```
 
-4. **初始化数据库**:
-   ```bash
-   python3 scripts/rebuild_database.py
-   python3 scripts/init_admin.py
-   ```
+```sql
+CREATE DATABASE club_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'club_user'@'localhost' IDENTIFIED BY 'replace_with_strong_password';
+GRANT ALL PRIVILEGES ON club_management.* TO 'club_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
 
-## 4. 后端进程管理 (Systemd)
+验证登录：
 
-创建服务文件: `sudo nano /etc/systemd/system/club-backend.service`
+```bash
+mysql -u club_user -p club_management
+```
+
+## 4. 获取代码
+
+```bash
+sudo mkdir -p /var/www
+sudo chown -R $USER:www-data /var/www
+cd /var/www
+git clone git@github.com:Warm-CN/all-in-one.git
+cd /var/www/all-in-one
+```
+
+如果服务器没有配置 GitHub SSH Key，也可以用 HTTPS 仓库地址。
+
+创建上传目录并授权：
+
+```bash
+mkdir -p uploads
+sudo chown -R $USER:www-data /var/www/all-in-one
+sudo chmod -R 750 /var/www/all-in-one
+sudo chmod -R 770 /var/www/all-in-one/uploads
+```
+
+## 5. 后端环境
+
+```bash
+cd /var/www/all-in-one
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip wheel
+pip install -r requirements.txt
+```
+
+创建生产环境变量：
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+推荐配置：
+
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=club_user
+DB_PASSWORD=replace_with_strong_password
+DB_NAME=club_management
+DB_ECHO=False
+
+SECRET_KEY=replace_with_random_secret
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+DEBUG=False
+APP_NAME=社团统一管理系统
+APP_VERSION=1.0.0
+
+BACKEND_CORS_ORIGINS=https://club.example.com,http://club.example.com
+```
+
+生成 `SECRET_KEY`：
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+启动前自检：
+
+```bash
+python -c "from app.core.config import settings; print(settings.APP_NAME, settings.DB_NAME)"
+```
+
+首次部署空库时，应用启动会自动创建数据表。先用命令手动启动一次确认：
+
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+```
+
+另开一个 SSH 窗口测试：
+
+```bash
+curl http://127.0.0.1:8001/health
+```
+
+看到 `{"status":"healthy",...}` 后按 `Ctrl+C` 停止临时进程。
+
+创建管理员账号：
+
+```bash
+python scripts/init_admin.py
+```
+
+默认管理员为 `110 / 654321`，上线后立即登录修改密码。
+
+生产环境不要运行 `scripts/rebuild_database.py`，它会删除全部表。
+
+## 6. systemd 后端服务
+
+创建服务文件：
+
+```bash
+sudo nano /etc/systemd/system/club-backend.service
+```
+
+写入：
 
 ```ini
 [Unit]
-Description=Gunicorn instance to serve Club Management API
-After=network.target
+Description=Club Management FastAPI Backend
+After=network.target mysql.service
 
 [Service]
+Type=simple
 User=your_ubuntu_user
 Group=www-data
 WorkingDirectory=/var/www/all-in-one
-Environment="PATH=/var/www/all-in-one/.venv/bin"
-# 根据核心数调整 workers，通常为 2n+1
-ExecStart=/var/www/all-in-one/.venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 127.0.0.1:8001
+EnvironmentFile=/var/www/all-in-one/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/var/www/all-in-one/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001 --workers 2
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-启动并设置开机自启：
+把 `your_ubuntu_user` 改为当前部署用户，可用 `whoami` 查看。
+
+启动服务：
+
 ```bash
-sudo systemctl start club-backend
+sudo systemctl daemon-reload
 sudo systemctl enable club-backend
-# 检查服务状态，确保正常运行
+sudo systemctl start club-backend
 sudo systemctl status club-backend
 ```
 
-**重要提示**：如果服务启动失败，使用以下命令查看详细错误日志：
+查看日志：
+
 ```bash
-sudo journalctl -u club-backend -n 50
+sudo journalctl -u club-backend -n 100 --no-pager
+sudo journalctl -u club-backend -f
 ```
 
-## 5. 前端部署
+## 7. 前端构建
 
-### 方案 A：在服务器上构建（需要较高配置）
-1. **构建前端**:
-   ```bash
-   cd /var/www/all-in-one/frontend
-   # 创建前端生产环境变量
-   echo "VITE_API_BASE_URL=" > .env.production
-   npm install
-   npm run build
-   ```
+服务器构建：
 
-### 方案 B：在本地 Windows 构建后上传（适用于低配置服务器）
+```bash
+cd /var/www/all-in-one/frontend
+printf "VITE_API_BASE_URL=\n" > .env.production
+npm ci
+npm run build
+```
 
-如果服务器内存不足无法运行 `npm install` 或 `npm run build`，可以在本地构建后上传：
+如果服务器内存较小，可以在本地构建后上传 `frontend/dist` 到服务器同一路径。无论在哪里构建，都要确保构建前存在：
 
-1. **在本地项目根目录创建环境变量文件**（Windows PowerShell）：
-   ```powershell
-   cd D:\code\python\all-in-one\frontend
-   ```
+```env
+VITE_API_BASE_URL=
+```
 
-2. **本地构建**：
-   ```powershell
-   npm run build
-   ```
+否则生产包可能会请求 `localhost:8001`。
 
-3. **上传到服务器**（使用 SCP 或 SFTP 工具如 WinSCP、FileZilla）：
-   - 将整个 `frontend/dist` 文件夹上传到服务器的 `/var/www/all-in-one/frontend/dist`
-   - 或者使用命令行（需要安装 OpenSSH）：
-     ```powershell
-     scp -r dist root@your_server_ip:/var/www/all-in-one/frontend/
-     ```
+授权 Nginx 读取静态文件：
 
-4. **验证上传成功**：
-   ```bash
-   # 在服务器上执行
-   ls -la /var/www/all-in-one/frontend/dist
-   sudo systemctl reload nginx
-   ```
+```bash
+sudo chown -R $USER:www-data /var/www/all-in-one/frontend/dist
+sudo chmod -R 750 /var/www/all-in-one/frontend/dist
+```
 
-## 6. Nginx 配置 (反向代理)
+## 8. Nginx 配置
 
-创建 Nginx 配置：`sudo nano /etc/nginx/sites-available/club_system`
+创建站点配置：
+
+```bash
+sudo nano /etc/nginx/sites-available/club-system
+```
+
+写入：
 
 ```nginx
 server {
     listen 80;
-    server_name your_domain_or_ip;
+    server_name club.example.com;
 
-    # 前端静态文件
+    client_max_body_size 20m;
+
+    root /var/www/all-in-one/frontend/dist;
+    index index.html;
+
     location / {
-        root /var/www/all-in-one/frontend/dist;
-        index index.html;
         try_files $uri $uri/ /index.html;
     }
 
-    # 后端 API 代理
-    location /api {   
+    location /api/ {
         proxy_pass http://127.0.0.1:8001;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Swagger 文档代理 (可选)
+    location /api {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:8001/uploads/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location /docs {
         proxy_pass http://127.0.0.1:8001/docs;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /redoc {
+        proxy_pass http://127.0.0.1:8001/redoc;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /openapi.json {
+        proxy_pass http://127.0.0.1:8001/openapi.json;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /health {
+        proxy_pass http://127.0.0.1:8001/health;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-启用配置并重启 Nginx：
+没有域名时，把 `server_name` 改为服务器公网 IP 或 `_`。
+
+启用站点：
+
 ```bash
-sudo ln -s /etc/nginx/sites-available/club_system /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/club-system /etc/nginx/sites-enabled/club-system
+sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
-sudo systemctl restart nginx
+sudo systemctl reload nginx
 ```
 
-## 7. 故障排查
+测试：
 
-### 问题：前端能显示但登录时提示"网络连接失败"
+```bash
+curl http://club.example.com/health
+curl http://club.example.com/api/v1/auth/login
+```
 
-**原因**：前端无法连接到后端 API，通常是后端服务未启动或 Nginx 配置错误。
+第二条即使返回 `405 Method Not Allowed` 也说明代理已经到达后端，因为登录接口要求 POST。
 
-**排查步骤**：
+## 9. HTTPS
 
-1. **检查后端服务状态**：
-   ```bash
-   sudo systemctl status club-backend
-   ```
-   如果显示 `active (running)` 则正常，否则查看错误日志：
-   ```bash
-   sudo journalctl -u club-backend -n 50
-   ```
+有域名后安装证书：
 
-2. **测试后端是否可访问**：
-   ```bash
-   curl http://127.0.0.1:8001/docs
-   ```
-   应该返回 HTML 内容。如果返回错误，说明后端未正常运行。
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d club.example.com
+```
 
-3. **检查 Nginx 日志**：
-   ```bash
-   sudo tail -f /var/log/nginx/error.log
-   ```
-   尝试登录时查看是否有 502/504 错误。
+验证自动续期：
 
-4. **常见修复方法**：
-   - 后端未启动：`sudo systemctl restart club-backend`
-   - .env 配置错误：检查数据库连接信息是否正确
-   - 端口冲突：确认 8001 端口未被其他程序占用 `sudo lsof -i :8001`
-   - Systemd 服务文件中的 `User` 字段需要改为实际的 Ubuntu 用户名
+```bash
+sudo certbot renew --dry-run
+```
 
-5. **如果后端服务正常但前端仍连接失败**：
-   
-   在浏览器按 `F12` 打开开发者工具 → Network 标签，尝试登录并查看失败的请求：
-   - 如果请求 URL 是 `http://your_ip/api/auth/login`（正确）
-   - 如果请求 URL 是 `http://localhost:8001/api/auth/login`（错误，说明前端配置问题）
-   
-   **解决方法**：确保前端构建时使用了正确的环境变量：
-   ```bash
-   cd /var/www/all-in-one/frontend
-   cat .env.production  
-   echo "VITE_API_BASE_URL=" > .env.production
-   npm run build
-   sudo systemctl reload nginx
-   ```
+启用 HTTPS 后，把 `.env` 中的 `BACKEND_CORS_ORIGINS` 更新为 HTTPS 域名，并重启后端：
 
-6. **测试 Nginx 代理是否正常工作**：
-   ```bash
-   curl -X POST http://your_server_ip/api/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"username":"test","password":"test"}'
-   ```
-   应该返回 JSON 响应（即使用户名密码错误，也应该有响应）。如果返回 502/404，说明 Nginx 配置有问题。
+```bash
+sudo systemctl restart club-backend
+```
 
-### 问题：浏览器请求仍然指向 localhost:8000
+## 10. 日常升级
 
-**现象**：浏览器开发者工具显示请求 URL 为 `http://localhost:8000/api/...` 而不是服务器 IP。
+升级前先备份：
 
-**原因**：前端构建时环境变量未生效，仍使用代码中的默认配置。
+```bash
+mkdir -p ~/club-backups
+mysqldump -u club_user -p club_management > ~/club-backups/club_management_$(date +%F_%H%M%S).sql
+tar -czf ~/club-backups/uploads_$(date +%F_%H%M%S).tar.gz -C /var/www/all-in-one uploads
+cp /var/www/all-in-one/.env ~/club-backups/env_$(date +%F_%H%M%S).txt
+chmod 600 ~/club-backups/env_*.txt
+```
 
-**解决方法（适用于低配置服务器，本地构建方式）**：
+拉取并更新：
 
-1. **在本地 Windows 检查并创建环境变量文件**：
-   ```powershell
-   cd D:\code\python\all-in-one\frontend
-   # 检查文件是否存在
-   Get-Content .env.production
-   # 如果不存在或内容错误，创建/覆盖
-   echo "VITE_API_BASE_URL=/api" > .env.production
-   ```
+```bash
+cd /var/www/all-in-one
+git pull
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-2. **删除旧构建并重新构建**：
-   ```powershell
-   Remove-Item -Recurse -Force dist
-   npm run build
-   ```
+如果本次代码包含数据库结构变更，先阅读迁移脚本并在备份后执行相应迁移。当前项目的 Alembic 历史不是完整建库脚本，不建议在未确认的生产库上盲目执行。
 
-3. **上传新的 dist 文件夹到服务器**（覆盖旧的）
+重建前端：
 
-4. **在服务器重启 Nginx**：
-   ```bash
-   sudo systemctl reload nginx
-   ```
+```bash
+cd /var/www/all-in-one/frontend
+printf "VITE_API_BASE_URL=\n" > .env.production
+npm ci
+npm run build
+```
 
-5. **强制刷新浏览器**（Ctrl+F5），请求 URL 应改为服务器 IP。
+重启服务：
 
-## 8. 安全建议 (可选)
+```bash
+sudo systemctl restart club-backend
+sudo systemctl reload nginx
+curl http://127.0.0.1:8001/health
+```
 
-- **HTTPS**: 使用 Certbot 获取免费 SSL 证书。
-  ```bash
-  sudo apt install certbot python3-certbot-nginx
-  sudo certbot --nginx -d your_domain.com
-  ```
-- **防火墙**: 仅开放 80, 443 和 SSH 端口。
-  ```bash
-  sudo ufw allow 'Nginx Full'
-  sudo ufw allow OpenSSH
-  sudo ufw enable
-  ```
+## 11. 回滚
 
----
-© 2026 Club Management System Deployment Guide
+代码回滚：
+
+```bash
+cd /var/www/all-in-one
+git log --oneline -5
+git checkout <previous_commit>
+source .venv/bin/activate
+pip install -r requirements.txt
+cd frontend
+npm ci
+npm run build
+sudo systemctl restart club-backend
+sudo systemctl reload nginx
+```
+
+数据库回滚只在明确需要时执行。先停止服务，再恢复备份：
+
+```bash
+sudo systemctl stop club-backend
+mysql -u club_user -p club_management < ~/club-backups/club_management_YYYY-MM-DD_HHMMSS.sql
+sudo systemctl start club-backend
+```
+
+## 12. 常见故障
+
+### systemd 启动失败
+
+```bash
+sudo systemctl status club-backend
+sudo journalctl -u club-backend -n 100 --no-pager
+```
+
+重点检查：
+
+- `.env` 是否存在于 `/var/www/all-in-one/.env`。
+- `DB_PASSWORD` 和 `SECRET_KEY` 是否为空。
+- MySQL 用户和密码是否正确。
+- `User=` 是否为真实 Linux 用户。
+- `uploads/` 是否可写。
+
+### Nginx 返回 502
+
+```bash
+curl http://127.0.0.1:8001/health
+sudo tail -n 100 /var/log/nginx/error.log
+```
+
+如果本机 health 不通，先修后端。若本机通但 Nginx 502，检查 `proxy_pass` 是否为 `http://127.0.0.1:8001`，并确认服务没有监听到其他端口。
+
+### 前端能打开但登录失败
+
+在浏览器开发者工具 Network 查看请求地址：
+
+- 正确：`https://club.example.com/api/v1/auth/login`
+- 错误：`http://localhost:8001/api/v1/auth/login`
+
+修复：
+
+```bash
+cd /var/www/all-in-one/frontend
+printf "VITE_API_BASE_URL=\n" > .env.production
+npm run build
+sudo systemctl reload nginx
+```
+
+然后浏览器强制刷新。
+
+### 访问子路由 404
+
+确认 Nginx `location /` 中包含：
+
+```nginx
+try_files $uri $uri/ /index.html;
+```
+
+这是 Vue Router history 模式必须配置的 SPA 回退。
+
+### 上传或导入文件失败
+
+检查：
+
+- Nginx `client_max_body_size 20m;`
+- `uploads/` 目录权限：`ls -ld /var/www/all-in-one/uploads`
+- 后端日志：`sudo journalctl -u club-backend -f`
+
+### CORS 报错
+
+同域部署通常不需要跨域。若前后端分域部署，后端 `.env` 的 `BACKEND_CORS_ORIGINS` 必须包含前端完整来源，例如：
+
+```env
+BACKEND_CORS_ORIGINS=https://club.example.com,https://www.club.example.com
+```
+
+修改后重启：
+
+```bash
+sudo systemctl restart club-backend
+```
+
+## 13. 安全建议
+
+- 上线后立即修改默认管理员密码。
+- `.env` 不要提交到 Git，也不要放进可公开下载目录。
+- MySQL 用户只授予当前数据库权限。
+- 后端只监听 `127.0.0.1`。
+- 定期备份数据库和 `uploads/`。
+- 启用 HTTPS 后优先使用 HTTPS 域名访问系统。
+- 生产环境保持 `DEBUG=False`。

@@ -5,7 +5,7 @@
 import requests
 import json
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8001"
 
 def print_response(title, response):
     """打印响应"""
@@ -23,8 +23,8 @@ def test_user_management():
     # 1. 管理员登录
     print("\n>>> 管理员登录")
     login_res = requests.post(f"{BASE_URL}/api/v1/auth/login", json={
-        "student_id": "admin",
-        "password": "123456"
+        "student_id": "110",
+        "password": "654321"
     })
     print_response("管理员登录", login_res)
     

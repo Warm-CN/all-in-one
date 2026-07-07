@@ -25,14 +25,14 @@
       </div>
 
       <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <article v-for="item in events" :key="item.id" class="rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.4)]">
+        <article v-for="item in events" :key="item.id" class="rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.4)] overflow-hidden">
           <div class="flex items-start justify-between gap-3">
-            <div>
-              <h4 class="text-base font-semibold text-slate-900">{{ item.name }}</h4>
-              <p class="mt-1 text-xs text-slate-500">报名页标题：{{ item.display_title }}</p>
-              <p class="mt-1 text-xs text-slate-500">模块标识：{{ item.module_key }}</p>
+            <div class="min-w-0 flex-1">
+              <h4 class="text-base font-semibold text-slate-900 truncate">{{ item.name }}</h4>
+              <p class="mt-1 text-xs text-slate-500 truncate">报名页标题：{{ item.display_title }}</p>
+              <p class="mt-1 text-xs text-slate-500 truncate">模块标识：{{ item.module_key }}</p>
             </div>
-            <el-tag :type="item.is_current ? 'success' : 'info'">{{ item.is_current ? '正在比赛' : '已结束' }}</el-tag>
+            <el-tag :type="item.is_current ? 'success' : 'info'" class="shrink-0">{{ item.is_current ? '正在比赛' : '已结束' }}</el-tag>
           </div>
 
           <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
@@ -50,7 +50,7 @@
             </div>
           </div>
 
-          <div class="mt-3 text-xs leading-6 text-slate-500">
+          <div class="mt-3 text-xs leading-6 text-slate-500 break-all">
             比赛周期：{{ formatRange(item.cycle_start_at, item.cycle_end_at) }}<br />
             报名时间：{{ formatRange(item.signup_start_at, item.signup_end_at) }}<br />
             选题时间：{{ formatRange(item.topic_open_at, item.topic_end_at) }}

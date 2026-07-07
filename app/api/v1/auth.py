@@ -2,13 +2,14 @@
 认证相关路由
 包含登录、注册、修改密码等功能
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.dependencies import get_current_active_user, require_admin
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.models.user import User
 from app.schemas.auth import (
     LoginRequest,
@@ -24,7 +25,9 @@ router = APIRouter()
 
 
 @router.post("/login", response_model=dict, summary="用户登录")
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     login_data: LoginRequest,
     db: Session = Depends(get_db)
 ):
@@ -79,7 +82,9 @@ async def login(
 
 
 @router.post("/register", response_model=dict, summary="用户注册")
+@limiter.limit("3/minute")
 async def register(
+    request: Request,
     register_data: RegisterRequest,
     db: Session = Depends(get_db)
 ):
