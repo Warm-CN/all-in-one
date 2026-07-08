@@ -1,7 +1,7 @@
 """
 共建意见模型
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, LargeBinary
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, LargeBinary, Boolean
 from app.models.base import BaseModel
 
 
@@ -15,6 +15,7 @@ class Suggestion(BaseModel):
     status = Column(String(20), nullable=False, default="received", comment="状态: received/pending_fix/fixing/wont_fix/done")
     page_url = Column(String(500), nullable=True, comment="关联页面URL")
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="提出者")
+    is_anonymous = Column(Integer, nullable=False, default=0, comment="是否匿名: 0=实名, 1=匿名")
     done_at = Column(DateTime, nullable=True, comment="完成时间")
     done_by = Column(Integer, ForeignKey("users.id"), nullable=True, comment="修改人")
 
@@ -59,6 +60,7 @@ class Reply(BaseModel):
     parent_id = Column(Integer, ForeignKey("replies.id", ondelete="CASCADE"), nullable=True, comment="父回复")
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="作者")
     content = Column(Text, nullable=False, comment="内容")
+    is_anonymous = Column(Integer, nullable=False, default=0, comment="是否匿名: 0=实名, 1=匿名")
     endorse_count = Column(Integer, nullable=False, default=0, comment="复议数")
 
 

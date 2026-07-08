@@ -24,12 +24,14 @@ class SuggestionCreate(BaseModel):
     description: str
     category: str = "other"
     page_url: str = ""
+    is_anonymous: bool = False
     screenshots: List[ScreenshotCreate] = []
 
 
 class ReplyCreate(BaseModel):
     content: str
     parent_id: Optional[int] = None
+    is_anonymous: bool = False
 
 
 class StatusUpdate(BaseModel):

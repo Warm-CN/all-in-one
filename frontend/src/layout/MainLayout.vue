@@ -264,14 +264,97 @@
       </el-scrollbar>
     </div>
   </el-drawer>
+
+  <!-- 元素选择模式 -->
+  <template v-if="cobuildMode">
+    <!-- 浮动工具栏 -->
+    <transition name="slide-down">
+      <div
+        class="fixed left-1/2 top-20 z-[3000] flex -translate-x-1/2 flex-col items-center gap-2 rounded-2xl bg-white/90 px-4 py-2.5 shadow-lg ring-1 ring-slate-200 backdrop-blur-md sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-3"
+      >
+        <div class="flex items-center gap-2">
+          <el-icon :size="18" class="text-indigo-500"><EditPen /></el-icon>
+          <span class="text-sm font-semibold text-slate-700">元素选择模式</span>
+        </div>
+        <span class="hidden text-xs text-slate-400 sm:inline">点击页面元素添加问题描述</span>
+        <div class="flex items-center gap-2">
+          <span class="rounded-full bg-indigo-500 px-2.5 py-0.5 text-xs font-bold text-white">{{ selections.length }}</span>
+          <el-button type="primary" size="small" :loading="capturing" @click="finishSelection">
+            完成
+          </el-button>
+          <el-button size="small" plain @click="cancelSelection">取消</el-button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 视觉覆盖层(pointer-events: none, 不拦截事件) -->
+    <div class="pointer-events-none fixed inset-0 z-[2900]">
+      <!-- 悬停高亮框 -->
+      <div
+        v-if="hoverRect.visible"
+        class="absolute rounded border-2 border-blue-500 bg-blue-500/10 transition-all duration-75"
+        :style="{ left: hoverRect.x + 'px', top: hoverRect.y + 'px', width: hoverRect.w + 'px', height: hoverRect.h + 'px' }"
+      ></div>
+
+      <!-- 已选元素方框 -->
+      <div
+        v-for="(sel, idx) in selections"
+        :key="sel.id"
+        class="absolute rounded border-2 border-red-500/80 bg-red-500/5"
+        :style="{ left: sel.rect.x + 'px', top: sel.rect.y + 'px', width: sel.rect.w + 'px', height: sel.rect.h + 'px' }"
+      ></div>
+
+      <!-- 编号徽章(pointer-events: auto, 可点击编辑) -->
+      <div
+        v-for="(sel, idx) in selections"
+        :key="'badge-' + sel.id"
+        class="pointer-events-auto absolute flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-lg ring-2 ring-white transition-transform hover:scale-110"
+        :style="{ left: (sel.rect.x + sel.rect.w - 12) + 'px', top: (sel.rect.y - 12) + 'px' }"
+        @click.stop="editSelection(sel.id)"
+      >{{ idx + 1 }}</div>
+
+      <!-- 输入气泡 -->
+      <div
+        v-if="editingId !== null"
+        class="pointer-events-auto absolute z-[3100]"
+        :style="bubbleStyle"
+      >
+        <div class="w-64 rounded-xl bg-white p-3 shadow-2xl ring-2 ring-indigo-500">
+          <div class="mb-2 flex items-center gap-2 border-b border-slate-100 pb-2">
+            <span class="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono text-slate-600">{{ editingElement?.tag }}</span>
+            <span v-if="editingElement?.component" class="text-xs text-indigo-500">{{ editingElement.component }}</span>
+          </div>
+          <textarea
+            ref="bubbleInput"
+            v-model="inputText"
+            placeholder="描述这个问题..."
+            rows="3"
+            class="w-full resize-none rounded-lg border border-slate-200 p-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            @keydown.enter.prevent="confirmEdit"
+            @keydown.escape="cancelEdit"
+          ></textarea>
+          <div class="mt-2 flex justify-end gap-2">
+            <button
+              v-if="editingIndex >= 0"
+              @click.stop="deleteSelection"
+              class="rounded-lg px-2.5 py-1 text-xs text-red-500 hover:bg-red-50"
+            >删除</button>
+            <button @click.stop="cancelEdit" class="rounded-lg px-2.5 py-1 text-xs text-slate-500 hover:bg-slate-50">取消</button>
+            <button @click.stop="confirmEdit" class="rounded-lg bg-indigo-500 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-600">确认</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getPendingUsers } from '@/api/user'
+import { cobuildState, getPageLabel } from '@/composables/cobuildData'
 import logo from '@/assets/images/logo.png'
 import {
   HomeFilled,
@@ -287,7 +370,8 @@ import {
   SwitchButton,
   Calendar,
   Expand,
-  EditPen
+  EditPen,
+  Camera
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -333,85 +417,379 @@ const checkPendingUsers = async () => {
 
 onMounted(() => {
   checkPendingUsers()
-  initScreenshotMode()
+  initCobuildMode()
 })
 
-// ==================== 截图模式 ====================
-const screenshotMode = ref(false)
+// ==================== 元素选择模式 ====================
+const cobuildMode = ref(false)
+const capturing = ref(false)
+const selections = ref([]) // [{ id, tag, class, text, selector, component, rect: {x,y,w,h}, description }]
+const hoverRect = ref({ x: 0, y: 0, w: 0, h: 0, visible: false })
+const editingId = ref(null) // null=未编辑, 'new'=新建, number=编辑已有
+const inputText = ref('')
+const bubbleInput = ref(null)
+let selIdCounter = 0
+let pendingElement = null // 待添加描述的元素信息
 
-function initScreenshotMode() {
+const editingElement = computed(() => {
+  if (editingId.value === null) return null
+  if (editingId.value === 'new') return pendingElement
+  return selections.value.find(s => s.id === editingId.value) || null
+})
+
+const editingIndex = computed(() => {
+  if (typeof editingId.value === 'number') {
+    return selections.value.findIndex(s => s.id === editingId.value)
+  }
+  return -1
+})
+
+const bubbleStyle = computed(() => {
+  const el = editingElement.value
+  if (!el) return {}
+  // 气泡出现在元素右侧,如果空间不够则出现在左侧
+  const bubbleW = 280
+  const bubbleH = 180
+  let left = el.rect.x + el.rect.w + 8
+  if (left + bubbleW > window.innerWidth) {
+    left = el.rect.x - bubbleW - 8
+  }
+  let top = el.rect.y
+  if (top + bubbleH > window.innerHeight) {
+    top = window.innerHeight - bubbleH - 10
+  }
+  if (top < 10) top = 10
+  return { left: left + 'px', top: top + 'px' }
+})
+
+function initCobuildMode() {
   const params = new URLSearchParams(window.location.search)
-  if (params.get('screenshot') === '1') {
-    screenshotMode.value = true
-    document.body.style.cursor = 'crosshair'
-    startScreenshotSelection()
+  if (params.get('cobuild') === '1') {
+    enterCobuildMode()
   }
 }
 
-function startScreenshotSelection() {
-  let isSelecting = false
-  let startX = 0, startY = 0
-  let selectionBox = null
+watch(() => route.fullPath, (fullPath) => {
+  const params = new URLSearchParams(fullPath.split('?')[1] || '')
+  if (params.get('cobuild') === '1') {
+    enterCobuildMode()
+  } else {
+    exitCobuildMode()
+  }
+})
 
-  document.addEventListener('mousedown', (e) => {
-    if (!screenshotMode.value) return
-    isSelecting = true
-    startX = e.clientX
-    startY = e.clientY
-    selectionBox = document.createElement('div')
-    selectionBox.style.cssText = `position:fixed;border:2px solid #3B82F6;background:rgba(59,130,246,0.1);z-index:10000;left:${startX}px;top:${startY}px;`
-    document.body.appendChild(selectionBox)
-  })
+function enterCobuildMode() {
+  if (cobuildMode.value) return
+  cobuildMode.value = true
+  selections.value = []
+  editingId.value = null
 
-  document.addEventListener('mousemove', (e) => {
-    if (!isSelecting || !selectionBox) return
-    const w = e.clientX - startX
-    const h = e.clientY - startY
-    selectionBox.style.width = Math.abs(w) + 'px'
-    selectionBox.style.height = Math.abs(h) + 'px'
-    selectionBox.style.left = Math.min(startX, e.clientX) + 'px'
-    selectionBox.style.top = Math.min(startY, e.clientY) + 'px'
-  })
+  // 如果有进行中的数据,恢复已有选择
+  if (cobuildState.inProgress && cobuildState.inProgress.elements) {
+    selections.value = cobuildState.inProgress.elements.map(e => ({ ...e, id: ++selIdCounter }))
+  }
 
-  document.addEventListener('mouseup', async (e) => {
-    if (!isSelecting || !selectionBox) return
-    isSelecting = false
-    const w = Math.abs(e.clientX - startX)
-    const h = Math.abs(e.clientY - startY)
-    if (w < 10 || h < 10) {
-      selectionBox.remove()
-      return
+  document.addEventListener('mouseover', onMouseOver, true)
+  document.addEventListener('mouseout', onMouseOut, true)
+  document.addEventListener('click', onDocumentClick, true)
+  document.addEventListener('scroll', onScroll, true)
+}
+
+function exitCobuildMode() {
+  if (!cobuildMode.value) return
+  cobuildMode.value = false
+  selections.value = []
+  editingId.value = null
+  hoverRect.value.visible = false
+
+  document.removeEventListener('mouseover', onMouseOver, true)
+  document.removeEventListener('mouseout', onMouseOut, true)
+  document.removeEventListener('click', onDocumentClick, true)
+  document.removeEventListener('scroll', onScroll, true)
+}
+
+function onMouseOver(e) {
+  if (!cobuildMode.value || editingId.value !== null) return
+  const el = e.target
+  // 忽略覆盖层元素
+  if (el.closest('.pointer-events-none') || el.closest('[class*="z-[29"]') || el.closest('[class*="z-[30"]') || el.closest('[class*="z-[31"]')) return
+  // 忽略太小的元素
+  const rect = el.getBoundingClientRect()
+  if (rect.width < 20 || rect.height < 10) return
+
+  hoverRect.value = {
+    x: rect.left,
+    y: rect.top,
+    w: rect.width,
+    h: rect.height,
+    visible: true
+  }
+}
+
+function onMouseOut(e) {
+  if (!cobuildMode.value) return
+  // 仅在鼠标离开主内容区域时才隐藏高亮框,避免子元素间移动时闪烁
+  const main = document.querySelector('.el-main')
+  if (main && e.relatedTarget && !main.contains(e.relatedTarget)) {
+    hoverRect.value.visible = false
+  }
+}
+
+function onScroll() {
+  // 滚动时更新已选元素的位置
+  selections.value.forEach(sel => {
+    const el = findElementBySelector(sel.selector, sel.tag, sel.text)
+    if (el) {
+      const rect = el.getBoundingClientRect()
+      sel.rect = { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
     }
-    const x = Math.min(startX, e.clientX)
-    const y = Math.min(startY, e.clientY)
-    selectionBox.remove()
-    await captureScreenshot(x, y, w, h)
   })
 }
 
-async function captureScreenshot(x, y, w, h) {
-  try {
-    const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(document.body, {
-      x: x + window.scrollX,
-      y: y + window.scrollY,
-      width: w,
-      height: h,
-      useCORS: true,
-      scale: 1
-    })
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
-    window.opener?.postMessage({
-      type: 'screenshot',
-      imageSrc: dataUrl,
-      width: w,
-      height: h
-    }, '*')
-    window.close()
-  } catch (err) {
-    console.error('Screenshot failed', err)
-    ElMessage.error('截图失败,请重试')
+function onDocumentClick(e) {
+  if (!cobuildMode.value) return
+  // 如果在编辑中,不处理点击
+  if (editingId.value !== null) return
+  // 忽略覆盖层和工具栏的点击
+  if (e.target.closest('[class*="z-[29"]') || e.target.closest('[class*="z-[30"]') || e.target.closest('[class*="z-[31"]')) return
+
+  e.preventDefault()
+  e.stopPropagation()
+
+  const el = e.target
+  const rect = el.getBoundingClientRect()
+
+  // 检查是否已选中(点击已选元素 = 编辑)
+  const existing = selections.value.find(s => {
+    return Math.abs(s.rect.x - rect.left) < 5 && Math.abs(s.rect.y - rect.top) < 5
+  })
+  if (existing) {
+    editSelection(existing.id)
+    return
   }
+
+  // 收集元素信息
+  pendingElement = {
+    tag: el.tagName.toLowerCase(),
+    class: Array.from(el.classList || []).filter(c => !c.startsWith('el-') && !c.startsWith('is-') && !c.startsWith('fade-')).join(' ').slice(0, 200),
+    text: (el.textContent || '').trim().slice(0, 200),
+    selector: getSelector(el),
+    component: getComponentName(el),
+    rect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
+  }
+
+  // 打开输入气泡
+  editingId.value = 'new'
+  inputText.value = ''
+  hoverRect.value.visible = false
+
+  // 聚焦输入框
+  nextTick(() => {
+    bubbleInput.value?.focus()
+  })
+}
+
+function getSelector(el) {
+  const parts = []
+  let node = el
+  let depth = 0
+  while (node && node !== document.body && depth < 5) {
+    let selector = node.tagName.toLowerCase()
+    if (node.id) {
+      selector += '#' + node.id
+      parts.unshift(selector)
+      break
+    }
+    const classes = Array.from(node.classList || [])
+      .filter(c => !c.startsWith('el-') && !c.startsWith('is-') && !c.startsWith('fade-') && !c.startsWith('page-') && !c.startsWith('transition'))
+      .slice(0, 2)
+    if (classes.length) {
+      selector += '.' + classes.join('.')
+    }
+    parts.unshift(selector)
+    node = node.parentElement
+    depth++
+  }
+  return parts.join(' > ')
+}
+
+function getComponentName(el) {
+  let node = el
+  while (node && node !== document.body) {
+    if (node.__vueParentComponent) {
+      const comp = node.__vueParentComponent
+      const type = comp.type || {}
+      const name = type.__name || type.name
+      if (name) return name
+      if (type.__file) {
+        return type.__file.split('/').pop().replace(/\.\w+$/, '')
+      }
+    }
+    node = node.parentElement
+  }
+  return ''
+}
+
+function findElementBySelector(selector, tag, text) {
+  // 简单的查找:通过 selector 找到元素,验证 tag 和 text
+  try {
+    const el = document.querySelector(selector)
+    if (el && el.tagName.toLowerCase() === tag) return el
+  } catch (e) {}
+  // Fallback: 搜索相同 tag+text 的元素
+  const candidates = document.getElementsByTagName(tag.charAt(0).toUpperCase() + tag.slice(1))
+  for (const el of candidates) {
+    if ((el.textContent || '').trim().startsWith(text.slice(0, 20))) return el
+  }
+  return null
+}
+
+function editSelection(id) {
+  const sel = selections.value.find(s => s.id === id)
+  if (!sel) return
+  editingId.value = id
+  inputText.value = sel.description
+  nextTick(() => {
+    bubbleInput.value?.focus()
+  })
+}
+
+function confirmEdit() {
+  if (!inputText.value.trim()) {
+    ElMessage.warning('请输入问题描述')
+    return
+  }
+  if (editingId.value === 'new') {
+    // 新增
+    selections.value.push({
+      id: ++selIdCounter,
+      ...pendingElement,
+      description: inputText.value.trim()
+    })
+  } else {
+    // 编辑
+    const sel = selections.value.find(s => s.id === editingId.value)
+    if (sel) sel.description = inputText.value.trim()
+  }
+  editingId.value = null
+  inputText.value = ''
+  pendingElement = null
+}
+
+function cancelEdit() {
+  editingId.value = null
+  inputText.value = ''
+  pendingElement = null
+}
+
+function deleteSelection() {
+  if (typeof editingId.value === 'number') {
+    const idx = selections.value.findIndex(s => s.id === editingId.value)
+    if (idx >= 0) selections.value.splice(idx, 1)
+  }
+  editingId.value = null
+  inputText.value = ''
+}
+
+async function finishSelection() {
+  if (selections.value.length === 0) {
+    ElMessage.warning('请至少选择一个元素')
+    return
+  }
+  if (capturing.value) return
+  capturing.value = true
+
+  try {
+    // 临时退出模式,隐藏所有覆盖层
+    cobuildMode.value = false
+    editingId.value = null
+    hoverRect.value.visible = false
+    await new Promise(r => setTimeout(r, 300))
+
+    // 截取主内容区域
+    const target = document.querySelector('.el-main') || document.body
+    const targetRect = target.getBoundingClientRect()
+
+    let screenshotData = { imageSrc: '', width: 0, height: 0 }
+    try {
+      const { toJpeg } = await import('html-to-image')
+      const dataUrl = await toJpeg(target, {
+        quality: 0.7,
+        backgroundColor: '#ffffff',
+        pixelRatio: 1,
+        skipFonts: true,
+      })
+      screenshotData = {
+        imageSrc: dataUrl,
+        width: Math.round(targetRect.width),
+        height: Math.round(targetRect.height)
+      }
+    } catch (captureErr) {
+      console.warn('Screenshot failed, generating placeholder:', captureErr)
+      // 截图失败时生成占位图片
+      const ph = document.createElement('canvas')
+      ph.width = Math.round(targetRect.width)
+      ph.height = Math.round(targetRect.height)
+      const ctx = ph.getContext('2d')
+      ctx.fillStyle = '#f8fafc'
+      ctx.fillRect(0, 0, ph.width, ph.height)
+      ctx.fillStyle = '#94a3b8'
+      ctx.font = '14px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('页面截图不可用 - 见下方元素清单', ph.width / 2, ph.height / 2)
+      screenshotData = {
+        imageSrc: ph.toDataURL('image/jpeg', 0.7),
+        width: ph.width,
+        height: ph.height
+      }
+    }
+
+    // 调整元素位置(相对于截图区域)
+    const pageName = getPageLabel(route.path)
+    const elements = selections.value.map(s => ({
+      tag: s.tag,
+      class: s.class,
+      text: s.text,
+      selector: s.selector,
+      component: s.component,
+      pageName,
+      rect: {
+        x: Math.round(s.rect.x - targetRect.left),
+        y: Math.round(s.rect.y - targetRect.top),
+        w: Math.round(s.rect.w),
+        h: Math.round(s.rect.h)
+      },
+      description: s.description
+    }))
+
+    // 存入共享状态
+    cobuildState.pendingData = {
+      pageUrl: route.path,
+      pageName,
+      screenshot: screenshotData,
+      elements
+    }
+
+    // 移除事件监听
+    document.removeEventListener('mouseover', onMouseOver, true)
+    document.removeEventListener('mouseout', onMouseOut, true)
+    document.removeEventListener('click', onDocumentClick, true)
+    document.removeEventListener('scroll', onScroll, true)
+
+    // 导航回共建页
+    router.push('/co-build')
+  } catch (err) {
+    console.error('Capture failed', err)
+    ElMessage.error('截图失败,请重试')
+    cobuildMode.value = true
+  } finally {
+    capturing.value = false
+  }
+}
+
+function cancelSelection() {
+  exitCobuildMode()
+  router.push('/co-build')
 }
 </script>
 
@@ -485,6 +863,17 @@ async function captureScreenshot(x, y, w, h) {
 .fade-slide-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.slide-down-enter-from,
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -20px);
 }
 
 @media (max-width: 640px) {

@@ -1,11 +1,15 @@
 <template>
-  <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-    <div class="mb-2 flex items-center justify-between">
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div class="mb-3 flex items-center justify-between">
       <span class="rounded-full px-2 py-1 text-xs font-semibold" :class="categoryClass">{{ categoryLabel }}</span>
       <span class="rounded-full px-2 py-1 text-xs" :class="statusClass">{{ statusLabel }}</span>
     </div>
-    <h3 class="mb-1 font-bold text-slate-800">{{ suggestion.title }}</h3>
-    <p class="mb-2 line-clamp-2 text-sm text-slate-500">{{ suggestion.description }}</p>
+    <h3 class="mb-1 text-lg font-bold text-slate-800">{{ suggestion.title }}</h3>
+    <p class="mb-2 text-xs text-slate-400">
+      <span v-if="suggestion.is_anonymous" class="text-slate-400">匿名用户</span>
+      <span v-else class="font-medium text-slate-600">{{ suggestion.author_name || '未知用户' }}</span>
+    </p>
+    <p class="mb-3 line-clamp-2 text-sm text-slate-500">{{ suggestion.description }}</p>
     <div class="flex items-center justify-between text-xs text-slate-400">
       <span>{{ suggestion.created_at }}</span>
       <el-button link type="primary" @click="$emit('view', suggestion.id)">查看详情</el-button>

@@ -30,7 +30,14 @@ export function toggleEndorse(replyId) {
   return request.post(`/api/v1/suggestions/replies/${replyId}/endorse`)
 }
 
-// 截图图片 URL
+// 截图图片 URL(仅用于不需要认证的场景)
 export function screenshotImageUrl(screenshotId) {
   return `/api/v1/suggestions/screenshots/${screenshotId}/image`
+}
+
+// 带认证头获取截图图片(返回 Blob)
+export async function fetchScreenshotImage(screenshotId) {
+  return await request.get(`/api/v1/suggestions/screenshots/${screenshotId}/image`, {
+    responseType: 'blob'
+  })
 }

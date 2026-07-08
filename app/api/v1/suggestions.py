@@ -44,7 +44,7 @@ async def get_suggestions(
         query = query.filter(Suggestion.category == category)
     total = query.count()
     items = query.order_by(desc(Suggestion.created_at)).offset((page - 1) * page_size).limit(page_size).all()
-    data = [_suggestion_summary(s) for s in items]
+    data = [_suggestion_summary(s, db) for s in items]
     return success_response(data={"items": data, "total": total, "page": page, "page_size": page_size})
 
 
@@ -60,7 +60,8 @@ async def create_suggestion(
         category=body.category,
         status="received",
         page_url=body.page_url,
-        author_id=current_user.id
+        author_id=current_user.id,
+        is_anonymous=1 if body.is_anonymous else 0
     )
     db.add(sug)
     db.flush()
@@ -111,10 +112,17 @@ async def get_suggestion_detail(
     replies = db.query(Reply).filter(Reply.suggestion_id == suggestion_id).order_by(Reply.created_at).all()
     reply_list = [_reply_dict(r, current_user.id, db) for r in replies]
     status_history = db.query(StatusChange).filter(StatusChange.suggestion_id == suggestion_id).order_by(StatusChange.created_at).all()
+    # 获取作者名称
+    author_name = None
+    if not sug.is_anonymous:
+        author = db.query(User).filter(User.id == sug.author_id).first()
+        author_name = author.full_name if author else None
+
     return success_response(data={
         "id": sug.id, "title": sug.title, "description": sug.description,
         "category": sug.category, "status": sug.status, "page_url": sug.page_url,
-        "author_id": sug.author_id, "created_at": _fmt(sug.created_at),
+        "author_id": sug.author_id, "is_anonymous": bool(sug.is_anonymous), "author_name": author_name,
+        "created_at": _fmt(sug.created_at),
         "done_at": _fmt(sug.done_at), "done_by": sug.done_by,
         "screenshots": shot_list, "replies": reply_list,
         "status_history": [{"from": s.from_status, "to": s.to_status, "reason": s.reason, "operator_id": s.operator_id, "created_at": _fmt(s.created_at)} for s in status_history]
@@ -156,7 +164,7 @@ async def create_reply(
     sug = db.query(Suggestion).filter(Suggestion.id == suggestion_id).first()
     if not sug:
         return error_response(404, "意见不存在")
-    reply = Reply(suggestion_id=suggestion_id, parent_id=body.parent_id, author_id=current_user.id, content=body.content)
+    reply = Reply(suggestion_id=suggestion_id, parent_id=body.parent_id, author_id=current_user.id, content=body.content, is_anonymous=1 if body.is_anonymous else 0)
     db.add(reply)
     db.commit()
     db.refresh(reply)
@@ -198,10 +206,16 @@ async def get_screenshot_image(
     return Response(content=shot.image_data, media_type="image/jpeg")
 
 
-def _suggestion_summary(s: Suggestion) -> dict:
+def _suggestion_summary(s: Suggestion, db: Session = None) -> dict:
+    author_name = None
+    if db and not s.is_anonymous:
+        author = db.query(User).filter(User.id == s.author_id).first()
+        author_name = author.full_name if author else None
     return {
         "id": s.id, "title": s.title, "category": s.category,
         "status": s.status, "author_id": s.author_id,
+        "is_anonymous": bool(s.is_anonymous),
+        "author_name": author_name,
         "created_at": _fmt(s.created_at),
         "done_at": _fmt(s.done_at), "done_by": s.done_by,
     }
@@ -209,8 +223,14 @@ def _suggestion_summary(s: Suggestion) -> dict:
 
 def _reply_dict(r: Reply, current_user_id: int, db: Session) -> dict:
     my_endorse = db.query(Endorsement).filter(Endorsement.reply_id == r.id, Endorsement.user_id == current_user_id).first()
+    author_name = None
+    if not r.is_anonymous:
+        author = db.query(User).filter(User.id == r.author_id).first()
+        author_name = author.full_name if author else None
     return {
         "id": r.id, "parent_id": r.parent_id, "author_id": r.author_id,
+        "is_anonymous": bool(r.is_anonymous),
+        "author_name": author_name,
         "content": r.content, "endorse_count": r.endorse_count,
         "endorsed": my_endorse is not None,
         "created_at": _fmt(r.created_at),
