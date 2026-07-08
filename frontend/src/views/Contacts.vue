@@ -1,5 +1,16 @@
 <template>
   <div class="h-full flex flex-col">
+    <!-- 顶部标题 -->
+    <div class="flex items-center gap-3 px-3 pt-3 sm:px-4 sm:pt-4 lg:px-6 lg:pt-6">
+      <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 shadow-sm">
+        <el-icon :size="16"><UserFilled /></el-icon>
+      </div>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800 tracking-tight">通讯录</h1>
+        <p class="text-gray-500 mt-1 text-sm">查看部门成员的联系方式</p>
+      </div>
+    </div>
+
     <!-- 搜索栏 -->
     <div class="p-3 pb-0 sm:p-4 sm:pb-0 lg:p-6 lg:pb-0">
       <div class="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:p-5">

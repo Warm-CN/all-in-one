@@ -112,6 +112,12 @@ const routes = [
                 meta: { title: '通讯录', requiresAuth: true }
             },
             {
+                path: 'co-build',
+                name: 'CoBuild',
+                component: () => import('@/views/CoBuild.vue'),
+                meta: { title: '共建', requiresAuth: true }
+            },
+            {
                 path: 'users',
                 name: 'Users',
                 component: () => import('@/views/UserManagement.vue'),

@@ -5,11 +5,16 @@
         <div class="min-w-0">
           <div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
             <img src="@/assets/images/logo.png" alt="Logo" class="h-16 w-auto shrink-0 object-contain sm:h-20" />
-            <div class="min-w-0">
-              <div class="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold uppercase text-cyan-700">
-                RECRUITMENT PORTAL
+            <div class="flex min-w-0 items-center gap-3">
+              <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+                <el-icon :size="16"><EditPen /></el-icon>
               </div>
-              <h1 class="mt-3 break-words text-3xl font-black leading-tight text-slate-950 sm:text-4xl lg:text-5xl">社团招新报名中心</h1>
+              <div class="min-w-0">
+                <div class="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold uppercase text-cyan-700">
+                  RECRUITMENT PORTAL
+                </div>
+                <h1 class="mt-3 break-words text-3xl font-black leading-tight text-slate-950 sm:text-4xl lg:text-5xl">社团招新报名中心</h1>
+              </div>
             </div>
           </div>
           <p class="mx-auto mt-4 max-w-3xl text-center text-base leading-7 text-slate-600 sm:mx-0 sm:text-left sm:text-lg">
@@ -323,7 +328,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading, EditPen } from '@element-plus/icons-vue'
 import { getActiveConfigs, queryStatus, submitApply, updateApply } from '@/api/recruitment'
 import dayjs from 'dayjs'
 

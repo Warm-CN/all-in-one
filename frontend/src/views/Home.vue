@@ -2,12 +2,15 @@
   <div class="flex h-full flex-col gap-5 pb-2 sm:gap-6 sm:pb-3">
     <!-- 顶部欢迎区 -->
     <div class="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
+      <div class="flex items-center gap-3">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 shadow-sm">
+          <el-icon :size="16"><User /></el-icon>
+        </div>
         <h1 class="pb-1 text-2xl font-bold leading-[1.2] tracking-tight text-gray-800">
           欢迎回来，{{ userStore.userName || '同学' }}！👋
         </h1>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 mr-12">
          <div class="text-right hidden sm:block">
             <p class="text-sm font-semibold text-gray-700">{{ currentDate }}</p>
             <p class="text-xs text-gray-400">{{ currentWeekday }}</p>
@@ -129,7 +132,12 @@
             <!-- 当前状态大卡片 -->
             <div class="relative z-10 mb-6 overflow-visible rounded-[22px] border border-slate-200/80 bg-white/72 px-5 pb-5 pt-6 shadow-[0_10px_24px_-22px_rgba(37,99,235,0.45)] backdrop-blur-sm sm:px-6 sm:pb-6 sm:pt-7">
                 <div class="mb-3 flex items-center justify-between">
-                    <span class="pl-1 pt-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.22em] text-gray-500">Current Status</span>
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 shadow-sm">
+                            <el-icon :size="16"><Monitor /></el-icon>
+                        </div>
+                        <span class="pl-1 pt-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.22em] text-gray-500">Current Status</span>
+                    </div>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3">
                     <h2 class="pt-1 text-3xl font-black leading-[1.08] tracking-tight text-gray-800 sm:text-[2.15rem]">空闲中</h2>
@@ -140,10 +148,15 @@
                 </div>
             </div>
 
-            <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2 relative z-10 pl-1 text-sm">
-                <span class="w-1 h-4 rounded-full bg-indigo-500 block"></span>
-                今日预约日程
-            </h3>
+            <div class="flex items-center gap-3 mb-4 relative z-10 pl-1">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 shadow-sm">
+                    <el-icon :size="16"><Calendar /></el-icon>
+                </div>
+                <h3 class="font-bold text-gray-800 flex items-center gap-2 text-sm">
+                    <span class="w-1 h-4 rounded-full bg-indigo-500 block"></span>
+                    今日预约日程
+                </h3>
+            </div>
             
             <div class="flex-1 overflow-y-auto pr-2 -mr-2 custom-scrollbar relative z-10 pl-1">
                <div v-if="roomSlots.filter(s => s.status === 'booked').length === 0" class="flex flex-col items-center justify-center h-32 text-gray-400">
@@ -185,10 +198,17 @@
 
             <div class="flex items-center justify-between mb-4">
                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                 <el-icon><Trophy /></el-icon> 
+                 <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 shadow-sm">
+                    <el-icon :size="16"><Trophy /></el-icon>
+                 </div>
                  System Contributors
                </h3>
-               <span class="text-[10px] text-gray-300 bg-gray-50 px-2 py-0.5 rounded-full">Open Source</span>
+               <span class="inline-flex items-center gap-1.5 text-[10px] text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
+                  <div class="flex h-5 w-5 items-center justify-center rounded-md bg-indigo-50 text-indigo-500">
+                     <el-icon :size="12"><Promotion /></el-icon>
+                  </div>
+                  Open Source
+               </span>
             </div>
             
             <div class="flex items-center">
@@ -248,7 +268,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
-import { Monitor, User, Trophy, Calendar, ArrowLeft, ArrowRight, Close, Location } from '@element-plus/icons-vue'
+import { Monitor, User, Trophy, Calendar, ArrowLeft, ArrowRight, Close, Location, Promotion } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 import { getBookings } from '@/api/booking'

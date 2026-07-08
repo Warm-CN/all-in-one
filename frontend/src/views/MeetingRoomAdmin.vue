@@ -3,10 +3,19 @@
     <!-- Header -->
     <div class="shrink-0 border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <!-- 左侧：日期范围显示 -->
-        <div class="text-gray-600 text-sm">
-          当前显示: <span class="font-medium text-gray-900">{{ formatDate(startDate) }}</span> 至 <span class="font-medium text-gray-900">{{ formatDate(endDate) }}</span>
-          (共 {{ bookings.length }} 条记录)
+        <!-- 左侧：标题 + 日期范围 -->
+        <div class="flex items-center gap-3">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+            <el-icon :size="16"><OfficeBuilding /></el-icon>
+          </div>
+          <div>
+            <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-blue-600">MEETING ROOM</span>
+            <h2 class="mt-1 text-xl font-bold text-slate-800">会议室管理</h2>
+            <p class="mt-1 text-xs text-gray-500">
+              当前显示: <span class="font-medium text-gray-900">{{ formatDate(startDate) }}</span> 至 <span class="font-medium text-gray-900">{{ formatDate(endDate) }}</span>
+              (共 {{ bookings.length }} 条记录)
+            </p>
+          </div>
         </div>
 
         <!-- 右侧：筛选和导出 -->
@@ -98,7 +107,7 @@
 import { ref, onMounted } from 'vue'
 import { getAdminBookings, exportBookings, cancelBooking } from '@/api/booking'
 import { ElMessage } from 'element-plus'
-import { Calendar, Download, Delete } from '@element-plus/icons-vue'
+import { Calendar, Delete, Download, OfficeBuilding } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import isBetween from 'dayjs/plugin/isBetween'
 

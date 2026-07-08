@@ -2,13 +2,18 @@
   <div class="recruitment-page flex h-full min-h-0 flex-col gap-5 pb-2 sm:gap-6 sm:pb-3">
     <section class="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 pb-5 pt-6 shadow-[0_14px_34px_-28px_rgba(15,23,42,0.22)] sm:px-6 sm:pb-6 sm:pt-7 lg:px-7 lg:pb-7 lg:pt-8">
       <div class="flex flex-col gap-5 2xl:flex-row 2xl:items-start 2xl:justify-between">
-        <div class="min-w-0">
-          <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-blue-600">
-            RECRUITMENT
-          </span>
-          <h2 class="recruitment-hero-title mt-3 max-w-full pt-1 text-[1.95rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">
-            招新报名
-          </h2>
+        <div class="flex min-w-0 items-center gap-3">
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+            <el-icon :size="16"><User /></el-icon>
+          </div>
+          <div class="min-w-0">
+            <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-blue-600">
+              RECRUITMENT
+            </span>
+            <h2 class="recruitment-hero-title mt-3 max-w-full pt-1 text-[1.95rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">
+              招新报名
+            </h2>
+          </div>
         </div>
 
         <div v-if="userStore.isAdmin" class="flex flex-col gap-2 sm:flex-row 2xl:justify-end">
@@ -47,7 +52,12 @@
 
     <section class="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.18)] sm:p-6">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <h3 class="section-title text-lg font-semibold text-slate-800">筛选</h3>
+        <div class="flex items-center gap-3">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+            <el-icon :size="16"><Filter /></el-icon>
+          </div>
+          <h3 class="section-title text-lg font-semibold text-slate-800">筛选</h3>
+        </div>
         <div class="inline-flex w-fit items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
           当前已载入 {{ tableData.length }} 条记录
         </div>
@@ -67,7 +77,12 @@
 
     <section class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] shadow-[0_16px_38px_-32px_rgba(15,23,42,0.2)]">
       <div class="flex flex-col gap-3 border-b border-slate-200/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <h3 class="section-title text-lg font-semibold text-slate-800">报名列表</h3>
+        <div class="flex items-center gap-3">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+            <el-icon :size="16"><List /></el-icon>
+          </div>
+          <h3 class="section-title text-lg font-semibold text-slate-800">报名列表</h3>
+        </div>
         <div class="text-xs font-medium text-slate-400">列表内容按当前筛选条件实时刷新</div>
       </div>
 
@@ -182,6 +197,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { User, Filter, List } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import {
   adminDeleteApplication,
@@ -430,7 +446,10 @@ const formatInterviewPlan = (row) => {
 }
 
 onMounted(() => {
-  fetchRecruitmentConfig()
+  // 招新配置接口需要管理员权限，普通成员跳过以避免 403 提示
+  if (userStore.isAdmin) {
+    fetchRecruitmentConfig()
+  }
   fetchList()
 })
 </script>

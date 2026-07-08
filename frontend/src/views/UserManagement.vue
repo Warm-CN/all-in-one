@@ -2,6 +2,17 @@
   <div class="h-full flex flex-col">
     <!-- 主体内容 -->
     <div class="flex-1 overflow-auto p-3 sm:p-4 lg:p-6">
+      <section class="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)] sm:px-6 sm:py-6">
+        <div class="flex items-center gap-3">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+            <el-icon :size="16"><UserFilled /></el-icon>
+          </div>
+          <div>
+            <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-blue-600">MEMBERS</span>
+            <h2 class="mt-1 text-2xl font-bold text-slate-800">成员管理</h2>
+          </div>
+        </div>
+      </section>
       <el-tabs v-model="activeTab" class="custom-tabs">
         <!-- 入社审批 -->
         <el-tab-pane label="入社审批" name="approval">

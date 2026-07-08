@@ -3,12 +3,19 @@
     <section class="rounded-2xl border border-slate-200 bg-white px-4 py-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)] sm:px-6 sm:py-6">
       <div class="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="min-w-0">
-          <span class="inline-flex max-w-full items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.16em] text-blue-600">
-            EVENTS ADMIN
-          </span>
-          <h2 class="mt-3 text-[1.75rem] font-black tracking-tight text-slate-900 sm:text-[2.15rem]">
-            赛事管理
-          </h2>
+          <div class="flex items-center gap-3">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+              <el-icon :size="16"><Trophy /></el-icon>
+            </div>
+            <div>
+              <span class="inline-flex max-w-full items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.16em] text-blue-600">
+                EVENTS ADMIN
+              </span>
+              <h2 class="mt-3 text-[1.75rem] font-black tracking-tight text-slate-900 sm:text-[2.15rem]">
+                赛事管理
+              </h2>
+            </div>
+          </div>
           <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
             管理比赛条目、当前比赛、报名页面展示、选题配置和队伍入口。
           </p>
@@ -424,7 +431,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Edit, Plus, Refresh, Right, UploadFilled } from '@element-plus/icons-vue'
+import { Edit, Plus, Refresh, Right, Trophy, UploadFilled } from '@element-plus/icons-vue'
 import {
   createCompetitionEvent,
   createCompetitionTopic,

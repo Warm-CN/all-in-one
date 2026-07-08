@@ -3,10 +3,17 @@
     <section class="rounded-2xl border border-slate-200 bg-white px-4 py-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)] sm:px-6 sm:py-6">
       <div class="flex min-w-0 flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
         <div class="min-w-0">
-          <span class="inline-flex max-w-full items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.16em] text-blue-600">
-            COMPETITION TEAMS
-          </span>
-          <h2 class="mt-3 text-[1.85rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">竞赛队伍</h2>
+          <div class="flex items-center gap-3">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+              <el-icon :size="16"><Trophy /></el-icon>
+            </div>
+            <div>
+              <span class="inline-flex max-w-full items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.16em] text-blue-600">
+                COMPETITION TEAMS
+              </span>
+              <h2 class="mt-3 text-[1.85rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">竞赛队伍</h2>
+            </div>
+          </div>
           <p class="mt-2 text-sm leading-6 text-slate-500">选择比赛后查看报名队伍信息，并按当前筛选条件导出报名数据或导入验收信息。</p>
         </div>
       </div>
@@ -233,7 +240,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
-import { Download, Search, Upload } from '@element-plus/icons-vue'
+import { Download, Search, Trophy, Upload } from '@element-plus/icons-vue'
 import { getCompetitionEvents } from '@/api/competition'
 import {
   exportTeams,

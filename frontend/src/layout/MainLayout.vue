@@ -41,6 +41,10 @@
             <el-icon><Notebook /></el-icon>
             <span>通讯录</span>
           </el-menu-item>
+          <el-menu-item index="/co-build" class="menu-item">
+            <el-icon><EditPen /></el-icon>
+            <span>共建</span>
+          </el-menu-item>
 
           <template v-if="userStore.userRole === 'admin'">
             <div class="menu-group-title">管理工具</div>
@@ -228,6 +232,10 @@
             <el-icon><Notebook /></el-icon>
             <span>通讯录</span>
           </el-menu-item>
+          <el-menu-item index="/co-build" class="menu-item">
+            <el-icon><EditPen /></el-icon>
+            <span>共建</span>
+          </el-menu-item>
 
           <template v-if="userStore.userRole === 'admin'">
             <div class="menu-group-title">管理工具</div>
@@ -261,6 +269,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getPendingUsers } from '@/api/user'
 import logo from '@/assets/images/logo.png'
@@ -277,7 +286,8 @@ import {
   DataLine,
   SwitchButton,
   Calendar,
-  Expand
+  Expand,
+  EditPen
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -323,7 +333,86 @@ const checkPendingUsers = async () => {
 
 onMounted(() => {
   checkPendingUsers()
+  initScreenshotMode()
 })
+
+// ==================== 截图模式 ====================
+const screenshotMode = ref(false)
+
+function initScreenshotMode() {
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('screenshot') === '1') {
+    screenshotMode.value = true
+    document.body.style.cursor = 'crosshair'
+    startScreenshotSelection()
+  }
+}
+
+function startScreenshotSelection() {
+  let isSelecting = false
+  let startX = 0, startY = 0
+  let selectionBox = null
+
+  document.addEventListener('mousedown', (e) => {
+    if (!screenshotMode.value) return
+    isSelecting = true
+    startX = e.clientX
+    startY = e.clientY
+    selectionBox = document.createElement('div')
+    selectionBox.style.cssText = `position:fixed;border:2px solid #3B82F6;background:rgba(59,130,246,0.1);z-index:10000;left:${startX}px;top:${startY}px;`
+    document.body.appendChild(selectionBox)
+  })
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isSelecting || !selectionBox) return
+    const w = e.clientX - startX
+    const h = e.clientY - startY
+    selectionBox.style.width = Math.abs(w) + 'px'
+    selectionBox.style.height = Math.abs(h) + 'px'
+    selectionBox.style.left = Math.min(startX, e.clientX) + 'px'
+    selectionBox.style.top = Math.min(startY, e.clientY) + 'px'
+  })
+
+  document.addEventListener('mouseup', async (e) => {
+    if (!isSelecting || !selectionBox) return
+    isSelecting = false
+    const w = Math.abs(e.clientX - startX)
+    const h = Math.abs(e.clientY - startY)
+    if (w < 10 || h < 10) {
+      selectionBox.remove()
+      return
+    }
+    const x = Math.min(startX, e.clientX)
+    const y = Math.min(startY, e.clientY)
+    selectionBox.remove()
+    await captureScreenshot(x, y, w, h)
+  })
+}
+
+async function captureScreenshot(x, y, w, h) {
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(document.body, {
+      x: x + window.scrollX,
+      y: y + window.scrollY,
+      width: w,
+      height: h,
+      useCORS: true,
+      scale: 1
+    })
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+    window.opener?.postMessage({
+      type: 'screenshot',
+      imageSrc: dataUrl,
+      width: w,
+      height: h
+    }, '*')
+    window.close()
+  } catch (err) {
+    console.error('Screenshot failed', err)
+    ElMessage.error('截图失败,请重试')
+  }
+}
 </script>
 
 <style scoped>

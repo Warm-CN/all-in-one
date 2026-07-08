@@ -2,9 +2,14 @@
   <div class="animate-fade-in-up flex h-full flex-col gap-6">
     <!-- 顶部标题 -->
     <div class="flex items-center justify-between shrink-0">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-800 tracking-tight">账号设置</h1>
-        <p class="text-gray-500 mt-1 text-sm">管理您的个人信息和安全设置</p>
+      <div class="flex items-center gap-3">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 shadow-sm">
+          <el-icon :size="16"><Setting /></el-icon>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800 tracking-tight">账号设置</h1>
+          <p class="text-gray-500 mt-1 text-sm">管理您的个人信息和安全设置</p>
+        </div>
       </div>
     </div>
 
@@ -122,6 +127,7 @@ import { useUserStore } from '@/store/user'
 import { updateProfile } from '@/api/user'
 import { changePassword, getCurrentUser } from '@/api/auth'
 import { ElMessage } from 'element-plus'
+import { Setting } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const activeTab = ref('profile')
