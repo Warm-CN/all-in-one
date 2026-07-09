@@ -2,10 +2,15 @@
   <div class="flex h-full min-h-0 flex-col gap-5 pb-2 sm:gap-6 sm:pb-3">
     <section class="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 pb-5 pt-6 shadow-[0_14px_34px_-28px_rgba(15,23,42,0.22)] sm:px-6 sm:pb-6 sm:pt-7 lg:px-7 lg:pb-7 lg:pt-8">
       <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div class="min-w-0">
-          <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-blue-600">{{ badgeText }}</span>
-          <h2 class="mt-3 max-w-full pt-1 text-[1.95rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">{{ cupTitle }}赛事中心</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-500">点击历史可跳转到竞赛队伍管理页面按对应比赛操控，支持创建比赛、配置报名页展示标题与选题。</p>
+        <div class="flex items-start gap-3 min-w-0">
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 shadow-sm">
+            <el-icon :size="16"><Trophy /></el-icon>
+          </div>
+          <div class="min-w-0">
+            <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-blue-600">{{ badgeText }}</span>
+            <h2 class="mt-3 max-w-full pt-1 text-[1.95rem] font-black tracking-tight text-slate-900 sm:text-[2.2rem]">{{ cupTitle }}赛事中心</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-500">点击历史可跳转到竞赛队伍管理页面按对应比赛操控，支持创建比赛、配置报名页展示标题与选题。</p>
+          </div>
         </div>
         <div v-if="userStore.isAdmin" class="flex flex-col gap-2 lg:justify-end">
           <el-button type="primary" class="!h-11 !rounded-2xl !px-5" @click="openCreateDialog">新建比赛</el-button>
@@ -159,7 +164,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { UploadFilled, Trophy } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import {
   createCompetitionEvent,

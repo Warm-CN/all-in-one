@@ -6,10 +6,15 @@
         <!-- 自定义日历头部 -->
         <template #header="{ date }">
           <div class="mb-2 flex w-full shrink-0 flex-col gap-3 px-2 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex flex-col">
-              <div class="flex items-baseline gap-2">
-                <span class="text-3xl font-black text-gray-800 tracking-tight">{{ dayjs(calendarValue).format('MMM') }}</span>
-                <span class="text-lg font-bold text-gray-400">{{ dayjs(calendarValue).format('YYYY') }}</span>
+            <div class="flex items-center gap-3 pl-1">
+              <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 shadow-sm">
+                <el-icon :size="16"><Calendar /></el-icon>
+              </div>
+              <div class="flex flex-col">
+                <div class="flex items-baseline gap-2 ml-4">
+                  <span class="text-3xl font-black text-gray-800 tracking-tight">{{ dayjs(calendarValue).format('MMM') }}</span>
+                  <span class="text-lg font-bold text-gray-400">{{ dayjs(calendarValue).format('YYYY') }}</span>
+                </div>
               </div>
             </div>
             <!-- 导航按钮组 -->
@@ -57,8 +62,15 @@
     <div class="flex min-w-0 w-full flex-col gap-4 lg:h-full lg:w-[42%]">
       <!-- 选中日期显示 -->
       <div class="rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-5 text-white shadow-lg sm:px-8">
-        <h2 class="text-2xl font-bold mb-1">{{ dayjs(selectedDate).format('MM月DD日') }}</h2>
-        <p class="text-sm opacity-90">{{ dayjs(selectedDate).format('dddd') }}</p>
+        <div class="flex items-center gap-3">
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 text-white shadow-sm">
+            <el-icon :size="16"><Calendar /></el-icon>
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold mb-1">{{ dayjs(selectedDate).format('MM月DD日') }}</h2>
+            <p class="text-sm opacity-90">{{ dayjs(selectedDate).format('dddd') }}</p>
+          </div>
+        </div>
       </div>
 
       <!-- 当日日程列表 -->

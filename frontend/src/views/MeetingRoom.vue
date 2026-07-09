@@ -3,8 +3,8 @@
     <!-- 顶部控制烂 -->
     <div class="flex shrink-0 flex-col gap-4 overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
       <div class="flex min-w-0 items-center gap-4">
-        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-           <el-icon :size="20"><Monitor /></el-icon>
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 shadow-sm">
+           <el-icon :size="16"><Monitor /></el-icon>
         </div>
         <div class="min-w-0">
            <h1 class="truncate text-lg font-bold text-gray-800">北三会议室</h1>

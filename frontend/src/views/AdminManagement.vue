@@ -3,10 +3,17 @@
     <section class="rounded-[24px] border border-slate-200/90 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)] sm:p-6 lg:p-7">
       <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div class="min-w-0">
-          <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
-            RECRUITMENT ADMIN
-          </span>
-          <h2 class="mt-3 text-2xl font-bold leading-[1.25] text-slate-800 sm:text-3xl">招新管理</h2>
+          <div class="flex items-center gap-3">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
+              <el-icon :size="16"><Setting /></el-icon>
+            </div>
+            <div>
+              <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
+                RECRUITMENT ADMIN
+              </span>
+              <h2 class="mt-3 text-2xl font-bold leading-[1.25] text-slate-800 sm:text-3xl">招新管理</h2>
+            </div>
+          </div>
           <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
             管理招新报名活动名称、报名开始时间和报名结束时间。保存后会同步影响公开招新报名页面。
           </p>
@@ -108,6 +115,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
+import { Setting } from '@element-plus/icons-vue'
 import { getAdminSignupConfigs, updateAdminSignupConfig } from '@/api/recruitment'
 
 const loading = ref(false)

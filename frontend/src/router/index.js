@@ -112,40 +112,46 @@ const routes = [
                 meta: { title: '通讯录', requiresAuth: true }
             },
             {
+                path: 'co-build',
+                name: 'CoBuild',
+                component: () => import('@/views/CoBuild.vue'),
+                meta: { title: '共建', requiresAuth: true }
+            },
+            {
                 path: 'users',
                 name: 'Users',
                 component: () => import('@/views/UserManagement.vue'),
-                meta: { title: '成员管理', requiresAuth: true }
+                meta: { title: '成员管理', requiresAuth: true, requireAdmin: true }
             },
             {
                 path: 'admin/rooms',
                 name: 'AdminRooms',
                 component: () => import('@/views/MeetingRoomAdmin.vue'),
-                meta: { title: '会议室管理', requiresAuth: true }
+                meta: { title: '会议室管理', requiresAuth: true, requireAdmin: true }
             },
             {
                 path: 'admin/schedule',
                 name: 'AdminSchedule',
                 component: () => import('@/views/AdminSchedule.vue'),
-                meta: { title: '日程管理', requiresAuth: true }
+                meta: { title: '日程管理', requiresAuth: true, requireAdmin: true }
             },
             {
                 path: 'admin/management',
                 name: 'AdminManagement',
                 redirect: '/admin/recruitment',
-                meta: { title: '招新管理', requiresAuth: true }
+                meta: { title: '招新管理', requiresAuth: true, requireAdmin: true }
             },
             {
                 path: 'admin/recruitment',
                 name: 'AdminRecruitment',
                 component: () => import('@/views/AdminManagement.vue'),
-                meta: { title: '招新管理', requiresAuth: true }
+                meta: { title: '招新管理', requiresAuth: true, requireAdmin: true }
             },
             {
                 path: 'admin/events',
                 name: 'AdminEvents',
                 component: () => import('@/views/EventManagement.vue'),
-                meta: { title: '赛事管理', requiresAuth: true }
+                meta: { title: '赛事管理', requiresAuth: true, requireAdmin: true }
             },
             {
                 path: 'admin/contest',
@@ -179,7 +185,13 @@ router.beforeEach((to, from, next) => {
     if (to.meta.requiresAuth) {
         // 检查是否已登录
         if (userStore.isLoggedIn) {
-            next()
+            // 检查是否需要管理员权限
+            if (to.meta.requireAdmin && userStore.userRole !== 'admin') {
+                ElMessage.error('您没有权限访问该页面')
+                next('/home')
+            } else {
+                next()
+            }
         } else {
             ElMessage.warning('请先登录')
             next({

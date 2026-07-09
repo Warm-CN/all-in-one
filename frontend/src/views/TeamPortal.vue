@@ -9,9 +9,14 @@
           </div>
           <div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
             <img src="@/assets/images/logo.png" alt="Logo" class="h-16 w-auto shrink-0 object-contain sm:h-20" />
-            <div class="min-w-0">
-              <h1 class="break-words text-3xl font-black leading-tight text-slate-950 sm:text-4xl lg:text-5xl">{{ currentEvent?.display_title || currentEvent?.name || '赛事报名与组队中心' }}</h1>
-              <p class="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">公开报名、修改队伍、修改选题、查询验收安排统一在这里完成</p>
+            <div class="flex min-w-0 items-center gap-3">
+              <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 shadow-sm">
+                <el-icon :size="16"><Trophy /></el-icon>
+              </div>
+              <div class="min-w-0">
+                <h1 class="break-words text-3xl font-black leading-tight text-slate-950 sm:text-4xl lg:text-5xl">{{ currentEvent?.display_title || currentEvent?.name || '赛事报名与组队中心' }}</h1>
+                <p class="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">公开报名、修改队伍、修改选题、查询验收安排统一在这里完成</p>
+              </div>
             </div>
           </div>
         </div>
@@ -356,6 +361,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Trophy } from '@element-plus/icons-vue'
 import {
   createTeam,
   deleteTeam,

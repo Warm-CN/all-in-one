@@ -16,6 +16,7 @@ from app.models.team_channel_config import TeamChannelConfig
 from app.models.inspection_assignment import InspectionAssignment
 from app.models.competition_event import CompetitionEvent
 from app.models.competition_event_topic import CompetitionEventTopic
+from app.models.suggestion import Suggestion, Screenshot, Annotation, StatusChange, Reply, Endorsement
 
 __all__ = [
     "BaseModel",
@@ -34,4 +35,10 @@ __all__ = [
     "InspectionAssignment",
     "CompetitionEvent",
     "CompetitionEventTopic",
+    "Suggestion",
+    "Screenshot",
+    "Annotation",
+    "StatusChange",
+    "Reply",
+    "Endorsement",
 ]
