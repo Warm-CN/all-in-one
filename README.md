@@ -63,6 +63,7 @@ python scripts/init_admin.py
 |------|------|
 | [docs/DEPLOY.md](docs/DEPLOY.md) | 服务器部署、升级、备份、Nginx、systemd、HTTPS、排错 |
 | [docs/配置指南.md](docs/配置指南.md) | 本地/生产环境变量、数据库、前后端配置 |
+| [docs/数据库配置指南.md](docs/数据库配置指南.md) | MySQL 安装、.env 字段说明、建库建表、管理员初始化 |
 | [docs/后端开发指南.md](docs/后端开发指南.md) | 后端目录结构、模型、权限、接口概览 |
 | [frontend/README.md](frontend/README.md) | 前端目录、环境变量、构建说明 |
 | [docs/API_会议室预约.md](docs/API_会议室预约.md) | 会议室预约接口细节 |
