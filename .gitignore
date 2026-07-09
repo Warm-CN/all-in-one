@@ -53,3 +53,13 @@ frontend/.vite/
 frontend/.cache/
 frontend/coverage/
 frontend/.env.production
+
+# AI 工具生成的计划/设计文档（非项目正式文档）
+docs/plans/
+docs/specs/
+
+# Trae / AI 工具缓存
+.trae-cn/
+.trae/
+**/.trae-cn/
+**/.trae/
