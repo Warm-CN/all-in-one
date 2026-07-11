@@ -639,6 +639,46 @@ async def export_applications(
     )
 
 
+@router.get("/applications/import-template", summary="下载面试安排导入模板（仅管理员）")
+async def download_import_template(
+    current_user: User = Depends(require_admin),
+):
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "面试安排导入"
+    sheet.append(EXCEL_TEMPLATE_HEADERS)
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    column_widths = {"A": 12, "B": 12, "C": 15, "D": 22, "E": 15, "F": 15, "G": 15, "H": 18, "I": 12, "J": 30, "K": 18, "L": 18, "M": 15, "N": 18, "O": 18, "P": 25}
+    for col, width in column_widths.items():
+        sheet.column_dimensions[col].width = width
+
+    help_sheet = workbook.create_sheet("填写说明")
+    help_sheet.append(["字段", "说明"])
+    help_sheet.append(["姓名/学号", "用于匹配报名人，至少填一项"])
+    help_sheet.append(["一面时间/地点", "第一次面试安排，如：2026-07-15 14:00 / 教学楼A301"])
+    help_sheet.append(["二面部门", "第二次面试对应部门"])
+    help_sheet.append(["二面时间/地点", "第二次面试安排"])
+    help_sheet.append(["导入规则", "只更新 Excel 中填写了内容的单元格；留空不会清空已有安排"])
+    for cell in help_sheet[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    help_sheet.column_dimensions["A"].width = 28
+    help_sheet.column_dimensions["B"].width = 64
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    filename = "面试安排导入模板.xlsx"
+    encoded_filename = quote(filename)
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+    )
+
+
 @router.post("/applications/import", response_model=dict, summary="导入面试安排（仅管理员）")
 async def import_applications_interview_info(
     file: UploadFile = File(...),

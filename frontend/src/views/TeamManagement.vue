@@ -87,25 +87,43 @@
             </el-tag>
           </div>
           <h3 class="mt-3 text-2xl font-black leading-snug text-slate-900 break-words">{{ selectedEvent.name }}</h3>
-          <p class="mt-1 text-xs leading-5 text-slate-400 break-all">模块标识：{{ selectedEvent.module_key }}</p>
         </div>
 
         <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-auto lg:min-w-[360px]">
-          <el-button type="success" :icon="Download" :loading="exporting" @click="handleExport">
-            导出报名信息
-          </el-button>
-          <el-upload
-            v-if="userStore.isAdmin"
-            :show-file-list="false"
-            accept=".xlsx"
-            :http-request="handleInspectionImport"
-            class="w-full"
-            :disabled="importing"
-          >
-            <el-button type="primary" plain :icon="Upload" :loading="importing" class="w-full">
-              导入验收信息
+          <div v-if="userStore.isAdmin" class="flex items-center gap-1">
+            <el-popover placement="bottom" :width="300" trigger="hover">
+              <template #reference>
+                <el-icon class="cursor-help text-slate-300 hover:text-slate-500"><QuestionFilled /></el-icon>
+              </template>
+              <div class="text-xs leading-5 text-slate-600">
+                <p class="font-bold text-slate-700">导出/导入格式说明</p>
+                <p class="mt-1 font-semibold text-slate-600">导出</p>
+                <p>包含全部队伍信息 + 验收安排 + 填写示例</p>
+                <p class="mt-1 font-semibold text-slate-600">导入（.xlsx）</p>
+                <p>• 队伍ID / 队长学号 / 队伍名称（任选其一匹配）</p>
+                <p>• 一验时间、一验地点、一验备注</p>
+                <p>• 二验时间、二验地点、二验备注</p>
+                <p class="mt-1 text-slate-400">留空字段不会覆盖已有值</p>
+                <el-button link type="primary" size="small" class="mt-2" @click="handleDownloadTemplate">下载导入模板</el-button>
+              </div>
+            </el-popover>
+            <el-upload
+              :show-file-list="false"
+              accept=".xlsx"
+              :http-request="handleInspectionImport"
+              class="w-full"
+              :disabled="importing"
+            >
+              <el-button type="primary" plain :icon="Upload" :loading="importing" class="w-full">
+                导入验收信息
+              </el-button>
+            </el-upload>
+          </div>
+          <div class="flex items-center gap-1">
+            <el-button type="success" :icon="Download" :loading="exporting" @click="handleExport" class="w-full">
+              导出报名信息
             </el-button>
-          </el-upload>
+          </div>
         </div>
       </div>
 
@@ -240,7 +258,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
-import { Download, Search, Trophy, Upload } from '@element-plus/icons-vue'
+import { Download, Search, Trophy, Upload, QuestionFilled } from '@element-plus/icons-vue'
 import { getCompetitionEvents } from '@/api/competition'
 import {
   exportTeams,
@@ -248,6 +266,7 @@ import {
   getTeams,
   getTopics,
   importTeamInspections,
+  downloadInspectionTemplate,
 } from '@/api/team'
 
 const userStore = useUserStore()
@@ -450,6 +469,23 @@ const handleExport = async () => {
     ElMessage.error(getErrorMessage(error, '导出失败'))
   } finally {
     exporting.value = false
+  }
+}
+
+const handleDownloadTemplate = async () => {
+  try {
+    const blobData = await downloadInspectionTemplate()
+    const blob = new Blob([blobData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = '验收信息导入模板.xlsx'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '下载失败'))
   }
 }
 

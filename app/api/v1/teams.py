@@ -1188,6 +1188,46 @@ async def import_teams(
     )
 
 
+@router.get("/teams/inspection-template", summary="下载验收信息导入模板（仅管理员）")
+async def download_inspection_template(
+    current_user: User = Depends(require_admin),
+):
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "验收信息导入"
+    headers = ["队伍ID", "队长学号", "队伍名称", "一验时间", "一验地点", "一验备注", "二验时间", "二验地点", "二验备注"]
+    sheet.append(headers)
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    column_widths = {"A": 10, "B": 15, "C": 20, "D": 18, "E": 18, "F": 25, "G": 18, "H": 18, "I": 25}
+    for col, width in column_widths.items():
+        sheet.column_dimensions[col].width = width
+
+    help_sheet = workbook.create_sheet("填写说明")
+    help_sheet.append(["字段", "说明"])
+    help_sheet.append(["队伍ID/队长学号/队伍名称", "用于匹配队伍，填任一项即可"])
+    help_sheet.append(["一验时间/地点/备注", "第一次验收安排，如：2026-07-15 14:00 / 教学楼A301 / 准备PPT"])
+    help_sheet.append(["二验时间/地点/备注", "第二次验收安排"])
+    help_sheet.append(["导入规则", "只更新 Excel 中填写了内容的单元格；留空不会清空已有安排"])
+    for cell in help_sheet[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    help_sheet.column_dimensions["A"].width = 28
+    help_sheet.column_dimensions["B"].width = 64
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    filename = "验收信息导入模板.xlsx"
+    encoded_filename = quote(filename)
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+    )
+
+
 @router.post("/teams/inspection-import", response_model=dict, summary="管理员导入队伍验收安排")
 async def import_team_inspections(
     module_key: Optional[str] = None,

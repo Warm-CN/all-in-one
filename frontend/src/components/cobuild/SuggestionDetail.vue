@@ -1,5 +1,5 @@
 <template>
-  <el-drawer v-model="visible" size="70%">
+  <el-drawer v-model="visible" size="100%" class="cobuild-detail-drawer">
     <template #header>
       <div v-if="detail" class="flex flex-col gap-1">
         <h2 class="text-xl font-bold text-slate-800">{{ detail.title }}</h2>
@@ -23,24 +23,34 @@
       </el-descriptions>
 
       <!-- 截图 + 元素方框 -->
-      <div v-if="firstScreenshot" class="relative overflow-auto rounded-xl border border-slate-200 bg-slate-50">
-        <div class="relative inline-block">
-          <img v-if="screenshotBlobUrl" :src="screenshotBlobUrl" class="block" alt="页面截图" @load="onImgLoad" ref="screenshotImg" />
-          <div v-else class="flex items-center justify-center" style="width: 400px; height: 200px;">
+      <div v-if="firstScreenshot">
+        <div
+          class="relative cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+          style="height: 200px;"
+          @click="previewFull = true"
+        >
+          <div v-if="screenshotBlobUrl" class="relative" :style="{ width: (firstScreenshot.width || 400) + 'px', transformOrigin: 'top left', transform: `scale(${previewScale})` }">
+            <img :src="screenshotBlobUrl" class="block" alt="页面截图" @load="onImgLoad" ref="screenshotImg" />
+            <!-- 编号方框 -->
+            <div
+              v-for="(ann, idx) in elementAnnotations"
+              :key="ann.id || idx"
+              class="absolute border-2 border-blue-500"
+              :style="boxStyle(ann, idx)"
+            >
+              <span class="absolute -top-2 -left-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white">
+                {{ idx + 1 }}
+              </span>
+            </div>
+          </div>
+          <div v-else class="flex h-full items-center justify-center">
             <el-icon class="is-loading" :size="24"><Loading /></el-icon>
             <span class="ml-2 text-sm text-slate-400">加载截图...</span>
           </div>
-          <!-- 编号方框 -->
-          <div
-            v-for="(ann, idx) in elementAnnotations"
-            :key="ann.id || idx"
-            class="absolute border-2 border-red-500"
-            :style="boxStyle(ann, idx)"
-          >
-            <span class="absolute -top-2 -left-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-              {{ idx + 1 }}
-            </span>
-          </div>
+        </div>
+        <div class="mt-1 flex items-center justify-center gap-1">
+          <el-icon :size="14" class="text-slate-400"><ZoomIn /></el-icon>
+          <span class="text-xs text-slate-400">点击查看完整截图</span>
         </div>
       </div>
 
@@ -54,7 +64,7 @@
             class="rounded-lg border border-slate-200 p-3"
           >
             <div class="flex items-center gap-2">
-              <span class="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">{{ idx + 1 }}</span>
+              <span class="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white">{{ idx + 1 }}</span>
               <span v-if="annCoords(ann).pageName" class="rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-600">{{ annCoords(ann).pageName }}</span>
               <span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600">{{ annCoords(ann).tag }}</span>
               <span v-if="annCoords(ann).component" class="text-xs text-indigo-500">{{ annCoords(ann).component }}.vue</span>
@@ -68,7 +78,10 @@
 
       <!-- 状态管理 -->
       <template v-if="isAdmin">
-        <h4 class="mb-2 font-bold text-slate-700">状态管理</h4>
+        <div class="flex items-center justify-between">
+          <h4 class="font-bold text-slate-700">状态管理</h4>
+          <el-button type="danger" size="small" plain @click="onDeleteSuggestion">删除意见</el-button>
+        </div>
         <div class="flex flex-wrap gap-2">
           <el-select v-model="newStatus" placeholder="选择状态" class="w-40">
             <el-option label="等待修改" value="pending_fix" />
@@ -86,20 +99,29 @@
         <h4 class="mb-2 font-bold text-slate-700">讨论区</h4>
         <DiscussionThread
           :replies="detail.replies"
+          :is-admin="isAdmin"
           @endorse="onEndorse"
           @reply="onReply"
+          @delete-reply="onDeleteReply"
         />
       </div>
     </div>
   </el-drawer>
+
+  <!-- 全屏预览截图（含标注） -->
+  <el-image-viewer
+    v-if="previewFull && fullImageSrc"
+    :url-list="[fullImageSrc]"
+    @close="previewFull = false"
+  />
 </template>
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Loading, ZoomIn } from '@element-plus/icons-vue'
 import DiscussionThread from './DiscussionThread.vue'
-import { updateSuggestionStatus, createReply, toggleEndorse, fetchScreenshotImage } from '@/api/suggestion'
+import { updateSuggestionStatus, createReply, toggleEndorse, deleteReply, deleteSuggestion, fetchScreenshotImage } from '@/api/suggestion'
 import { getPageLabel } from '@/composables/cobuildData'
 
 const props = defineProps({
@@ -107,7 +129,7 @@ const props = defineProps({
   detail: Object,
   isAdmin: Boolean
 })
-const emit = defineEmits(['update:modelValue', 'refresh'])
+const emit = defineEmits(['update:modelValue', 'refresh', 'delete'])
 
 const visible = computed({
   get: () => props.modelValue,
@@ -118,11 +140,16 @@ const statusReason = ref('')
 const imgScale = ref(1)
 const screenshotImg = ref(null)
 const screenshotBlobUrl = ref('')
+const previewFull = ref(false)
+const previewScale = ref(1)
+const fullImageSrc = ref('')
 
 watch(() => props.detail?.id, async (newId) => {
   if (screenshotBlobUrl.value) URL.revokeObjectURL(screenshotBlobUrl.value)
   screenshotBlobUrl.value = ''
   imgScale.value = 1
+  previewScale.value = 1
+  fullImageSrc.value = ''
   if (!newId) return
   const sc = props.detail?.screenshots?.[0]
   if (!sc) return
@@ -160,11 +187,16 @@ function annCoords(ann) {
 }
 
 function onImgLoad() {
-  // 计算缩放比例(如果图片被CSS缩放了)
-  if (screenshotImg.value && firstScreenshot.value) {
-    const naturalW = firstScreenshot.value.width || screenshotImg.value.naturalWidth
-    const displayedW = screenshotImg.value.offsetWidth
-    imgScale.value = displayedW / naturalW
+  if (screenshotImg.value) {
+    const container = screenshotImg.value.closest('.cursor-pointer')
+    const containerW = container ? container.offsetWidth : 300
+    const naturalW = firstScreenshot.value?.width || screenshotImg.value.naturalWidth
+    if (naturalW > 0) {
+      previewScale.value = Math.min(1, containerW / naturalW)
+    }
+    if (firstScreenshot.value?.width) {
+      imgScale.value = (naturalW * previewScale.value) / firstScreenshot.value.width
+    }
   }
 }
 
@@ -178,6 +210,63 @@ function boxStyle(ann, idx) {
     height: (c.h || 0) * s + 'px'
   }
 }
+
+async function buildFullImage() {
+  if (!screenshotBlobUrl.value) return
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.src = screenshotBlobUrl.value
+  await new Promise((resolve, reject) => {
+    img.onload = resolve
+    img.onerror = reject
+  })
+
+  const sc = firstScreenshot.value
+  const w = sc?.width || img.naturalWidth
+  const h = sc?.height || img.naturalHeight
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(img, 0, 0, w, h)
+
+  // 绘制蓝框 + 编号
+  elementAnnotations.value.forEach((ann, idx) => {
+    const c = annCoords(ann)
+    const x = c.x || 0
+    const y = c.y || 0
+    const rw = c.w || 0
+    const rh = c.h || 0
+
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.08)'
+    ctx.fillRect(x, y, rw, rh)
+    ctx.strokeStyle = '#3B82F6'
+    ctx.lineWidth = 2
+    ctx.strokeRect(x, y, rw, rh)
+
+    const badgeR = 11
+    const bx = x - 2
+    const by = y - 2
+    ctx.fillStyle = '#3B82F6'
+    ctx.beginPath()
+    ctx.arc(bx, by, badgeR, 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = 'bold 11px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(String(idx + 1), bx, by)
+  })
+
+  fullImageSrc.value = canvas.toDataURL('image/jpeg', 0.85)
+}
+
+watch(previewFull, async (v) => {
+  if (v && !fullImageSrc.value && screenshotBlobUrl.value) {
+    await buildFullImage()
+  }
+})
 
 async function onStatusUpdate() {
   if (!newStatus.value) return ElMessage.warning('请选择状态')
@@ -204,4 +293,33 @@ async function onReply(replyData) {
     emit('refresh')
   } catch (e) { ElMessage.error('评论失败') }
 }
+
+async function onDeleteReply(replyId) {
+  try {
+    await deleteReply(replyId)
+    ElMessage.success('评论已删除')
+    emit('refresh')
+  } catch (e) { ElMessage.error('删除失败') }
+}
+
+function onDeleteSuggestion() {
+  ElMessageBox.confirm('确定删除这条意见吗？所有评论和截图将一并删除。', '删除意见', { type: 'warning' })
+    .then(async () => {
+      try {
+        await deleteSuggestion(props.detail.id)
+        ElMessage.success('意见已删除')
+        visible.value = false
+        emit('delete')
+      } catch (e) { ElMessage.error('删除失败') }
+    })
+    .catch(() => {})
+}
 </script>
+
+<style scoped>
+@media (min-width: 640px) {
+  .cobuild-detail-drawer :deep(.el-drawer) {
+    width: 70% !important;
+  }
+}
+</style>

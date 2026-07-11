@@ -270,7 +270,7 @@
     <!-- 浮动工具栏 -->
     <transition name="slide-down">
       <div
-        class="fixed left-1/2 top-20 z-[3000] flex -translate-x-1/2 flex-col items-center gap-2 rounded-2xl bg-white/90 px-4 py-2.5 shadow-lg ring-1 ring-slate-200 backdrop-blur-md sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-3"
+        class="fixed left-2 right-2 top-20 z-[3000] flex flex-col items-center gap-2 rounded-2xl bg-white/95 px-3 py-2.5 shadow-lg ring-1 ring-slate-200 backdrop-blur-md sm:left-1/2 sm:right-auto sm:w-auto sm:max-w-[90vw] sm:-translate-x-1/2 sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-3"
       >
         <div class="flex items-center gap-2">
           <el-icon :size="18" class="text-indigo-500"><EditPen /></el-icon>
@@ -300,7 +300,7 @@
       <div
         v-for="(sel, idx) in selections"
         :key="sel.id"
-        class="absolute rounded border-2 border-red-500/80 bg-red-500/5"
+        class="absolute rounded border-2 border-blue-500/80 bg-blue-500/5"
         :style="{ left: sel.rect.x + 'px', top: sel.rect.y + 'px', width: sel.rect.w + 'px', height: sel.rect.h + 'px' }"
       ></div>
 
@@ -308,7 +308,7 @@
       <div
         v-for="(sel, idx) in selections"
         :key="'badge-' + sel.id"
-        class="pointer-events-auto absolute flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-lg ring-2 ring-white transition-transform hover:scale-110"
+        class="pointer-events-auto absolute flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white shadow-lg ring-2 ring-white transition-transform hover:scale-110"
         :style="{ left: (sel.rect.x + sel.rect.w - 12) + 'px', top: (sel.rect.y - 12) + 'px' }"
         @click.stop="editSelection(sel.id)"
       >{{ idx + 1 }}</div>
@@ -316,10 +316,11 @@
       <!-- 输入气泡 -->
       <div
         v-if="editingId !== null"
-        class="pointer-events-auto absolute z-[3100]"
+        class="pointer-events-auto fixed inset-0 z-[3100] flex items-center justify-center bg-black/20 sm:absolute sm:inset-auto sm:bg-transparent"
         :style="bubbleStyle"
+        @click.self="cancelEdit"
       >
-        <div class="w-64 rounded-xl bg-white p-3 shadow-2xl ring-2 ring-indigo-500">
+        <div class="w-[min(20rem,calc(100vw-2rem))] rounded-xl bg-white p-3 shadow-2xl ring-2 ring-indigo-500">
           <div class="mb-2 flex items-center gap-2 border-b border-slate-100 pb-2">
             <span class="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono text-slate-600">{{ editingElement?.tag }}</span>
             <span v-if="editingElement?.component" class="text-xs text-indigo-500">{{ editingElement.component }}</span>
@@ -349,7 +350,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch, nextTick } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
@@ -418,18 +419,29 @@ const checkPendingUsers = async () => {
 onMounted(() => {
   checkPendingUsers()
   initCobuildMode()
+  window.addEventListener('resize', onResize)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+})
+
+function onResize() {
+  isMobile.value = window.innerWidth < 640
+}
 
 // ==================== 元素选择模式 ====================
 const cobuildMode = ref(false)
 const capturing = ref(false)
-const selections = ref([]) // [{ id, tag, class, text, selector, component, rect: {x,y,w,h}, description }]
+const selections = ref([])
 const hoverRect = ref({ x: 0, y: 0, w: 0, h: 0, visible: false })
-const editingId = ref(null) // null=未编辑, 'new'=新建, number=编辑已有
+const editingId = ref(null)
 const inputText = ref('')
 const bubbleInput = ref(null)
+const isMobile = ref(window.innerWidth < 640)
 let selIdCounter = 0
-let pendingElement = null // 待添加描述的元素信息
+let pendingElement = null
+let touchEndTime = 0 // 记录 touchend 时间，用于过滤合成 click
 
 const editingElement = computed(() => {
   if (editingId.value === null) return null
@@ -447,7 +459,29 @@ const editingIndex = computed(() => {
 const bubbleStyle = computed(() => {
   const el = editingElement.value
   if (!el) return {}
-  // 气泡出现在元素右侧,如果空间不够则出现在左侧
+
+  // 手机端：居中但偏离所选元素（元素在上半 → 气泡靠下，元素在下半 → 气泡靠上）
+  if (isMobile.value) {
+    const elementCenterY = el.rect.y + el.rect.h / 2
+    const screenCenterY = window.innerHeight / 2
+    const dialogH = 200
+    let marginTop = 0
+    if (elementCenterY < screenCenterY) {
+      // 元素在上半，气泡往下偏
+      marginTop = Math.min(80, (screenCenterY - elementCenterY) / 2)
+    } else {
+      // 元素在下半，气泡往上偏
+      marginTop = -Math.min(80, (elementCenterY - screenCenterY) / 2)
+    }
+    return {
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'column',
+      marginTop: marginTop + 'px',
+    }
+  }
+
+  // 桌面端：气泡出现在元素右侧，空间不够则在左侧
   const bubbleW = 280
   const bubbleH = 180
   let left = el.rect.x + el.rect.w + 8
@@ -493,6 +527,9 @@ function enterCobuildMode() {
   document.addEventListener('mouseout', onMouseOut, true)
   document.addEventListener('click', onDocumentClick, true)
   document.addEventListener('scroll', onScroll, true)
+  document.addEventListener('touchend', onTouchEnd, { capture: true, passive: false })
+  document.addEventListener('touchstart', onTouchStart, { capture: true, passive: true })
+  document.addEventListener('touchmove', onTouchMove, { capture: true, passive: true })
 }
 
 function exitCobuildMode() {
@@ -506,6 +543,9 @@ function exitCobuildMode() {
   document.removeEventListener('mouseout', onMouseOut, true)
   document.removeEventListener('click', onDocumentClick, true)
   document.removeEventListener('scroll', onScroll, true)
+  document.removeEventListener('touchend', onTouchEnd, { capture: true })
+  document.removeEventListener('touchstart', onTouchStart, { capture: true })
+  document.removeEventListener('touchmove', onTouchMove, { capture: true })
 }
 
 function onMouseOver(e) {
@@ -548,9 +588,9 @@ function onScroll() {
 
 function onDocumentClick(e) {
   if (!cobuildMode.value) return
-  // 如果在编辑中,不处理点击
   if (editingId.value !== null) return
-  // 忽略覆盖层和工具栏的点击
+  // 过滤触摸产生的合成 click（touchend 已处理过）
+  if (touchEndTime && Date.now() - touchEndTime < 500) return
   if (e.target.closest('[class*="z-[29"]') || e.target.closest('[class*="z-[30"]') || e.target.closest('[class*="z-[31"]')) return
 
   e.preventDefault()
@@ -559,7 +599,84 @@ function onDocumentClick(e) {
   const el = e.target
   const rect = el.getBoundingClientRect()
 
-  // 检查是否已选中(点击已选元素 = 编辑)
+  const existing = selections.value.find(s => {
+    return Math.abs(s.rect.x - rect.left) < 5 && Math.abs(s.rect.y - rect.top) < 5
+  })
+  if (existing) {
+    editSelection(existing.id)
+    return
+  }
+
+  pendingElement = {
+    tag: el.tagName.toLowerCase(),
+    class: Array.from(el.classList || []).filter(c => !c.startsWith('el-') && !c.startsWith('is-') && !c.startsWith('fade-')).join(' ').slice(0, 200),
+    text: (el.textContent || '').trim().slice(0, 200),
+    selector: getSelector(el),
+    component: getComponentName(el),
+    rect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
+  }
+
+  editingId.value = 'new'
+  inputText.value = ''
+  hoverRect.value.visible = false
+
+  nextTick(() => {
+    bubbleInput.value?.focus()
+  })
+}
+
+let touchStartX = 0
+let touchStartY = 0
+let touchMoved = false
+
+function onTouchStart(e) {
+  if (!cobuildMode.value || editingId.value !== null) return
+  const touch = e.touches[0]
+  if (!touch) return
+  touchStartX = touch.clientX
+  touchStartY = touch.clientY
+  touchMoved = false
+}
+
+function onTouchMove(e) {
+  if (!cobuildMode.value) return
+  const touch = e.touches[0]
+  if (!touch) return
+  const dx = Math.abs(touch.clientX - touchStartX)
+  const dy = Math.abs(touch.clientY - touchStartY)
+  if (dx > 10 || dy > 10) touchMoved = true
+}
+
+function onTouchEnd(e) {
+  if (!cobuildMode.value) return
+  if (editingId.value !== null) return
+
+  // 记录 touchend 时间，让后续合成 click 被过滤
+  touchEndTime = Date.now()
+
+  // 滑动操作不拦截，允许页面滚动
+  if (touchMoved) {
+    hoverRect.value.visible = false
+    return
+  }
+
+  const touch = e.changedTouches[0]
+  if (!touch) return
+
+  // 用 touch 坐标找到实际元素
+  const el = document.elementFromPoint(touch.clientX, touch.clientY) || e.target
+  if (!el || el === document || el === document.body) return
+
+  // 忽略覆盖层和工具栏
+  if (el.closest('[class*="z-[29"]') || el.closest('[class*="z-[30"]') || el.closest('[class*="z-[31"]')) return
+
+  // 拦截触摸事件，阻止后续合成 click 和默认行为
+  e.preventDefault()
+  e.stopImmediatePropagation()
+
+  const rect = el.getBoundingClientRect()
+
+  // 检查是否已选中
   const existing = selections.value.find(s => {
     return Math.abs(s.rect.x - rect.left) < 5 && Math.abs(s.rect.y - rect.top) < 5
   })
@@ -578,12 +695,10 @@ function onDocumentClick(e) {
     rect: { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
   }
 
-  // 打开输入气泡
   editingId.value = 'new'
   inputText.value = ''
   hoverRect.value.visible = false
 
-  // 聚焦输入框
   nextTick(() => {
     bubbleInput.value?.focus()
   })
@@ -699,50 +814,73 @@ async function finishSelection() {
   if (capturing.value) return
   capturing.value = true
 
-  try {
-    // 临时退出模式,隐藏所有覆盖层
-    cobuildMode.value = false
-    editingId.value = null
-    hoverRect.value.visible = false
-    await new Promise(r => setTimeout(r, 300))
+  // 立即移除事件监听，防止 touchend/click 干扰后续操作
+  document.removeEventListener('mouseover', onMouseOver, true)
+  document.removeEventListener('mouseout', onMouseOut, true)
+  document.removeEventListener('click', onDocumentClick, true)
+  document.removeEventListener('scroll', onScroll, true)
+  document.removeEventListener('touchend', onTouchEnd, { capture: true })
+  document.removeEventListener('touchstart', onTouchStart, { capture: true })
+  document.removeEventListener('touchmove', onTouchMove, { capture: true })
 
+  // 临时退出模式,隐藏所有覆盖层
+  cobuildMode.value = false
+  editingId.value = null
+  hoverRect.value.visible = false
+  await new Promise(r => setTimeout(r, 300))
+
+  try {
     // 截取主内容区域
     const target = document.querySelector('.el-main') || document.body
     const targetRect = target.getBoundingClientRect()
 
     let screenshotData = { imageSrc: '', width: 0, height: 0 }
-    try {
-      const { toJpeg } = await import('html-to-image')
-      const dataUrl = await toJpeg(target, {
-        quality: 0.7,
-        backgroundColor: '#ffffff',
-        pixelRatio: 1,
-        skipFonts: true,
-      })
-      screenshotData = {
-        imageSrc: dataUrl,
-        width: Math.round(targetRect.width),
-        height: Math.round(targetRect.height)
+
+    // 截图超时保护（5秒）
+    const screenshotPromise = (async () => {
+      try {
+        const { toJpeg } = await import('html-to-image')
+        const dataUrl = await toJpeg(target, {
+          quality: 0.7,
+          backgroundColor: '#ffffff',
+          pixelRatio: isMobile.value ? 2 : 1,
+          skipFonts: true,
+          cacheBust: true,
+        })
+        if (dataUrl && dataUrl.length > 1000) {
+          return {
+            imageSrc: dataUrl,
+            width: Math.round(targetRect.width),
+            height: Math.round(targetRect.height)
+          }
+        } else {
+          throw new Error('Screenshot data too small, likely blank')
+        }
+      } catch (captureErr) {
+        console.warn('html-to-image failed, generating placeholder:', captureErr)
+        const ph = document.createElement('canvas')
+        ph.width = Math.round(targetRect.width)
+        ph.height = Math.round(targetRect.height)
+        const ctx = ph.getContext('2d')
+        ctx.fillStyle = '#f8fafc'
+        ctx.fillRect(0, 0, ph.width, ph.height)
+        ctx.fillStyle = '#94a3b8'
+        ctx.font = '14px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('页面截图不可用 - 见下方元素清单', ph.width / 2, ph.height / 2)
+        return {
+          imageSrc: ph.toDataURL('image/jpeg', 0.7),
+          width: ph.width,
+          height: ph.height
+        }
       }
-    } catch (captureErr) {
-      console.warn('Screenshot failed, generating placeholder:', captureErr)
-      // 截图失败时生成占位图片
-      const ph = document.createElement('canvas')
-      ph.width = Math.round(targetRect.width)
-      ph.height = Math.round(targetRect.height)
-      const ctx = ph.getContext('2d')
-      ctx.fillStyle = '#f8fafc'
-      ctx.fillRect(0, 0, ph.width, ph.height)
-      ctx.fillStyle = '#94a3b8'
-      ctx.font = '14px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('页面截图不可用 - 见下方元素清单', ph.width / 2, ph.height / 2)
-      screenshotData = {
-        imageSrc: ph.toDataURL('image/jpeg', 0.7),
-        width: ph.width,
-        height: ph.height
-      }
-    }
+    })()
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Screenshot timeout')), 5000)
+    )
+
+    screenshotData = await Promise.race([screenshotPromise, timeoutPromise])
 
     // 调整元素位置(相对于截图区域)
     const pageName = getPageLabel(route.path)
@@ -770,18 +908,20 @@ async function finishSelection() {
       elements
     }
 
-    // 移除事件监听
-    document.removeEventListener('mouseover', onMouseOver, true)
-    document.removeEventListener('mouseout', onMouseOut, true)
-    document.removeEventListener('click', onDocumentClick, true)
-    document.removeEventListener('scroll', onScroll, true)
-
     // 导航回共建页
     router.push('/co-build')
   } catch (err) {
     console.error('Capture failed', err)
     ElMessage.error('截图失败,请重试')
     cobuildMode.value = true
+    // 重新添加事件监听
+    document.addEventListener('mouseover', onMouseOver, true)
+    document.addEventListener('mouseout', onMouseOut, true)
+    document.addEventListener('click', onDocumentClick, true)
+    document.addEventListener('scroll', onScroll, true)
+    document.addEventListener('touchend', onTouchEnd, { capture: true, passive: false })
+    document.addEventListener('touchstart', onTouchStart, { capture: true, passive: true })
+    document.addEventListener('touchmove', onTouchMove, { capture: true, passive: true })
   } finally {
     capturing.value = false
   }

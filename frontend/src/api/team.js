@@ -155,6 +155,17 @@ export function importTeamInspections(file, moduleKey) {
 }
 
 /**
+ * 下载验收信息导入模板
+ */
+export function downloadInspectionTemplate() {
+    return request({
+        url: '/api/v1/teams/inspection-template',
+        method: 'get',
+        responseType: 'blob'
+    })
+}
+
+/**
  * 管理员查看队伍详情
  */
 export function getTeamDetail(teamId) {

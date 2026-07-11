@@ -44,6 +44,7 @@
       :detail="currentDetail"
       :is-admin="userStore.isAdmin"
       @refresh="loadDetail"
+      @delete="loadList"
     />
   </div>
 </template>

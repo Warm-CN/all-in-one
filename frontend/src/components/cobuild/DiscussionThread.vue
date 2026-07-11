@@ -5,7 +5,10 @@
         <span class="text-xs font-semibold text-slate-600">
           {{ reply.is_anonymous ? '匿名用户' : (reply.author_name || '用户' + reply.author_id) }}
         </span>
-        <span class="text-xs text-slate-400">{{ reply.created_at }}</span>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">{{ reply.created_at }}</span>
+          <el-button v-if="isAdmin" link size="small" type="danger" @click="onDeleteReply(reply.id)">删除</el-button>
+        </div>
       </div>
       <p class="mb-2 text-sm text-slate-700">{{ reply.content }}</p>
       <el-button link size="small" :type="reply.endorsed ? 'primary' : 'default'" @click="$emit('endorse', reply.id)">
@@ -31,13 +34,22 @@
 
 <script setup>
 import { ref } from 'vue'
-const props = defineProps({ replies: Array })
-const emit = defineEmits(['endorse', 'reply'])
+import { ElMessageBox, ElMessage } from 'element-plus'
+
+const props = defineProps({ replies: Array, isAdmin: Boolean })
+const emit = defineEmits(['endorse', 'reply', 'delete-reply'])
 const content = ref('')
 const isAnonymous = ref(false)
+
 function submit() {
   if (!content.value.trim()) return
   emit('reply', { content: content.value, is_anonymous: isAnonymous.value })
   content.value = ''
+}
+
+function onDeleteReply(replyId) {
+  ElMessageBox.confirm('确定删除这条评论吗？', '提示', { type: 'warning' })
+    .then(() => emit('delete-reply', replyId))
+    .catch(() => {})
 }
 </script>

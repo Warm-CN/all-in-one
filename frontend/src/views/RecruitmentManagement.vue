@@ -16,17 +16,34 @@
           </div>
         </div>
 
-        <div v-if="userStore.isAdmin" class="flex flex-col gap-2 sm:flex-row 2xl:justify-end">
-          <el-upload
-            :show-file-list="false"
-            accept=".xlsx"
-            :http-request="handleImportUpload"
-            class="w-full sm:w-auto"
-          >
-            <el-button type="primary" plain :loading="importing" class="!h-11 !w-full !rounded-2xl !px-5 sm:!w-auto">
-              导入一/二面安排（xlsx）
-            </el-button>
-          </el-upload>
+        <div v-if="userStore.isAdmin" class="flex flex-col gap-2 sm:flex-row sm:items-center 2xl:justify-end">
+          <div class="flex items-center gap-1">
+            <el-popover placement="bottom" :width="300" trigger="hover">
+              <template #reference>
+                <el-icon class="cursor-help text-slate-300 hover:text-slate-500"><QuestionFilled /></el-icon>
+              </template>
+              <div class="text-xs leading-5 text-slate-600">
+                <p class="font-bold text-slate-700">导入格式说明</p>
+                <p class="mt-1">.xlsx 文件，列名：</p>
+                <p>• 姓名、学号（用于匹配报名人）</p>
+                <p>• 一面时间、一面地点</p>
+                <p>• 二面部门、二面时间、二面地点</p>
+                <p>• 备注</p>
+                <p class="mt-1 text-slate-400">留空字段不会覆盖已有值</p>
+                <el-button link type="primary" size="small" class="mt-2" @click="handleDownloadTemplate">下载模板</el-button>
+              </div>
+            </el-popover>
+            <el-upload
+              :show-file-list="false"
+              accept=".xlsx"
+              :http-request="handleImportUpload"
+              class="w-full sm:w-auto"
+            >
+              <el-button type="primary" plain :loading="importing" class="!h-11 !w-full !rounded-2xl !px-5 sm:!w-auto">
+                导入一/二面安排（xlsx）
+              </el-button>
+            </el-upload>
+          </div>
           <el-button type="success" @click="handleExport" :loading="exporting" class="!h-11 !w-full !rounded-2xl !px-5 sm:!w-auto">
             下载报名信息
           </el-button>
@@ -94,18 +111,22 @@
             <el-table-column prop="phone" label="手机号" min-width="130" />
             <el-table-column prop="first_choice" label="第一志愿" min-width="140" />
             <el-table-column prop="second_choice" label="第二志愿" min-width="140" />
-            <el-table-column label="面试安排" min-width="280">
+            <el-table-column label="面试安排" min-width="180">
               <template #default="{ row }">
-                <div class="whitespace-pre-wrap text-xs leading-6 text-slate-600">{{ formatInterviewPlan(row) }}</div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-slate-500">{{ row.first_choice_interview_time ? '已安排' : '待安排' }}</span>
+                  <el-button link type="primary" size="small" @click="openDetail(row, 'interview')">详情</el-button>
+                </div>
               </template>
             </el-table-column>
             <el-table-column prop="college" label="学院" min-width="150" />
             <el-table-column prop="major" label="专业班级" min-width="150" />
-            <el-table-column label="自我介绍" min-width="220">
+            <el-table-column label="自我介绍" min-width="120">
               <template #default="{ row }">
-                <el-tooltip effect="dark" :content="row.intro || '-'" placement="top" :show-after="300">
-                  <span class="inline-block max-w-[200px] truncate text-slate-600">{{ row.intro || '-' }}</span>
-                </el-tooltip>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-slate-500">{{ row.intro ? '有' : '-' }}</span>
+                  <el-button v-if="row.intro" link type="primary" size="small" @click="openDetail(row, 'intro')">详情</el-button>
+                </div>
               </template>
             </el-table-column>
             <el-table-column label="操作" min-width="180" fixed="right" v-if="userStore.isAdmin">
@@ -120,6 +141,11 @@
         </div>
       </div>
     </section>
+
+    <el-dialog v-model="detailVisible" :title="detailType === 'interview' ? '面试安排详情' : '自我介绍详情'" width="min(560px, calc(100vw - 24px))">
+      <div v-if="detailType === 'interview'" class="whitespace-pre-wrap text-sm leading-7 text-slate-600">{{ detailContent }}</div>
+      <p v-else class="text-sm leading-7 text-slate-600">{{ detailContent }}</p>
+    </el-dialog>
 
     <el-dialog v-model="editVisible" title="修改报名信息" width="min(860px, calc(100vw - 24px))" destroy-on-close>
       <el-form ref="editFormRef" :model="editForm" :rules="rules" label-position="top" size="large">
@@ -197,7 +223,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, Filter, List } from '@element-plus/icons-vue'
+import { User, Filter, List, QuestionFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import {
   adminDeleteApplication,
@@ -205,6 +231,7 @@ import {
   exportApplications,
   getInternalApplications,
   importInterviewArrangements,
+  downloadInterviewTemplate,
   getAdminSignupConfigs
 } from '@/api/recruitment'
 
@@ -223,6 +250,9 @@ const configForm = reactive({
 })
 
 const editVisible = ref(false)
+const detailVisible = ref(false)
+const detailContent = ref('')
+const detailType = ref('interview')
 const saving = ref(false)
 const editingId = ref(null)
 const editFormRef = ref(null)
@@ -410,6 +440,23 @@ const handleExport = async () => {
   }
 }
 
+const handleDownloadTemplate = async () => {
+  try {
+    const blobData = await downloadInterviewTemplate()
+    const blob = new Blob([blobData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = '面试安排导入模板.xlsx'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    ElMessage.error(error.response?.data?.msg || '下载失败')
+  }
+}
+
 const handleImportUpload = async (uploadRequest) => {
   if (!userStore.isAdmin) return
   const file = uploadRequest?.file
@@ -443,6 +490,16 @@ const formatInterviewPlan = (row) => {
   const secondTime = row.second_round_interview_time || '待安排'
   const secondLocation = row.second_round_interview_location || '待安排'
   return `一面\n时间：${firstTime}\n地点：${firstLocation}\n\n二面（${secondDept}）\n时间：${secondTime}\n地点：${secondLocation}`
+}
+
+const openDetail = (row, type) => {
+  detailType.value = type
+  if (type === 'interview') {
+    detailContent.value = formatInterviewPlan(row)
+  } else {
+    detailContent.value = row.intro || '-'
+  }
+  detailVisible.value = true
 }
 
 onMounted(() => {

@@ -105,6 +105,17 @@ export function importInterviewArrangements(file) {
 }
 
 /**
+ * 下载面试安排导入模板
+ */
+export function downloadInterviewTemplate() {
+    return request({
+        url: '/api/v1/signups/applications/import-template',
+        method: 'get',
+        responseType: 'blob'
+    })
+}
+
+/**
  * 管理员查看报名配置
  */
 export function getAdminSignupConfigs(params) {

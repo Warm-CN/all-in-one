@@ -194,6 +194,52 @@ async def toggle_endorse(
     return success_response(data={"endorsed": endorsed, "count": reply.endorse_count})
 
 
+@router.delete("/replies/{reply_id}", summary="删除评论(管理员)")
+async def delete_reply(
+    reply_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    reply = db.query(Reply).filter(Reply.id == reply_id).first()
+    if not reply:
+        return error_response(404, "评论不存在")
+    # 删除关联的复议
+    db.query(Endorsement).filter(Endorsement.reply_id == reply_id).delete()
+    # 删除子回复
+    db.query(Reply).filter(Reply.parent_id == reply_id).delete()
+    db.delete(reply)
+    db.commit()
+    return success_response(msg="评论已删除")
+
+
+@router.delete("/{suggestion_id}", summary="删除意见(管理员)")
+async def delete_suggestion(
+    suggestion_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    sug = db.query(Suggestion).filter(Suggestion.id == suggestion_id).first()
+    if not sug:
+        return error_response(404, "意见不存在")
+    # 删除关联的复议
+    reply_ids = [r.id for r in db.query(Reply).filter(Reply.suggestion_id == suggestion_id).all()]
+    if reply_ids:
+        db.query(Endorsement).filter(Endorsement.reply_id.in_(reply_ids)).delete(synchronize_session=False)
+    # 删除评论
+    db.query(Reply).filter(Reply.suggestion_id == suggestion_id).delete(synchronize_session=False)
+    # 删除状态历史
+    db.query(StatusChange).filter(StatusChange.suggestion_id == suggestion_id).delete(synchronize_session=False)
+    # 删除批注
+    shot_ids = [s.id for s in db.query(Screenshot).filter(Screenshot.suggestion_id == suggestion_id).all()]
+    if shot_ids:
+        db.query(Annotation).filter(Annotation.screenshot_id.in_(shot_ids)).delete(synchronize_session=False)
+        db.query(Screenshot).filter(Screenshot.suggestion_id == suggestion_id).delete(synchronize_session=False)
+    # 删除意见
+    db.delete(sug)
+    db.commit()
+    return success_response(msg="意见已删除")
+
+
 @router.get("/screenshots/{screenshot_id}/image", summary="获取截图图片")
 async def get_screenshot_image(
     screenshot_id: int,

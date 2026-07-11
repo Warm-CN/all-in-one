@@ -30,6 +30,16 @@ export function toggleEndorse(replyId) {
   return request.post(`/api/v1/suggestions/replies/${replyId}/endorse`)
 }
 
+// 删除评论(管理员)
+export function deleteReply(replyId) {
+  return request.delete(`/api/v1/suggestions/replies/${replyId}`)
+}
+
+// 删除意见(管理员)
+export function deleteSuggestion(id) {
+  return request.delete(`/api/v1/suggestions/${id}`)
+}
+
 // 截图图片 URL(仅用于不需要认证的场景)
 export function screenshotImageUrl(screenshotId) {
   return `/api/v1/suggestions/screenshots/${screenshotId}/image`
