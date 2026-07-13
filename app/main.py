@@ -13,6 +13,7 @@ from app.core.database import engine, Base, SessionLocal
 from app.core.limiter import limiter
 from app.schemas.response import error_response
 from app.models.signup import SignupConfig
+from app.models.competition_event import CompetitionEvent
 
 # 导入路由
 from app.api.v1 import auth, signups, room_bookings, admin, users, admin_bookings, schedules, admin_schedules, teams, competitions, suggestions
@@ -47,8 +48,31 @@ async def startup_event():
     # 创建所有数据库表
     Base.metadata.create_all(bind=engine)
     ensure_default_signup_config()
+    auto_expire_competitions()
     print(f"✅ {settings.APP_NAME} v{settings.APP_VERSION} 启动成功！")
     print(f"📚 API 文档: http://localhost:8000/docs")
+
+
+def auto_expire_competitions():
+    """启动时自动将已过期的比赛 is_current 设为 0"""
+    db = SessionLocal()
+    try:
+        now = datetime.now()
+        expired = db.query(CompetitionEvent).filter(
+            CompetitionEvent.is_current == 1,
+            CompetitionEvent.cycle_end_at.isnot(None),
+            CompetitionEvent.cycle_end_at < now,
+        ).all()
+        for event in expired:
+            event.is_current = 0
+        if expired:
+            db.commit()
+            print(f"✅ 已自动结束 {len(expired)} 个过期比赛")
+    except Exception as exc:
+        db.rollback()
+        print(f"⚠️ 自动结束比赛失败: {exc}")
+    finally:
+        db.close()
 
 
 def ensure_default_signup_config():

@@ -7,6 +7,8 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from pydantic import BaseModel, field_validator
+from datetime import datetime
+
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -124,6 +126,12 @@ def _build_module_key(cup_type: str) -> str:
 
 
 def _event_to_dict(db: Session, event: CompetitionEvent) -> dict:
+    # 实时检查：如果比赛已过期，自动设为非进行中
+    if event.is_current == 1 and event.cycle_end_at:
+        if event.cycle_end_at < datetime.now():
+            event.is_current = 0
+            db.commit()
+
     cfg = db.query(TeamChannelConfig).filter(TeamChannelConfig.module_key == event.module_key).first()
     team_count = db.query(func.count(Team.id)).filter(Team.module_key == event.module_key).scalar() or 0
     member_count = (

@@ -189,8 +189,11 @@
         <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-white">
           <el-table :data="tableData" border stripe height="100%" v-loading="loading" style="min-width: 1850px">
             <el-table-column prop="team_name" label="队伍名称" min-width="160" />
-            <el-table-column prop="competition_track" label="赛道/组别" min-width="120">
-              <template #default="{ row }">{{ row.competition_track || '-' }}</template>
+            <el-table-column prop="topic_title" label="选题" min-width="200">
+              <template #default="{ row }">
+                <span v-if="row.topic_title" class="text-slate-700">{{ row.topic_title }}</span>
+                <span v-else class="text-slate-400">未选题</span>
+              </template>
             </el-table-column>
             <el-table-column label="队长信息" min-width="230">
               <template #default="{ row }">
@@ -214,9 +217,6 @@
                 <div v-if="row.members?.[1]" class="text-xs text-slate-500">{{ row.members[1].college || '-' }} / {{ row.members[1].major_class || '-' }}</div>
                 <span v-else>-</span>
               </template>
-            </el-table-column>
-            <el-table-column prop="topic_title" label="选题" min-width="180">
-              <template #default="{ row }">{{ row.topic_title || '-' }}</template>
             </el-table-column>
             <el-table-column label="状态" min-width="190">
               <template #default="{ row }">

@@ -21,6 +21,7 @@ from app.models.team import Team, TeamStatus
 from app.models.team_member import TeamMember
 from app.models.topic_option import TopicOption
 from app.models.team_channel_config import TeamChannelConfig
+from app.models.competition_event import CompetitionEvent
 from app.models.inspection_assignment import InspectionAssignment
 from app.schemas.response import success_response, error_response
 
@@ -512,11 +513,27 @@ async def signup_status(module_key: str = DEFAULT_MODULE_KEY, db: Session = Depe
 @router.get("/topic_status", response_model=dict, summary="选题通道状态")
 async def topic_status(module_key: str = DEFAULT_MODULE_KEY, db: Session = Depends(get_db)):
     cfg = _ensure_channel_config(db, module_key)
+
+    # 查找关联的比赛事件，获取 topic_open_at / topic_end_at
+    event = db.query(CompetitionEvent).filter(CompetitionEvent.module_key == module_key).first()
+    now = datetime.now()
+
+    topic_open = bool(cfg.topic_open)
+    topic_close_at = cfg.topic_close_at
+
+    # 如果比赛事件有 topic_open_at，则按时间自动判断
+    if event and event.topic_open_at:
+        if now >= event.topic_open_at:
+            topic_open = True
+        if event.topic_end_at and now > event.topic_end_at:
+            topic_open = False
+        topic_close_at = event.topic_end_at or topic_close_at
+
     return success_response(
         data={
             "module_key": cfg.module_key,
-            "topic_open": cfg.topic_open,
-            "topic_close_at": cfg.topic_close_at.isoformat() if cfg.topic_close_at else None,
+            "topic_open": topic_open,
+            "topic_close_at": topic_close_at.isoformat() if topic_close_at else None,
         },
         msg="获取成功",
     )
@@ -761,9 +778,22 @@ async def update_team_topic(team_id: int, req: TeamTopicUpdateRequest, db: Sessi
 
     cfg = _ensure_channel_config(db, req.module_key)
     now = datetime.now()
-    if not cfg.topic_open:
+
+    # 根据比赛事件的 topic_open_at / topic_end_at 自动判断通道状态
+    event = db.query(CompetitionEvent).filter(CompetitionEvent.module_key == req.module_key).first()
+    topic_open = bool(cfg.topic_open)
+    topic_close_at = cfg.topic_close_at
+
+    if event and event.topic_open_at:
+        if now >= event.topic_open_at:
+            topic_open = True
+        if event.topic_end_at and now > event.topic_end_at:
+            topic_open = False
+        topic_close_at = event.topic_end_at or topic_close_at
+
+    if not topic_open:
         return error_response(400, "选题通道未开启")
-    if cfg.topic_close_at and now > cfg.topic_close_at:
+    if topic_close_at and now > topic_close_at:
         return error_response(400, "选题已截止")
 
     topic_error = _assert_topic_available(db, req.topic_id, req.module_key)

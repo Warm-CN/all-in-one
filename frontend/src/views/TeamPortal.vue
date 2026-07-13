@@ -180,7 +180,7 @@
                   <el-form-item label="先输入队长学号（12位）" prop="sid">
                     <el-input v-model="topicQueryForm.sid" />
                   </el-form-item>
-                  <div class="flex items-end">
+                  <div class="flex items-end md:pt-[20px]">
                     <el-button type="primary" class="!h-12 !w-full !rounded-2xl !px-6 text-base font-semibold" :loading="topicQueryLoading" @click="handleTopicQuery">
                       查询队伍
                     </el-button>
@@ -250,7 +250,7 @@
                   <el-form-item label="输入队员学号（12位）" prop="sid">
                     <el-input v-model="queryForm.sid" />
                   </el-form-item>
-                  <div class="flex items-end">
+                  <div class="flex items-end md:pt-[20px]">
                     <el-button type="primary" class="!h-12 !w-full !rounded-2xl !px-6 text-base font-semibold" :loading="queryLoading" @click="handleQuery">
                       查询队伍信息
                     </el-button>
@@ -308,7 +308,10 @@
       <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-position="top" size="large">
         <div class="grid grid-cols-1 gap-x-4 gap-y-1 md:grid-cols-2">
           <el-form-item label="队伍名称" prop="team_name"><el-input v-model="editForm.team_name" /></el-form-item>
-          <el-form-item label="赛道/组别"><el-input v-model="editForm.competition_track" /></el-form-item>
+          <el-form-item label="选题">
+            <span v-if="editForm.topic_title" class="text-sm text-slate-700">{{ editForm.topic_title }}</span>
+            <span v-else class="text-sm text-slate-400">未选题（选题通道开放后可选）</span>
+          </el-form-item>
           <el-form-item label="队长姓名" prop="captain_name"><el-input v-model="editForm.captain_name" /></el-form-item>
           <el-form-item label="队长学号" prop="captain_student_id"><el-input v-model="editForm.captain_student_id" /></el-form-item>
           <el-form-item label="队长手机号" prop="captain_phone"><el-input v-model="editForm.captain_phone" /></el-form-item>
@@ -432,6 +435,7 @@ const deleteVisible = ref(false)
 const editForm = reactive({
   team_name: '',
   competition_track: '',
+  topic_title: '',
   captain_name: '',
   captain_student_id: '',
   captain_phone: '',
@@ -664,6 +668,7 @@ const openEditDialog = () => {
   if (!teamResult.value) return
   editForm.team_name = teamResult.value.team_name || ''
   editForm.competition_track = teamResult.value.competition_track || ''
+  editForm.topic_title = teamResult.value.topic_title || ''
   editForm.captain_name = teamResult.value.captain_name || ''
   editForm.captain_student_id = teamResult.value.captain_student_id || ''
   editForm.captain_phone = teamResult.value.captain_phone || ''

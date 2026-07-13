@@ -84,13 +84,17 @@
         </div>
         <div class="flex flex-wrap gap-2">
           <el-select v-model="newStatus" placeholder="选择状态" class="w-40">
-            <el-option label="等待修改" value="pending_fix" />
-            <el-option label="修改中" value="fixing" />
-            <el-option label="不予修改" value="wont_fix" />
-            <el-option label="修改成功" value="done" />
+            <el-option
+              v-for="opt in statusOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+              :disabled="opt.disabled"
+            />
           </el-select>
-          <el-input v-model="statusReason" placeholder="说明/原因" class="w-60" />
-          <el-button type="primary" @click="onStatusUpdate">更新</el-button>
+          <el-input v-if="newStatus === 'wont_fix'" v-model="statusReason" placeholder="必须填写说明/原因" class="w-60" />
+          <el-input v-else v-model="statusReason" placeholder="说明/原因（可选）" class="w-60" />
+          <el-button type="primary" :disabled="!newStatus || (newStatus === 'wont_fix' && !statusReason)" @click="onStatusUpdate">更新</el-button>
         </div>
       </template>
 
@@ -169,6 +173,25 @@ const categoryLabel = computed(() => ({ layout: '布局美化', feature: '功能
 const statusLabel = computed(() => ({ received: '已收到', pending_fix: '等待修改', fixing: '修改中', wont_fix: '不予修改', done: '修改成功' }[props.detail?.status] || ''))
 const statusType = computed(() => ({ received: 'info', pending_fix: 'warning', fixing: 'primary', wont_fix: 'danger', done: 'success' }[props.detail?.status] || 'info'))
 const pageLabel = computed(() => getPageLabel(props.detail?.page_url) || '未关联')
+
+const VALID_TRANSITIONS = {
+  received: ['pending_fix', 'wont_fix'],
+  pending_fix: ['fixing', 'wont_fix'],
+  fixing: ['done', 'wont_fix'],
+  done: [],
+  wont_fix: ['pending_fix'],
+}
+
+const statusOptions = computed(() => {
+  const current = props.detail?.status || 'received'
+  const allowed = VALID_TRANSITIONS[current] || []
+  return [
+    { label: '等待修改', value: 'pending_fix', disabled: !allowed.includes('pending_fix') },
+    { label: '修改中', value: 'fixing', disabled: !allowed.includes('fixing') },
+    { label: '不予修改', value: 'wont_fix', disabled: !allowed.includes('wont_fix') },
+    { label: '修改成功', value: 'done', disabled: !allowed.includes('done') },
+  ]
+})
 
 const firstScreenshot = computed(() => {
   return props.detail?.screenshots?.[0] || null
