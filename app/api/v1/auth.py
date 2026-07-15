@@ -96,16 +96,39 @@ async def register(
     # 检查学号是否已存在
     existing_user = db.query(User).filter(User.student_id == register_data.student_id).first()
     if existing_user:
-        return error_response(400, "该学号已被注册")
+        if existing_user.status == 'disabled':
+            # 被移出社团的用户允许重新注册，复用旧记录
+            existing_user.full_name = register_data.full_name
+            existing_user.password_hash = get_password_hash(register_data.password)
+            existing_user.phone = register_data.phone
+            existing_user.email = register_data.email
+            existing_user.department = register_data.department
+            existing_user.position = register_data.position
+            existing_user.role = 'member'
+            existing_user.status = 'pending'
+            db.commit()
+            db.refresh(existing_user)
+            return success_response(
+                data=UserInfo.from_orm(existing_user).dict(),
+                msg="注册成功，请等待管理员审核"
+            )
+        else:
+            return error_response(400, "该学号已被注册")
     
-    # 检查手机号是否已存在
-    existing_phone = db.query(User).filter(User.phone == register_data.phone).first()
+    # 检查手机号是否已存在（排除 disabled 用户）
+    existing_phone = db.query(User).filter(
+        User.phone == register_data.phone,
+        User.status != 'disabled'
+    ).first()
     if existing_phone:
         return error_response(400, "该手机号已被注册")
     
-    # 检查邮箱是否已存在（如果提供了邮箱）
+    # 检查邮箱是否已存在（如果提供了邮箱，排除 disabled 用户）
     if register_data.email:
-        existing_email = db.query(User).filter(User.email == register_data.email).first()
+        existing_email = db.query(User).filter(
+            User.email == register_data.email,
+            User.status != 'disabled'
+        ).first()
         if existing_email:
             return error_response(400, "该邮箱已被注册")
     
