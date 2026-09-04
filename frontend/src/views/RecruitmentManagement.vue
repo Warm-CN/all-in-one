@@ -1,5 +1,5 @@
 <template>
-  <div class="recruitment-page flex h-full min-h-0 flex-col gap-5 pb-2 sm:gap-6 sm:pb-3">
+  <div class="recruitment-page flex min-h-full flex-col gap-5 pb-2 sm:h-full sm:min-h-0 sm:gap-6 sm:pb-3">
     <section class="rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 pb-5 pt-6 shadow-[0_14px_34px_-28px_rgba(15,23,42,0.22)] sm:px-6 sm:pb-6 sm:pt-7 lg:px-7 lg:pb-7 lg:pt-8">
       <div class="flex flex-col gap-5 2xl:flex-row 2xl:items-start 2xl:justify-between">
         <div class="flex min-w-0 items-center gap-3">
@@ -92,7 +92,7 @@
       </div>
     </section>
 
-    <section class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] shadow-[0_16px_38px_-32px_rgba(15,23,42,0.2)]">
+    <section class="flex flex-none flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] shadow-[0_16px_38px_-32px_rgba(15,23,42,0.2)] sm:min-h-0 sm:flex-1">
       <div class="flex flex-col gap-3 border-b border-slate-200/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div class="flex items-center gap-3">
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-sm">
@@ -103,7 +103,7 @@
         <div class="text-xs font-medium text-slate-400">列表内容按当前筛选条件实时刷新</div>
       </div>
 
-      <div class="flex h-full min-h-0 flex-col p-4 sm:p-5">
+      <div class="flex h-[65vh] min-h-0 flex-col p-4 sm:h-full sm:p-5">
         <div class="min-h-0 flex-1 overflow-auto rounded-[24px] border border-slate-200/80 bg-white">
           <el-table :data="tableData" border stripe height="100%" v-loading="loading" style="min-width: 1460px">
             <el-table-column prop="name" label="姓名" min-width="100" />
