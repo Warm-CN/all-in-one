@@ -73,3 +73,14 @@ class UserUpdateRequest(BaseModel):
     position: Optional[str] = None
     full_name: Optional[str] = None
 
+
+class AdminUserUpdateRequest(BaseModel):
+    """管理员编辑用户信息请求"""
+    full_name: Optional[str] = Field(None, min_length=2, max_length=50, description="真实姓名")
+    student_id: Optional[str] = Field(None, min_length=5, max_length=20, description="学号")
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    department: Optional[str] = None
+    position: Optional[str] = None
+    role: Optional[str] = Field(None, description="角色：admin 或 member")
+

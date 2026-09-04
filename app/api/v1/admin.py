@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_admin
 from app.core.security import get_password_hash
 from app.models.user import User
-from app.schemas.auth import UserInfo
+from app.schemas.auth import UserInfo, AdminUserUpdateRequest
 from app.schemas.response import success_response, error_response
 
 router = APIRouter(prefix="/api/admin", tags=["管理员-用户管理"])
@@ -256,6 +256,71 @@ async def promote_to_admin(
     return success_response(
         data=UserInfo.from_orm(target_user).dict(),
         msg=f"已将 {target_user.full_name} 提升为管理员"
+    )
+
+
+@router.put("/users/{user_id}", response_model=dict, summary="管理员编辑用户信息")
+async def update_user(
+    user_id: int,
+    update_data: AdminUserUpdateRequest,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    管理员编辑任意用户的信息
+    
+    权限：仅管理员
+    可修改字段：姓名、学号、手机号、邮箱、部门、职位、角色
+    """
+    target_user = db.query(User).filter(User.id == user_id).first()
+    
+    if not target_user:
+        return error_response(404, "用户不存在")
+    
+    # 更新姓名
+    if update_data.full_name is not None:
+        target_user.full_name = update_data.full_name
+    
+    # 更新学号（需检查唯一性）
+    if update_data.student_id is not None:
+        existing = db.query(User).filter(
+            User.student_id == update_data.student_id,
+            User.id != user_id
+        ).first()
+        if existing:
+            return error_response(400, "该学号已被其他用户使用")
+        target_user.student_id = update_data.student_id
+    
+    # 更新手机号
+    if update_data.phone is not None:
+        target_user.phone = update_data.phone
+    
+    # 更新邮箱
+    if update_data.email is not None:
+        target_user.email = update_data.email
+    
+    # 更新部门
+    if update_data.department is not None:
+        target_user.department = update_data.department
+    
+    # 更新职位
+    if update_data.position is not None:
+        target_user.position = update_data.position
+    
+    # 更新角色
+    if update_data.role is not None:
+        if update_data.role not in ['admin', 'member']:
+            return error_response(400, "无效的角色，只能为 admin 或 member")
+        if target_user.id == current_user.id and update_data.role != 'admin':
+            return error_response(400, "不能取消自己的管理员权限")
+        target_user.role = update_data.role
+    
+    db.commit()
+    db.refresh(target_user)
+    
+    return success_response(
+        data=UserInfo.from_orm(target_user).dict(),
+        msg="用户信息更新成功"
     )
 
 

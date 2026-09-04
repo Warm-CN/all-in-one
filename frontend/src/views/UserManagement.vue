@@ -115,7 +115,7 @@
 
             <!-- 成员列表 -->
             <div class="w-full overflow-x-auto">
-              <el-table :data="activeMembers" class="custom-table" style="width: 100%; min-width: 980px;">
+              <el-table :data="activeMembers" class="custom-table" style="width: 100%; min-width: 1100px;">
                 <el-table-column prop="real_name" label="姓名" min-width="100" fixed="left" />
                 <el-table-column prop="student_id" label="学号" min-width="120" />
                 <el-table-column prop="department" label="部门" min-width="120" />
@@ -131,9 +131,23 @@
                   </template>
                 </el-table-column>
                 <el-table-column prop="phone" label="手机号" min-width="130" />
-                <el-table-column label="操作" width="340" fixed="right">
+                <el-table-column prop="email" label="邮箱" min-width="160" show-overflow-tooltip>
+                  <template #default="{ row }">
+                    {{ row.email || '-' }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="400" fixed="right">
                   <template #default="{ row }">
                     <div class="flex flex-wrap gap-2">
+                      <el-button 
+                        type="info" 
+                        size="small" 
+                        plain
+                        @click="showEditDialog(row)"
+                        class="!rounded-lg"
+                      >
+                        编辑
+                      </el-button>
                       <el-button 
                         type="warning" 
                         size="small" 
@@ -242,6 +256,64 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 编辑用户弹窗 -->
+    <el-dialog
+      v-model="editDialogVisible"
+      title="编辑成员信息"
+      width="520px"
+      :close-on-click-modal="false"
+      class="custom-dialog !rounded-2xl"
+    >
+      <el-form
+        ref="editFormRef"
+        :model="editForm"
+        :rules="editFormRules"
+        label-width="80px"
+        label-position="right"
+        class="mt-4"
+      >
+        <el-form-item label="姓名" prop="full_name">
+          <el-input v-model="editForm.full_name" placeholder="请输入姓名" class="!rounded-xl" />
+        </el-form-item>
+        <el-form-item label="学号" prop="student_id">
+          <el-input v-model="editForm.student_id" placeholder="请输入学号" class="!rounded-xl" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="editForm.phone" placeholder="请输入手机号" class="!rounded-xl" />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="editForm.email" placeholder="请输入邮箱" class="!rounded-xl" />
+        </el-form-item>
+        <el-form-item label="部门" prop="department">
+          <el-select v-model="editForm.department" placeholder="选择部门" class="!w-full">
+            <el-option label="科创部" value="科创部" />
+            <el-option label="新媒体" value="新媒体" />
+            <el-option label="宣传部" value="宣传部" />
+            <el-option label="组织部" value="组织部" />
+            <el-option label="外联部" value="外联部" />
+            <el-option label="常委" value="常委" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="职位" prop="position">
+          <el-input v-model="editForm.position" placeholder="请输入职位" class="!rounded-xl" />
+        </el-form-item>
+        <el-form-item label="角色" prop="role">
+          <el-select v-model="editForm.role" placeholder="选择角色" class="!w-full">
+            <el-option label="成员 (Member)" value="member" />
+            <el-option label="管理员 (Admin)" value="admin" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="flex justify-center gap-3">
+          <el-button @click="editDialogVisible = false" class="!rounded-xl">取消</el-button>
+          <el-button type="primary" @click="confirmEdit" :loading="editLoading" class="!rounded-xl">
+            保存修改
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -262,6 +334,68 @@ const resetPasswordDialogVisible = ref(false)
 const resetSuccessVisible = ref(false)
 const newPassword = ref('')
 const currentUser = ref(null)
+
+// 编辑成员相关
+const editDialogVisible = ref(false)
+const editLoading = ref(false)
+const editingUserId = ref(null)
+const editFormRef = ref(null)
+const editForm = ref({
+  full_name: '',
+  student_id: '',
+  phone: '',
+  email: '',
+  department: '',
+  position: '',
+  role: ''
+})
+const editFormRules = {
+  full_name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  student_id: [{ required: true, message: '请输入学号', trigger: 'blur' }],
+  role: [{ required: true, message: '请选择角色', trigger: 'change' }],
+}
+
+// 显示编辑弹窗
+const showEditDialog = (user) => {
+  editingUserId.value = user.id
+  editForm.value = {
+    full_name: user.real_name || user.full_name || '',
+    student_id: user.student_id || '',
+    phone: user.phone || '',
+    email: user.email || '',
+    department: user.department || '',
+    position: user.position || '',
+    role: user.role || 'member'
+  }
+  editDialogVisible.value = true
+}
+
+// 确认编辑
+const confirmEdit = async () => {
+  try {
+    await editFormRef.value.validate()
+  } catch {
+    return
+  }
+  
+  editLoading.value = true
+  try {
+    const res = await request({
+      url: `/api/admin/users/${editingUserId.value}`,
+      method: 'put',
+      data: editForm.value
+    })
+    if (res.code === 200) {
+      ElMessage.success(res.msg)
+      editDialogVisible.value = false
+      fetchMembers()
+    }
+  } catch (err) {
+    ElMessage.error('编辑失败')
+  } finally {
+    editLoading.value = false
+  }
+}
 
 // 复制密码
 const copyPassword = async () => {
