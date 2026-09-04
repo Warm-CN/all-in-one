@@ -24,6 +24,8 @@ copy .env.example .env
 
 编辑 `.env`，至少填写 `DB_PASSWORD` 和 `SECRET_KEY`，并确保 MySQL 中存在 `club_management` 数据库。
 
+建议使用 Python 3.13 或 3.12 来创建虚拟环境；过旧版本或过新的非兼容版本可能会导致依赖安装失败。
+
 ```powershell
 python main.py
 ```
