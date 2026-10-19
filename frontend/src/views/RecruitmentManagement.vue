@@ -40,7 +40,7 @@
               class="w-full sm:w-auto"
             >
               <el-button type="primary" plain :loading="importing" class="!h-11 !w-full !rounded-2xl !px-5 sm:!w-auto">
-                导入一/二面安排（xlsx）
+                导入一面/二面安排（xlsx）
               </el-button>
             </el-upload>
           </div>

@@ -317,6 +317,9 @@
                     <el-button v-if="topic.document_url" link type="primary" class="!mt-2" @click.stop="downloadTopicDocument(topic)">
                       下载文档
                     </el-button>
+                    <el-button link type="danger" class="!mt-2" @click.stop="handleDeleteTopic(topic)">
+                      删除
+                    </el-button>
                   </button>
                 </div>
               </div>
@@ -430,11 +433,12 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Plus, Refresh, Right, Trophy, UploadFilled } from '@element-plus/icons-vue'
 import {
   createCompetitionEvent,
   createCompetitionTopic,
+  deleteCompetitionTopic,
   getCompetitionEventDetail,
   getCompetitionEvents,
   getCurrentCompetitionEvent,
@@ -571,6 +575,35 @@ const validateEventForm = (form) => {
     }
   }
 
+  // 验证报名和选题时间必须在比赛周期内
+  const cycleStart = form.cycle_start_at ? new Date(form.cycle_start_at).getTime() : null
+  const cycleEnd = form.cycle_end_at ? new Date(form.cycle_end_at).getTime() : null
+  const hasFullCycle = Number.isFinite(cycleStart) && Number.isFinite(cycleEnd)
+
+  if (hasFullCycle) {
+    const signupStart = form.signup_start_at ? new Date(form.signup_start_at).getTime() : null
+    const signupEnd = form.signup_end_at ? new Date(form.signup_end_at).getTime() : null
+    const topicOpen = form.topic_open_at ? new Date(form.topic_open_at).getTime() : null
+    const topicEnd = form.topic_end_at ? new Date(form.topic_end_at).getTime() : null
+
+    if (Number.isFinite(signupStart) && signupStart < cycleStart) {
+      ElMessage.warning('报名开始时间不能早于比赛周期开始时间')
+      return false
+    }
+    if (Number.isFinite(signupEnd) && signupEnd > cycleEnd) {
+      ElMessage.warning('报名结束时间不能晚于比赛周期结束时间')
+      return false
+    }
+    if (Number.isFinite(topicOpen) && topicOpen < cycleStart) {
+      ElMessage.warning('选题开放时间不能早于比赛周期开始时间')
+      return false
+    }
+    if (Number.isFinite(topicEnd) && topicEnd > cycleEnd) {
+      ElMessage.warning('选题结束时间不能晚于比赛周期结束时间')
+      return false
+    }
+  }
+
   return true
 }
 
@@ -622,14 +655,14 @@ const fetchDashboard = async () => {
       }
     }
   } catch (error) {
-    ElMessage.error(getErrorMessage(error, '获取赛事列表失败'))
+    // 错误提示已由 request.js 拦截器统一处理
   } finally {
     loading.value = false
   }
 }
 
 const loadEventDetail = async (eventId, options = {}) => {
-  const { showError = true, resetTopic = true } = options
+  const { resetTopic = true } = options
   if (!eventId) return
 
   detailLoading.value = true
@@ -639,9 +672,7 @@ const loadEventDetail = async (eventId, options = {}) => {
     syncDetailForm(selectedEvent.value)
     if (resetTopic) resetTopicForm()
   } catch (error) {
-    if (showError) {
-      ElMessage.error(getErrorMessage(error, '获取比赛详情失败'))
-    }
+    // 错误提示已由 request.js 拦截器统一处理
   } finally {
     detailLoading.value = false
   }
@@ -670,7 +701,7 @@ const submitCreate = async () => {
     await fetchDashboard()
     if (createdId) await loadEventDetail(createdId)
   } catch (error) {
-    ElMessage.error(getErrorMessage(error, '创建比赛失败'))
+    // 错误提示已由 request.js 拦截器统一处理
   } finally {
     creating.value = false
   }
@@ -688,7 +719,7 @@ const saveEventDetails = async () => {
     ElMessage.success(res.msg || '比赛信息已保存')
     await fetchDashboard()
   } catch (error) {
-    ElMessage.error(getErrorMessage(error, '保存比赛信息失败'))
+    // 错误提示已由 request.js 拦截器统一处理
   } finally {
     savingDetails.value = false
   }
@@ -703,7 +734,7 @@ const toggleEventCurrent = async (event) => {
     ElMessage.success('比赛状态已更新')
     await fetchDashboard()
   } catch (error) {
-    ElMessage.error(getErrorMessage(error, '更新比赛状态失败'))
+    // 错误提示已由 request.js 拦截器统一处理
   } finally {
     activeSavingId.value = null
   }
@@ -718,7 +749,7 @@ const toggleSignupOpen = async (event) => {
     ElMessage.success(event.signup_open ? '报名页面已关闭' : '报名页面已开放')
     await fetchDashboard()
   } catch (error) {
-    ElMessage.error(getErrorMessage(error, '更新报名页面状态失败'))
+    // 错误提示已由 request.js 拦截器统一处理
   } finally {
     signupOpenSavingId.value = null
   }
@@ -752,6 +783,31 @@ const resetTopicForm = () => {
   topicForm.description = ''
   topicFile.value = null
   topicUploadList.value = []
+}
+
+const handleDeleteTopic = async (topic) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认删除选题「${topic.title}」？此操作会同时删除选题关联的文档文件，且不可恢复。`,
+      '删除选题',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+
+  try {
+    await deleteCompetitionTopic(selectedEvent.value.id, topic.id)
+    ElMessage.success('选题已删除')
+    // 如果删的是正在编辑的选题，重置编辑表单
+    if (selectedTopicId.value === topic.id) {
+      resetTopicForm()
+    }
+    // 重新拉取详情刷新选题列表
+    await loadEventDetail(selectedEvent.value.id, { showError: false, resetTopic: false })
+  } catch (e) {
+    // request.js 拦截器已经弹过错误消息
+  }
 }
 
 const isAllowedTopicFile = (file) => /\.(pdf|doc|docx)$/i.test(file?.name || '')
@@ -814,7 +870,7 @@ const submitTopic = async () => {
     await loadEventDetail(selectedEvent.value.id, { showError: false })
     await fetchDashboard()
   } catch (error) {
-    ElMessage.error(getErrorMessage(error, '保存选题失败'))
+    // 错误提示已由 request.js 拦截器统一处理
   } finally {
     savingTopic.value = false
   }

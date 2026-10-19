@@ -197,6 +197,17 @@ export function confirmDeleteTeam(teamId) {
 }
 
 /**
+ * 管理员修改队伍信息（绕过所有时间限制）
+ */
+export function adminUpdateTeam(teamId, data) {
+    return request({
+        url: `/api/v1/teams/${teamId}/admin`,
+        method: 'put',
+        data
+    })
+}
+
+/**
  * 管理员批量修改队伍选题
  */
 export function batchUpdateTeamTopic(data) {

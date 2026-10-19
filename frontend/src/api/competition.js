@@ -66,6 +66,13 @@ export function updateCompetitionTopic(eventId, topicId, payload) {
   })
 }
 
+export function deleteCompetitionTopic(eventId, topicId) {
+  return request({
+    url: `/api/v1/competitions/events/${eventId}/topics/${topicId}`,
+    method: 'delete'
+  })
+}
+
 export function updateCompetitionPortalTitle(eventId, portalTitle) {
   return request({
     url: `/api/v1/competitions/events/${eventId}/portal-config`,

@@ -101,8 +101,8 @@
                 <p>包含全部队伍信息 + 验收安排 + 填写示例</p>
                 <p class="mt-1 font-semibold text-slate-600">导入（.xlsx）</p>
                 <p>• 队伍ID / 队长学号 / 队伍名称（任选其一匹配）</p>
-                <p>• 一验时间、一验地点、一验备注</p>
-                <p>• 二验时间、二验地点、二验备注</p>
+                <p>• 热身赛验收时间、地点、备注</p>
+                <p>• 正赛验收时间、地点、备注</p>
                 <p class="mt-1 text-slate-400">留空字段不会覆盖已有值</p>
                 <el-button link type="primary" size="small" class="mt-2" @click="handleDownloadTemplate">下载导入模板</el-button>
               </div>
@@ -227,7 +227,7 @@
                 <el-tag v-else type="success" size="small">正常</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="一验安排" min-width="250">
+            <el-table-column label="热身赛验收" min-width="250">
               <template #default="{ row }">
                 <div class="whitespace-pre-wrap text-xs leading-6 text-slate-600">
                   时间：{{ formatDate(row.inspection?.first_inspection_time, '待安排') }}
@@ -235,7 +235,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="二验安排" min-width="250">
+            <el-table-column label="正赛验收" min-width="250">
               <template #default="{ row }">
                 <div class="whitespace-pre-wrap text-xs leading-6 text-slate-600">
                   时间：{{ formatDate(row.inspection?.second_inspection_time, '待安排') }}
@@ -246,21 +246,85 @@
             <el-table-column label="报名时间" min-width="160">
               <template #default="{ row }">{{ formatDate(row.created_at, '-') }}</template>
             </el-table-column>
+            <el-table-column label="操作" width="100" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" size="small" @click="openAdminEdit(row)">编辑</el-button>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="hasPendingDelete" label="待确认操作" width="120" fixed="right">
+              <template #default="{ row }">
+                <el-button
+                  v-if="row.delete_requested"
+                  type="danger"
+                  size="small"
+                  :loading="confirmingId === row.id"
+                  @click="handleConfirmDelete(row)"
+                >
+                  确认删除
+                </el-button>
+              </template>
+            </el-table-column>
           </el-table>
         </div>
       </div>
     </section>
+
+    <el-dialog v-model="adminEditVisible" title="编辑队伍信息" width="min(860px, calc(100vw - 24px))" destroy-on-close>
+      <el-form ref="adminEditFormRef" :model="adminEditForm" label-position="top" size="large">
+        <div class="grid grid-cols-1 gap-x-4 gap-y-1 md:grid-cols-2">
+          <el-form-item label="队伍名称"><el-input v-model="adminEditForm.team_name" /></el-form-item>
+          <el-form-item label="选题">
+            <el-select v-model="adminEditForm.topic_id" class="w-full" clearable placeholder="未选题">
+              <el-option
+                v-for="t in topics"
+                :key="t.id"
+                :label="t.title || ''"
+                :value="t.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="队长姓名"><el-input v-model="adminEditForm.captain_name" /></el-form-item>
+          <el-form-item label="队长学号"><el-input v-model="adminEditForm.captain_student_id" /></el-form-item>
+          <el-form-item label="队长手机号"><el-input v-model="adminEditForm.captain_phone" /></el-form-item>
+          <el-form-item label="队长邮箱"><el-input v-model="adminEditForm.captain_email" /></el-form-item>
+          <el-form-item label="队长学院"><el-input v-model="adminEditForm.captain_college" /></el-form-item>
+          <el-form-item label="队长专业班级"><el-input v-model="adminEditForm.captain_major_class" /></el-form-item>
+        </div>
+        <el-divider content-position="left">队员信息（最多2人）</el-divider>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div v-for="(member, idx) in adminEditForm.members" :key="idx" class="rounded-2xl border border-slate-200/80 bg-white/90 p-4">
+            <h4 class="mb-3 font-semibold text-slate-700">队员 {{ idx + 1 }}</h4>
+            <div class="space-y-3">
+              <el-input v-model="member.name" placeholder="姓名（可留空）" />
+              <el-input v-model="member.student_id" placeholder="学号（12位，可留空）" />
+              <el-input v-model="member.phone" placeholder="手机号（可留空）" />
+              <el-input v-model="member.email" placeholder="邮箱（可留空）" />
+              <el-input v-model="member.college" placeholder="学院（可留空）" />
+              <el-input v-model="member.major_class" placeholder="专业班级（可留空）" />
+            </div>
+          </div>
+        </div>
+      </el-form>
+      <template #footer>
+        <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <el-button @click="adminEditVisible = false">取消</el-button>
+          <el-button type="primary" :loading="adminSaving" @click="submitAdminEdit">保存修改</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { Download, Search, Trophy, Upload, QuestionFilled } from '@element-plus/icons-vue'
 import { getCompetitionEvents } from '@/api/competition'
 import {
+  adminUpdateTeam,
+  confirmDeleteTeam,
   exportTeams,
   getSignupStatus,
   getTeams,
@@ -277,11 +341,32 @@ const eventsLoading = ref(false)
 const loading = ref(false)
 const exporting = ref(false)
 const importing = ref(false)
+const confirmingId = ref(null)
+const adminEditVisible = ref(false)
+const adminEditFormRef = ref(null)
+const adminSaving = ref(false)
+const adminEditId = ref(null)
+const adminEditForm = reactive({
+  team_name: '',
+  topic_id: null,
+  captain_name: '',
+  captain_student_id: '',
+  captain_phone: '',
+  captain_email: '',
+  captain_college: '',
+  captain_major_class: '',
+  members: [
+    { name: '', student_id: '', phone: '', email: '', college: '', major_class: '' },
+    { name: '', student_id: '', phone: '', email: '', college: '', major_class: '' },
+  ],
+})
 
 const events = ref([])
 const selectedEventId = ref(null)
 const tableData = ref([])
 const topics = ref([])
+
+const hasPendingDelete = computed(() => tableData.value.some(t => t.delete_requested))
 
 const selectedEvent = computed(() => events.value.find((item) => item.id === selectedEventId.value) || null)
 const activeModuleKey = computed(() => selectedEvent.value?.module_key || '')
@@ -508,6 +593,66 @@ const handleInspectionImport = async (uploadRequest) => {
     ElMessage.error(getErrorMessage(error, '导入失败'))
   } finally {
     importing.value = false
+  }
+}
+
+const openAdminEdit = (row) => {
+  adminEditId.value = row.id
+  adminEditForm.team_name = row.team_name || ''
+  adminEditForm.topic_id = row.topic_id ?? null
+  adminEditForm.captain_name = row.captain_name || ''
+  adminEditForm.captain_student_id = row.captain_student_id || ''
+  adminEditForm.captain_phone = row.captain_phone || ''
+  adminEditForm.captain_email = row.captain_email || ''
+  adminEditForm.captain_college = row.captain_college || ''
+  adminEditForm.captain_major_class = row.captain_major_class || ''
+  const members = Array.isArray(row.members) ? row.members : []
+  for (let i = 0; i < 2; i++) {
+    const m = members[i] || {}
+    adminEditForm.members[i] = {
+      name: m.name || '',
+      student_id: m.student_id || '',
+      phone: m.phone || '',
+      email: m.email || '',
+      college: m.college || '',
+      major_class: m.major_class || '',
+    }
+  }
+  adminEditVisible.value = true
+}
+
+const submitAdminEdit = async () => {
+  adminSaving.value = true
+  try {
+    const members = adminEditForm.members.filter(m => m.name || m.student_id || m.phone || m.email || m.college || m.major_class)
+    const res = await adminUpdateTeam(adminEditId.value, { ...adminEditForm, members })
+    ElMessage.success(res.msg || '保存成功')
+    adminEditVisible.value = false
+    await fetchList()
+  } catch (error) {
+    // request.js 会统一弹错，这里 catch 住就行
+  } finally {
+    adminSaving.value = false
+  }
+}
+
+const handleConfirmDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认彻底删除队伍「${row.team_name}」？该操作会同时删除队伍的所有队员记录，且不可恢复。`,
+      '确认删除',
+      { type: 'error', confirmButtonText: '确认删除', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  confirmingId.value = row.id
+  try {
+    const res = await confirmDeleteTeam(row.id)
+    ElMessage.success(res.msg || '已确认并彻底删除该队伍')
+    await fetchList()
+  } finally {
+    confirmingId.value = null
   }
 }
 

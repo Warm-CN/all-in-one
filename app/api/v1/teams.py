@@ -102,6 +102,7 @@ class TeamUpdateRequest(BaseModel):
     captain_email: Optional[str] = None
     captain_college: str
     captain_major_class: str
+    topic_id: Optional[int] = None
     members: List[TeamMemberPayload] = []
 
     @field_validator("team_name", "captain_name", "captain_phone", "captain_college", "captain_major_class")
@@ -500,11 +501,29 @@ async def update_topic(
 @router.get("/signup_status", response_model=dict, summary="报名通道状态")
 async def signup_status(module_key: str = DEFAULT_MODULE_KEY, db: Session = Depends(get_db)):
     cfg = _ensure_channel_config(db, module_key)
+
+    # 查找关联的比赛事件，用比赛周期开始时间限制报名开放
+    event = db.query(CompetitionEvent).filter(CompetitionEvent.module_key == module_key).first()
+    now = datetime.now()
+
+    signup_open = bool(cfg.signup_open)
+
+    # 若比赛周期尚未开始，报名强制关闭
+    if event and event.cycle_start_at and now < event.cycle_start_at:
+        signup_open = False
+
+    # 若有报名截止时间，超过则关闭
+    close_at = cfg.signup_close_at
+    if event and event.signup_end_at:
+        close_at = event.signup_end_at
+    if close_at and now > close_at:
+        signup_open = False
+
     return success_response(
         data={
             "module_key": cfg.module_key,
-            "signup_open": cfg.signup_open,
-            "signup_close_at": cfg.signup_close_at.isoformat() if cfg.signup_close_at else None,
+            "signup_open": signup_open,
+            "signup_close_at": close_at.isoformat() if close_at else None,
         },
         msg="获取成功",
     )
@@ -520,19 +539,30 @@ async def topic_status(module_key: str = DEFAULT_MODULE_KEY, db: Session = Depen
 
     topic_open = bool(cfg.topic_open)
     topic_close_at = cfg.topic_close_at
+    topic_open_at = event.topic_open_at if event else None
+    # status: not_started / open / closed
+    topic_status = "open" if topic_open else "closed"
 
     # 如果比赛事件有 topic_open_at，则按时间自动判断
     if event and event.topic_open_at:
+        topic_open = False
         if now >= event.topic_open_at:
             topic_open = True
+            topic_status = "open"
+        else:
+            topic_open = False
+            topic_status = "not_started"
         if event.topic_end_at and now > event.topic_end_at:
             topic_open = False
+            topic_status = "closed"
         topic_close_at = event.topic_end_at or topic_close_at
 
     return success_response(
         data={
             "module_key": cfg.module_key,
             "topic_open": topic_open,
+            "topic_status": topic_status,
+            "topic_open_at": topic_open_at.isoformat() if topic_open_at else None,
             "topic_close_at": topic_close_at.isoformat() if topic_close_at else None,
         },
         msg="获取成功",
@@ -556,9 +586,21 @@ async def team_update_status(module_key: str = DEFAULT_MODULE_KEY, db: Session =
 async def create_team(req: TeamCreateRequest, db: Session = Depends(get_db)):
     cfg = _ensure_channel_config(db, req.module_key)
     now = datetime.now()
+
+    # 查找关联比赛事件，用比赛周期时间做运行时限制
+    event = db.query(CompetitionEvent).filter(CompetitionEvent.module_key == req.module_key).first()
+
+    # 比赛周期尚未开始，报名不可用
+    if event and event.cycle_start_at and now < event.cycle_start_at:
+        return error_response(400, "比赛周期尚未开始，报名未开放")
+
     if not cfg.signup_open:
         return error_response(400, "报名通道未开启")
-    if cfg.signup_close_at and now > cfg.signup_close_at:
+
+    # 优先使用比赛事件中的 signup_end_at 作为截止时间
+    signup_close_at = event.signup_end_at if event else None
+    signup_close_at = signup_close_at or cfg.signup_close_at
+    if signup_close_at and now > signup_close_at:
         return error_response(400, "报名已截止")
 
     if req.topic_id is not None:
@@ -580,6 +622,15 @@ async def create_team(req: TeamCreateRequest, db: Session = Depends(get_db)):
     )
     if captain_exists:
         return error_response(400, "该队长学号已报名")
+
+    captain_as_member = (
+        db.query(TeamMember)
+        .join(Team, TeamMember.team_id == Team.id)
+        .filter(TeamMember.student_id == req.captain_student_id, Team.module_key == req.module_key)
+        .first()
+    )
+    if captain_as_member:
+        return error_response(400, "该学号已作为队员报名，不可兼任队长")
 
     member_sids = [m.student_id for m in req.members]
     if member_sids:
@@ -664,6 +715,14 @@ async def update_team(team_id: int, req: TeamUpdateRequest, db: Session = Depend
 
     cfg = _ensure_channel_config(db, team.module_key or DEFAULT_MODULE_KEY)
     now = datetime.now()
+
+    # 报名已截止后，姓名和学号不可修改（先暂存原值用于对比）
+    event = db.query(CompetitionEvent).filter(CompetitionEvent.module_key == team.module_key).first()
+    signup_closed = bool(event and event.signup_end_at and now > event.signup_end_at)
+    original_captain_name = team.captain_name
+    original_captain_sid = team.captain_student_id
+    original_members = list(db.query(TeamMember).filter(TeamMember.team_id == team.id).order_by(TeamMember.id.asc()).all())
+
     if not cfg.info_update_open:
         return error_response(400, "队伍信息修改通道未开启")
     if cfg.info_update_close_at and now > cfg.info_update_close_at:
@@ -671,6 +730,54 @@ async def update_team(team_id: int, req: TeamUpdateRequest, db: Session = Depend
 
     if team.captain_student_id != req.captain_student_id or team.captain_phone != req.captain_phone:
         return error_response(403, "仅允许队长修改本队信息")
+
+    # 报名截止后，队长姓名或学号有变化则拒绝
+    if signup_closed:
+        if req.captain_name != original_captain_name:
+            return error_response(400, "报名时间已结束，不可修改队长姓名")
+        if req.captain_student_id != original_captain_sid:
+            return error_response(400, "报名时间已结束，不可修改队长学号")
+        # 队员姓名和学号也不允许变更（逐个对比）
+        submitted_pairs = [(m.name, m.student_id) for m in req.members]
+        original_pairs = [(m.name, m.student_id) for m in original_members]
+        # 若队员数量变化，视为试图增删队员，也拒绝（因为会导致学号集合变化）
+        if len(submitted_pairs) != len(original_pairs):
+            return error_response(400, "报名时间已结束，不可增减队员")
+        for idx, ((sub_name, sub_sid), (orig_name, orig_sid)) in enumerate(zip(submitted_pairs, original_pairs)):
+            if sub_name != orig_name:
+                return error_response(400, f"报名时间已结束，不可修改队员 {idx + 1} 的姓名")
+            if sub_sid != orig_sid:
+                return error_response(400, f"报名时间已结束，不可修改队员 {idx + 1} 的学号")
+        if req.team_name != team.team_name:
+            return error_response(400, "报名时间已结束，不可修改队伍名称")
+        if req.competition_track != team.competition_track:
+            return error_response(400, "报名时间已结束，不可修改赛道")
+    else:
+        # 报名进行中时允许改队长学号，但仍需查重：不能与其他队伍的队长/队员重复
+        if req.captain_student_id != original_captain_sid:
+            conflict_cap = (
+                db.query(Team)
+                .filter(
+                    Team.captain_student_id == req.captain_student_id,
+                    Team.id != team_id,
+                    Team.module_key == (team.module_key or DEFAULT_MODULE_KEY),
+                )
+                .first()
+            )
+            if conflict_cap:
+                return error_response(400, "该学号已作为其他队伍的队长报名")
+            conflict_cap2 = (
+                db.query(TeamMember)
+                .join(Team, TeamMember.team_id == Team.id)
+                .filter(
+                    TeamMember.student_id == req.captain_student_id,
+                    Team.id != team_id,
+                    Team.module_key == (team.module_key or DEFAULT_MODULE_KEY),
+                )
+                .first()
+            )
+            if conflict_cap2:
+                return error_response(400, "该学号已作为其他队伍的队员报名，不可兼任队长")
 
     duplicate_msg = _validate_member_uniqueness(req.members)
     if duplicate_msg:
@@ -849,6 +956,106 @@ async def confirm_delete_team(
     return success_response(msg="已确认并彻底删除该队伍")
 
 
+@router.put("/teams/{team_id:int}/admin", response_model=dict, summary="管理员修改队伍信息（绕过所有时间限制）")
+async def admin_update_team(team_id: int, req: TeamUpdateRequest, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        return error_response(404, "队伍不存在")
+
+    if any(m.student_id == req.captain_student_id for m in req.members):
+        return error_response(400, "队长学号不能出现在队员列表中")
+
+    duplicate_msg = _validate_member_uniqueness(req.members)
+    if duplicate_msg:
+        return error_response(400, duplicate_msg)
+
+    # 查重：新队长学号不能与其他队伍的队长/队员重复
+    if req.captain_student_id != team.captain_student_id:
+        conflict_cap = (
+            db.query(Team)
+            .filter(
+                Team.captain_student_id == req.captain_student_id,
+                Team.id != team_id,
+                Team.module_key == (team.module_key or DEFAULT_MODULE_KEY),
+            )
+            .first()
+        )
+        if conflict_cap:
+            return error_response(400, "该学号已作为其他队伍的队长报名")
+        conflict_cap2 = (
+            db.query(TeamMember)
+            .join(Team, TeamMember.team_id == Team.id)
+            .filter(
+                TeamMember.student_id == req.captain_student_id,
+                Team.id != team_id,
+                Team.module_key == (team.module_key or DEFAULT_MODULE_KEY),
+            )
+            .first()
+        )
+        if conflict_cap2:
+            return error_response(400, "该学号已作为其他队伍的队员报名，不可兼任队长")
+
+    member_sids = [m.student_id for m in req.members]
+    if member_sids:
+        conflict_member = (
+            db.query(TeamMember)
+            .join(Team, TeamMember.team_id == Team.id)
+            .filter(
+                TeamMember.student_id.in_(member_sids),
+                TeamMember.team_id != team_id,
+                Team.module_key == (team.module_key or DEFAULT_MODULE_KEY),
+            )
+            .first()
+        )
+        if conflict_member:
+            return error_response(400, f"学号 {conflict_member.student_id} 已在其他队伍")
+
+        conflict_captain = (
+            db.query(Team)
+            .filter(
+                Team.captain_student_id.in_(member_sids),
+                Team.id != team_id,
+                Team.module_key == (team.module_key or DEFAULT_MODULE_KEY),
+            )
+            .first()
+        )
+        if conflict_captain:
+            return error_response(400, f"学号 {conflict_captain.captain_student_id} 已作为队长报名")
+
+    team.team_name = req.team_name
+    if req.competition_track is not None:
+        team.competition_track = req.competition_track
+    team.captain_name = req.captain_name
+    team.captain_student_id = req.captain_student_id
+    team.captain_phone = req.captain_phone
+    team.captain_email = req.captain_email
+    team.captain_college = req.captain_college
+    team.captain_major_class = req.captain_major_class
+
+    if req.topic_id is not None:
+        topic_error = _assert_topic_available(db, req.topic_id, team.module_key)
+        if topic_error:
+            return error_response(400, topic_error)
+    team.topic_id = req.topic_id
+
+    db.query(TeamMember).filter(TeamMember.team_id == team_id).delete()
+    for member in req.members:
+        db.add(
+            TeamMember(
+                team_id=team_id,
+                name=member.name,
+                student_id=member.student_id,
+                phone=member.phone,
+                email=member.email,
+                college=member.college,
+                major_class=member.major_class,
+            )
+        )
+
+    db.commit()
+    return success_response(msg="队伍信息修改成功（管理员）")
+
+
 @router.get("/teams/export", summary="成员/管理员导出队伍数据")
 async def export_teams(
     keyword: Optional[str] = None,
@@ -902,12 +1109,12 @@ async def export_teams(
         "选题",
         "状态",
         "队员人数",
-        "一验时间",
-        "一验地点",
-        "一验备注",
-        "二验时间",
-        "二验地点",
-        "二验备注",
+        "热身赛验收时间",
+        "热身赛验收地点",
+        "热身赛验收备注",
+        "正赛验收时间",
+        "正赛验收地点",
+        "正赛验收备注",
     ]
     sheet.append(headers)
     for cell in sheet[1]:
@@ -1021,7 +1228,7 @@ async def export_teams(
             "请携带作品与答辩材料",
             "2026-06-27 19:00",
             "创新楼 A102",
-            "二验备注示例",
+            "正赛验收备注示例",
         ]
     )
     for cell in example_sheet[1]:
@@ -1225,7 +1432,7 @@ async def download_inspection_template(
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "验收信息导入"
-    headers = ["队伍ID", "队长学号", "队伍名称", "一验时间", "一验地点", "一验备注", "二验时间", "二验地点", "二验备注"]
+    headers = ["队伍ID", "队长学号", "队伍名称", "热身赛验收时间", "热身赛验收地点", "热身赛验收备注", "正赛验收时间", "正赛验收地点", "正赛验收备注"]
     sheet.append(headers)
     for cell in sheet[1]:
         cell.font = Font(bold=True)
@@ -1237,8 +1444,8 @@ async def download_inspection_template(
     help_sheet = workbook.create_sheet("填写说明")
     help_sheet.append(["字段", "说明"])
     help_sheet.append(["队伍ID/队长学号/队伍名称", "用于匹配队伍，填任一项即可"])
-    help_sheet.append(["一验时间/地点/备注", "第一次验收安排，如：2026-07-15 14:00 / 教学楼A301 / 准备PPT"])
-    help_sheet.append(["二验时间/地点/备注", "第二次验收安排"])
+    help_sheet.append(["热身赛验收时间/地点/备注", "热身赛验收安排，如：2026-07-15 14:00 / 教学楼A301 / 准备PPT"])
+    help_sheet.append(["正赛验收时间/地点/备注", "正赛验收安排"])
     help_sheet.append(["导入规则", "只更新 Excel 中填写了内容的单元格；留空不会清空已有安排"])
     for cell in help_sheet[1]:
         cell.font = Font(bold=True)
@@ -1327,12 +1534,12 @@ async def import_team_inspections(
             db.add(assignment)
 
         updates = {
-            "first_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["一验时间", "第一次验收时间", "first_inspection_time"])),
-            "first_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["一验地点", "第一次验收地点", "first_inspection_location"])),
-            "first_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["一验备注", "第一次验收备注", "first_notes"])),
-            "second_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["二验时间", "第二次验收时间", "second_inspection_time"])),
-            "second_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["二验地点", "第二次验收地点", "second_inspection_location"])),
-            "second_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["二验备注", "第二次验收备注", "second_notes"])),
+            "first_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["热身赛验收时间", "一验时间", "第一次验收时间", "first_inspection_time"])),
+            "first_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["热身赛验收地点", "一验地点", "第一次验收地点", "first_inspection_location"])),
+            "first_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["热身赛验收备注", "一验备注", "第一次验收备注", "first_notes"])),
+            "second_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["正赛验收时间", "二验时间", "第二次验收时间", "second_inspection_time"])),
+            "second_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["正赛验收地点", "二验地点", "第二次验收地点", "second_inspection_location"])),
+            "second_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["正赛验收备注", "二验备注", "第二次验收备注", "second_notes"])),
         }
 
         row_changed = False

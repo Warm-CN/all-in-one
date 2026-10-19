@@ -161,6 +161,15 @@ const routes = [
             }
         ]
     },
+    // 静态资源路径不走前端路由，让浏览器发真实网络请求
+    {
+        path: '/uploads/:pathMatch(.*)*',
+        name: 'Uploads',
+        beforeEnter: (to, from, next) => {
+            // 强制走网络层，不匹配前端路由
+            window.location.href = to.fullPath
+        }
+    },
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',

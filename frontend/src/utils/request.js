@@ -19,7 +19,7 @@ const getBaseURL = () => {
     if (import.meta.env.DEV) {
         return '/api'
     }
-    return 'http://localhost:8001'
+    return import.meta.env.DEV ? 'http://localhost:8001' : ''
 }
 
 const dedupeApiPrefix = (baseURL, url) => {

@@ -4,8 +4,8 @@
       <header class="hero-panel grid w-full gap-5 rounded-[28px] px-4 py-5 sm:px-6 sm:py-7 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center lg:px-8 lg:py-8">
         <div class="min-w-0">
           <div class="hero-badge-row mb-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-            <span class="hero-badge">{{ currentEvent ? (currentEvent.cup_type === 'telecom' ? 'TELECOM CUP' : 'WIRELESS CUP') : 'COMPETITION PORTAL' }}</span>
-            <span class="hero-badge hero-badge-alt">TEAM PORTAL</span>
+            <span class="hero-badge">{{ currentEvent ? (currentEvent.cup_type === 'telecom' ? '电信杯' : '无线杯') : '比赛入口' }}</span>
+            <span class="hero-badge hero-badge-alt">组队报名</span>
           </div>
           <div class="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
             <img src="@/assets/images/logo.png" alt="Logo" class="h-16 w-auto shrink-0 object-contain sm:h-20" />
@@ -38,14 +38,14 @@
               :class="activeTab === 'signup' ? 'segment-active' : 'text-slate-500 hover:text-slate-800'"
               @click="handleTabSwitch('signup')"
             >
-              我要组队报名
+              组队报名
             </button>
             <button
               class="tab-button rounded-xl px-3 py-3 text-center text-base font-semibold transition"
               :class="activeTab === 'topic' ? 'segment-active' : 'text-slate-500 hover:text-slate-800'"
               @click="handleTabSwitch('topic')"
             >
-              修改选题
+              选题
             </button>
             <button
               class="tab-button rounded-xl px-3 py-3 text-center text-base font-semibold transition"
@@ -104,17 +104,17 @@
                 </div>
 
                 <div class="form-section mt-4">
-                  <div class="section-kicker">队员信息（最多2人，可不填）</div>
+                  <div class="section-kicker">队员信息（最多两人，根据实际情况填写）</div>
                   <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div v-for="(member, idx) in signupForm.members" :key="idx" class="member-card rounded-2xl border border-slate-200/80 bg-white/90 p-4">
                       <h4 class="mb-3 font-semibold text-slate-700">队员 {{ idx + 1 }}</h4>
                       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <el-input v-model="member.name" placeholder="姓名（可留空）" class="sm:col-span-1" />
-                        <el-input v-model="member.student_id" placeholder="学号（12位，可留空）" class="sm:col-span-1" />
-                        <el-input v-model="member.phone" placeholder="手机号（可留空）" class="sm:col-span-1" />
-                        <el-input v-model="member.email" placeholder="邮箱（可留空）" class="sm:col-span-1" />
-                        <el-input v-model="member.college" placeholder="学院（可留空）" class="sm:col-span-1" />
-                        <el-input v-model="member.major_class" placeholder="专业班级（可留空）" class="sm:col-span-1" />
+                        <el-input v-model="member.name" placeholder="姓名" class="sm:col-span-1" />
+                        <el-input v-model="member.student_id" placeholder="学号" class="sm:col-span-1" />
+                        <el-input v-model="member.phone" placeholder="手机号" class="sm:col-span-1" />
+                        <el-input v-model="member.email" placeholder="邮箱（选填）" class="sm:col-span-1" />
+                        <el-input v-model="member.college" placeholder="学院" class="sm:col-span-1" />
+                        <el-input v-model="member.major_class" placeholder="专业班级" class="sm:col-span-1" />
                       </div>
                     </div>
                   </div>
@@ -154,14 +154,17 @@
                     </div>
                   </el-collapse-item>
 
-                  <el-collapse-item v-for="(member, idx) in signupForm.members" :key="`collapse-member-${idx}`" :name="`member-${idx}`" :title="`队员 ${idx + 1} 信息（可不填）`">
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <el-input v-model="member.name" placeholder="姓名（可留空）" />
-                      <el-input v-model="member.student_id" placeholder="学号（12位，可留空）" />
-                      <el-input v-model="member.phone" placeholder="手机号（可留空）" />
-                      <el-input v-model="member.email" placeholder="邮箱（可留空）" />
-                      <el-input v-model="member.college" placeholder="学院（可留空）" />
-                      <el-input v-model="member.major_class" placeholder="专业班级（可留空）" />
+                  <el-collapse-item name="members" title="队员信息（最多两人，根据实际情况填写）">
+                    <div v-for="(member, idx) in signupForm.members" :key="`collapse-member-${idx}`" class="member-block mb-4 last:mb-0">
+                      <h5 class="mb-3 font-semibold text-slate-700">队员 {{ idx + 1 }}</h5>
+                      <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <el-input v-model="member.name" placeholder="姓名" />
+                        <el-input v-model="member.student_id" placeholder="学号" />
+                        <el-input v-model="member.phone" placeholder="手机号" />
+                        <el-input v-model="member.email" placeholder="邮箱（选填）" />
+                        <el-input v-model="member.college" placeholder="学院" />
+                        <el-input v-model="member.major_class" placeholder="专业班级" />
+                      </div>
                     </div>
                   </el-collapse-item>
                 </el-collapse>
@@ -214,7 +217,8 @@
                           <el-button
                             :type="topicForm.topic_id === item.id ? 'primary' : 'default'"
                             size="small"
-                            @click="topicForm.topic_id = item.id"
+                            :disabled="!canEditTopic"
+                            @click="selectTopic(item.id)"
                           >
                             {{ topicForm.topic_id === item.id ? '已选择' : '选择' }}
                           </el-button>
@@ -225,7 +229,7 @@
                             :disabled="!resolveTopicDocumentUrl(item)"
                             @click.stop="openTopicDocument(item)"
                           >
-                            下载
+                            赛题资料下载
                           </el-button>
                         </div>
                       </div>
@@ -236,8 +240,8 @@
                   </el-form-item>
                 </div>
 
-                <el-button type="primary" class="h-12 w-full rounded-xl text-base font-semibold" :loading="topicLoading" @click="submitTopicUpdate">
-                  提交选题修改
+                <el-button type="primary" class="h-12 w-full rounded-xl text-base font-semibold" :loading="topicLoading" :disabled="!canEditTopic" @click="submitTopicUpdate">
+                  提交选题（可修改）
                 </el-button>
               </el-form>
             </div>
@@ -277,14 +281,14 @@
               <el-divider content-position="left">验收安排</el-divider>
               <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm overflow-hidden">
-                  <div class="font-semibold text-slate-700">第一次验收</div>
-                  <div class="mt-1 break-words text-slate-600">时间：{{ formatText(teamResult.inspection?.first_inspection_time) }}</div>
+                  <div class="font-semibold text-slate-700">热身赛验收</div>
+                  <div class="mt-1 break-words text-slate-600">时间：{{ formatDate(teamResult.inspection?.first_inspection_time) }}</div>
                   <div class="break-words text-slate-600">地点：{{ formatText(teamResult.inspection?.first_inspection_location) }}</div>
                   <div class="break-words text-slate-600">备注：{{ formatText(teamResult.inspection?.first_notes) }}</div>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm overflow-hidden">
-                  <div class="font-semibold text-slate-700">第二次验收</div>
-                  <div class="mt-1 break-words text-slate-600">时间：{{ formatText(teamResult.inspection?.second_inspection_time) }}</div>
+                  <div class="font-semibold text-slate-700">正赛验收</div>
+                  <div class="mt-1 break-words text-slate-600">时间：{{ formatDate(teamResult.inspection?.second_inspection_time) }}</div>
                   <div class="break-words text-slate-600">地点：{{ formatText(teamResult.inspection?.second_inspection_location) }}</div>
                   <div class="break-words text-slate-600">备注：{{ formatText(teamResult.inspection?.second_notes) }}</div>
                 </div>
@@ -307,13 +311,13 @@
     <el-dialog v-model="editVisible" title="修改队伍信息" width="min(860px, calc(100vw - 24px))" destroy-on-close>
       <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-position="top" size="large">
         <div class="grid grid-cols-1 gap-x-4 gap-y-1 md:grid-cols-2">
-          <el-form-item label="队伍名称" prop="team_name"><el-input v-model="editForm.team_name" /></el-form-item>
+          <el-form-item label="队伍名称" prop="team_name"><el-input v-model="editForm.team_name" :disabled="signupClosed" /></el-form-item>
           <el-form-item label="选题">
             <span v-if="editForm.topic_title" class="text-sm text-slate-700">{{ editForm.topic_title }}</span>
             <span v-else class="text-sm text-slate-400">未选题（选题通道开放后可选）</span>
           </el-form-item>
-          <el-form-item label="队长姓名" prop="captain_name"><el-input v-model="editForm.captain_name" /></el-form-item>
-          <el-form-item label="队长学号" prop="captain_student_id"><el-input v-model="editForm.captain_student_id" /></el-form-item>
+          <el-form-item label="队长姓名" prop="captain_name"><el-input v-model="editForm.captain_name" :disabled="signupClosed" /></el-form-item>
+          <el-form-item label="队长学号" prop="captain_student_id"><el-input v-model="editForm.captain_student_id" :disabled="signupClosed" /></el-form-item>
           <el-form-item label="队长手机号" prop="captain_phone"><el-input v-model="editForm.captain_phone" /></el-form-item>
           <el-form-item label="队长邮箱"><el-input v-model="editForm.captain_email" /></el-form-item>
           <el-form-item label="队长学院" prop="captain_college"><el-input v-model="editForm.captain_college" /></el-form-item>
@@ -325,8 +329,8 @@
           <div v-for="(member, idx) in editForm.members" :key="idx" class="rounded-2xl border border-slate-200/80 bg-white/90 p-4">
             <h4 class="mb-3 font-semibold text-slate-700">队员 {{ idx + 1 }}</h4>
             <div class="space-y-3">
-              <el-input v-model="member.name" placeholder="姓名（可留空）" />
-              <el-input v-model="member.student_id" placeholder="学号（12位，可留空）" />
+              <el-input v-model="member.name" placeholder="姓名（可留空）" :disabled="signupClosed" />
+              <el-input v-model="member.student_id" placeholder="学号（12位，可留空）" :disabled="signupClosed" />
               <el-input v-model="member.phone" placeholder="手机号（可留空）" />
               <el-input v-model="member.email" placeholder="邮箱（可留空）" />
               <el-input v-model="member.college" placeholder="学院（可留空）" />
@@ -362,7 +366,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Trophy } from '@element-plus/icons-vue'
 import {
@@ -381,9 +385,15 @@ import { getCurrentCompetitionEvent } from '@/api/competition'
 const DEFAULT_MODULE_KEY = 'wireless_cup_2026'
 const activeTab = ref('signup')
 const currentEvent = ref(null)
+const signupClosed = computed(() => {
+  const endAt = currentEvent.value?.signup_end_at
+  if (!endAt) return false
+  return new Date() > new Date(endAt)
+})
 
 const signupStatus = reactive({ signup_open: false, signup_close_at: null })
-const topicStatus = reactive({ topic_open: false, topic_close_at: null })
+const topicStatus = reactive({ topic_open: false, topic_status: 'closed', topic_open_at: null, topic_close_at: null })
+const canEditTopic = computed(() => topicStatus.topic_open)
 const updateStatus = reactive({ info_update_open: false, info_update_close_at: null })
 const topics = ref([])
 const topicDocsByOptionId = ref({})
@@ -513,10 +523,25 @@ const normalizeMembers = (members) => {
 
 const handleTabSwitch = (targetTab) => {
   if (targetTab === 'topic' && !topicStatus.topic_open) {
-    ElMessage.warning('选题通道还未开启，敬请期待')
-    return
+    if (topicStatus.topic_status === 'not_started') {
+      ElMessage.warning('选题通道暂未开放，仅可查看题目与下载资料')
+    } else {
+      ElMessage.warning('选题通道已关闭，仅可查看题目与下载资料')
+    }
   }
   activeTab.value = targetTab
+}
+
+const selectTopic = (topicId) => {
+  if (!topicStatus.topic_open) {
+    if (topicStatus.topic_status === 'not_started') {
+      ElMessage.warning('选题通道暂未开放')
+    } else {
+      ElMessage.warning('选题通道已关闭')
+    }
+    return
+  }
+  topicForm.topic_id = topicId
 }
 
 const resolveTopicDocumentUrl = (topic) => {
@@ -601,6 +626,15 @@ const submitSignup = async () => {
 const submitTopicUpdate = async () => {
   if (!currentEvent.value?.module_key) {
     ElMessage.warning('当前没有进行中的比赛')
+    return
+  }
+
+  if (!topicStatus.topic_open) {
+    if (topicStatus.topic_status === 'not_started') {
+      ElMessage.warning('选题通道暂未开放')
+    } else {
+      ElMessage.warning('选题通道已关闭')
+    }
     return
   }
 
@@ -757,6 +791,14 @@ const submitDelete = async () => {
 }
 
 const formatText = (value) => value || '待安排'
+
+const formatDate = (value) => {
+  if (!value) return '待安排'
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return value
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 const syncCompactMode = () => {
   compactSignupMode.value = window.innerWidth <= 1180

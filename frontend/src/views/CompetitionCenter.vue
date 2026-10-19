@@ -220,7 +220,7 @@ const topicForm = reactive({
 
 const cupType = computed(() => route.meta.cupType || 'wireless')
 const cupTitle = computed(() => (cupType.value === 'wireless' ? '无线杯' : '电信杯'))
-const badgeText = computed(() => (cupType.value === 'wireless' ? 'WIRELESS CUP' : 'TELECOM CUP'))
+const badgeText = computed(() => (cupType.value === 'wireless' ? '无线杯' : '电信杯'))
 
 const formatRange = (start, end) => {
   const left = start ? new Date(start).toLocaleString() : '未设置'

@@ -159,6 +159,15 @@ def _event_to_dict(db: Session, event: CompetitionEvent) -> dict:
     )
     topic_member_count_map = {int(topic_id): int(count) for topic_id, count in topic_member_count_rows if topic_id is not None}
 
+    # 计算报名的真实运行时状态（受比赛周期开始时间限制）
+    now = datetime.now()
+    signup_open = bool(cfg.signup_open) if cfg else False
+    if event.cycle_start_at and now < event.cycle_start_at:
+        signup_open = False
+    signup_close_at = event.signup_end_at or (cfg.signup_close_at if cfg else None)
+    if signup_close_at and now > signup_close_at:
+        signup_open = False
+
     return {
         "id": event.id,
         "cup_type": event.cup_type,
@@ -170,7 +179,7 @@ def _event_to_dict(db: Session, event: CompetitionEvent) -> dict:
         "signup_end_at": event.signup_end_at.isoformat() if event.signup_end_at else None,
         "topic_open_at": event.topic_open_at.isoformat() if event.topic_open_at else None,
         "topic_end_at": event.topic_end_at.isoformat() if event.topic_end_at else None,
-        "signup_open": bool(cfg.signup_open) if cfg else False,
+        "signup_open": signup_open,
         "cycle_start_at": event.cycle_start_at.isoformat() if event.cycle_start_at else None,
         "cycle_end_at": event.cycle_end_at.isoformat() if event.cycle_end_at else None,
         "is_current": bool(event.is_current),
@@ -198,6 +207,27 @@ def _event_to_dict(db: Session, event: CompetitionEvent) -> dict:
         ],
         "created_at": event.created_at.isoformat(),
     }
+
+
+def _validate_event_times_in_cycle(event: CompetitionEvent) -> Optional[str]:
+    """验证报名和选题时间是否在比赛周期内，返回错误消息或 None"""
+    cycle_start = event.cycle_start_at
+    cycle_end = event.cycle_end_at
+
+    # 只有周期两端都设置了才做包含性校验
+    if not cycle_start or not cycle_end:
+        return None
+
+    if event.signup_start_at and event.signup_start_at < cycle_start:
+        return "报名开始时间不能早于比赛周期开始时间"
+    if event.signup_end_at and event.signup_end_at > cycle_end:
+        return "报名结束时间不能晚于比赛周期结束时间"
+    if event.topic_open_at and event.topic_open_at < cycle_start:
+        return "选题开放时间不能早于比赛周期开始时间"
+    if event.topic_end_at and event.topic_end_at > cycle_end:
+        return "选题结束时间不能晚于比赛周期结束时间"
+
+    return None
 
 
 def _sync_channel_config_by_event(db: Session, event: CompetitionEvent) -> None:
@@ -276,6 +306,12 @@ async def create_event(
     )
     db.add(event)
     db.flush()
+
+    cycle_err = _validate_event_times_in_cycle(event)
+    if cycle_err:
+        db.rollback()
+        return error_response(400, cycle_err)
+
     _sync_channel_config_by_event(db, event)
     db.commit()
     db.refresh(event)
@@ -317,6 +353,11 @@ async def update_event(
 
     if "planned_topic_count" in fields_set and req.planned_topic_count is not None:
         event.planned_topic_count = req.planned_topic_count
+
+    cycle_err = _validate_event_times_in_cycle(event)
+    if cycle_err:
+        db.rollback()
+        return error_response(400, cycle_err)
 
     _sync_channel_config_by_event(db, event)
     db.commit()
@@ -397,6 +438,17 @@ async def update_signup_open_state(
     event = db.query(CompetitionEvent).filter(CompetitionEvent.id == event_id).first()
     if not event:
         return error_response(404, "比赛不存在")
+
+    # 不在报名时间内时不允许开放报名页面
+    if req.signup_open:
+        now = datetime.now()
+        # 优先以 signup_start_at / signup_end_at 判断报名窗口
+        signup_start = event.signup_start_at or event.cycle_start_at
+        signup_end = event.signup_end_at
+        if signup_start and now < signup_start:
+            return error_response(400, "未在报名时间内")
+        if signup_end and now > signup_end:
+            return error_response(400, "未在报名时间内")
 
     cfg = db.query(TeamChannelConfig).filter(TeamChannelConfig.module_key == event.module_key).first()
     if not cfg:
@@ -541,3 +593,61 @@ async def update_event_topic(
         },
         msg="选题修改成功",
     )
+
+
+@router.delete("/competitions/events/{event_id}/topics/{topic_id}", response_model=dict, summary="删除选题")
+async def delete_event_topic(
+    event_id: int,
+    topic_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    event = db.query(CompetitionEvent).filter(CompetitionEvent.id == event_id).first()
+    if not event:
+        return error_response(404, "比赛不存在")
+
+    topic = (
+        db.query(CompetitionEventTopic)
+        .filter(CompetitionEventTopic.id == topic_id, CompetitionEventTopic.event_id == event_id)
+        .first()
+    )
+    if not topic:
+        return error_response(404, "选题不存在")
+
+    # 检查是否有队伍选中了该选题
+    selected_count = 0
+    if topic.topic_option_id:
+        selected_count = (
+            db.query(Team)
+            .filter(
+                Team.module_key == event.module_key,
+                Team.topic_id == topic.topic_option_id,
+            )
+            .count()
+        )
+
+    if selected_count > 0:
+        return error_response(
+            400,
+            f"已有 {selected_count} 支队伍选择了该选题，无法删除。请先让这些队伍更换选题。",
+        )
+
+    # 清理 TopicOption
+    if topic.topic_option_id:
+        topic_option = db.query(TopicOption).filter(TopicOption.id == topic.topic_option_id).first()
+        if topic_option:
+            db.delete(topic_option)
+
+    # 清理文档文件
+    if topic.document_path:
+        doc_path = UPLOAD_DIR / topic.document_path
+        try:
+            if doc_path.exists():
+                doc_path.unlink()
+        except OSError:
+            pass
+
+    db.delete(topic)
+    db.commit()
+
+    return success_response(msg="选题删除成功")
