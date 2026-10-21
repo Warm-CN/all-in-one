@@ -170,7 +170,7 @@
                 </el-collapse>
               </template>
 
-              <el-button type="primary" class="mt-7 h-12 w-full rounded-xl text-base font-semibold sm:mt-8" :loading="signupLoading" :disabled="!signupStatus.signup_open || !currentEvent" @click="submitSignup">
+              <el-button type="primary" class="mt-7 h-12 w-full rounded-xl text-base font-semibold sm:mt-8" :loading="signupLoading" @click="submitSignup">
                 提交组队报名
               </el-button>
             </el-form>
@@ -391,7 +391,7 @@ const signupClosed = computed(() => {
   return new Date() > new Date(endAt)
 })
 
-const signupStatus = reactive({ signup_open: false, signup_close_at: null })
+const signupStatus = reactive({ signup_open: false, signup_status: 'closed', signup_start_at: null, signup_close_at: null })
 const topicStatus = reactive({ topic_open: false, topic_status: 'closed', topic_open_at: null, topic_close_at: null })
 const canEditTopic = computed(() => topicStatus.topic_open)
 const updateStatus = reactive({ info_update_open: false, info_update_close_at: null })
@@ -566,7 +566,7 @@ const loadBaseData = async () => {
     if (!currentEvent.value) {
       topics.value = []
       topicDocsByOptionId.value = {}
-      Object.assign(signupStatus, { signup_open: false, signup_close_at: null })
+      Object.assign(signupStatus, { signup_open: false, signup_status: 'closed', signup_start_at: null, signup_close_at: null })
       Object.assign(topicStatus, { topic_open: false, topic_close_at: null })
       Object.assign(updateStatus, { info_update_open: false, info_update_close_at: null })
       return
@@ -602,6 +602,16 @@ const loadBaseData = async () => {
 const submitSignup = async () => {
   if (!currentEvent.value?.module_key) {
     ElMessage.warning('当前没有进行中的比赛')
+    return
+  }
+
+  // 报名通道状态判断
+  if (!signupStatus.signup_open) {
+    if (signupStatus.signup_status === 'not_started') {
+      ElMessage.warning('报名通道暂未开启')
+    } else {
+      ElMessage.warning('报名通道已关闭')
+    }
     return
   }
 
