@@ -21,11 +21,51 @@
           </div>
         </div>
 
-        <div class="hero-status rounded-2xl border border-slate-200/80 bg-white/82 p-4 shadow-[0_16px_38px_-32px_rgba(15,23,42,0.36)]">
+        <el-popover
+          ref="eventSelectPopoverRef"
+          placement="bottom-end"
+          :width="300"
+          trigger="click"
+          v-if="isMultipleEvents"
+        >
+          <template #reference>
+            <div
+              class="hero-status cursor-pointer rounded-2xl border border-slate-200/80 bg-white/82 p-4 shadow-[0_16px_38px_-32px_rgba(15,23,42,0.36)] transition hover:border-slate-300"
+            >
+              <div class="text-xs font-semibold uppercase text-slate-400">当前比赛</div>
+              <div class="mt-3 break-words text-lg font-black leading-6 text-slate-900">
+                {{ currentEvent?.display_title || currentEvent?.name || '尚未开启' }}
+              </div>
+              <div class="mt-2 text-sm leading-6 text-slate-700 break-all">
+                正在进行的比赛：{{ currentEvents.map(e => e.display_title || e.name).join(' / ') || '暂无' }}
+              </div>
+              <div class="mt-2 text-xs leading-5 text-slate-400">若有多个比赛同时进行，点击这个灰色框可以切换比赛</div>
+            </div>
+          </template>
+          <div class="event-switch-list">
+            <div class="mb-2 text-xs font-semibold text-slate-500">选择比赛</div>
+            <div
+              v-for="e in currentEvents"
+              :key="e.id"
+              class="event-switch-item cursor-pointer rounded-lg px-3 py-2 text-sm transition"
+              :class="e.id === currentEvent?.id ? 'bg-sky-50 font-semibold text-sky-700' : 'hover:bg-slate-50 text-slate-700'"
+              @click="selectEvent(e)"
+            >
+              {{ e.display_title || e.name }}
+            </div>
+          </div>
+        </el-popover>
+
+        <div
+          v-else
+          class="hero-status rounded-2xl border border-slate-200/80 bg-white/82 p-4 shadow-[0_16px_38px_-32px_rgba(15,23,42,0.36)]"
+        >
           <div class="text-xs font-semibold uppercase text-slate-400">当前比赛</div>
-          <div class="mt-3 break-words text-lg font-black leading-6 text-slate-900">{{ currentEvent?.display_title || currentEvent?.name || '尚未开启' }}</div>
-          <div class="mt-2 text-sm leading-6 text-slate-500">
-            {{ currentEvent ? (signupStatus.signup_open ? '报名页面已开放，可提交组队信息' : '报名页面暂未开放，可查询队伍信息') : '请等待管理员设置正在进行的比赛' }}
+          <div class="mt-3 break-words text-lg font-black leading-6 text-slate-900">
+            {{ currentEvent?.display_title || currentEvent?.name || '尚未开启' }}
+          </div>
+          <div class="mt-2 text-sm leading-6 text-slate-700 break-all">
+            正在进行的比赛：{{ currentEvents.map(e => e.display_title || e.name).join(' / ') || '暂无' }}
           </div>
         </div>
       </header>
@@ -281,13 +321,13 @@
               <el-divider content-position="left">验收安排</el-divider>
               <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm overflow-hidden">
-                  <div class="font-semibold text-slate-700">热身赛验收</div>
+                  <div class="font-semibold text-slate-700">{{ firstInspectionLabel }}</div>
                   <div class="mt-1 break-words text-slate-600">时间：{{ formatDate(teamResult.inspection?.first_inspection_time) }}</div>
                   <div class="break-words text-slate-600">地点：{{ formatText(teamResult.inspection?.first_inspection_location) }}</div>
                   <div class="break-words text-slate-600">备注：{{ formatText(teamResult.inspection?.first_notes) }}</div>
                 </div>
                 <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm overflow-hidden">
-                  <div class="font-semibold text-slate-700">正赛验收</div>
+                  <div class="font-semibold text-slate-700">{{ secondInspectionLabel }}</div>
                   <div class="mt-1 break-words text-slate-600">时间：{{ formatDate(teamResult.inspection?.second_inspection_time) }}</div>
                   <div class="break-words text-slate-600">地点：{{ formatText(teamResult.inspection?.second_inspection_location) }}</div>
                   <div class="break-words text-slate-600">备注：{{ formatText(teamResult.inspection?.second_notes) }}</div>
@@ -380,11 +420,16 @@ import {
   updateTeam,
   updateTeamTopic
 } from '@/api/team'
-import { getCurrentCompetitionEvent } from '@/api/competition'
+import { getCurrentCompetitionEvents } from '@/api/competition'
 
 const DEFAULT_MODULE_KEY = 'wireless_cup_2026'
+const LS_SELECTED_EVENT_KEY = 'selected_competition_event_id'
 const activeTab = ref('signup')
+const currentEvents = ref([])       // 所有 is_current=1 的比赛列表
+const selectedEventId = ref(null)   // 当前选中的比赛 id，localStorage 持久化
 const currentEvent = ref(null)
+const eventSelectPopoverRef = ref(null)
+const isMultipleEvents = computed(() => currentEvents.value.length > 1)
 const signupClosed = computed(() => {
   const endAt = currentEvent.value?.signup_end_at
   if (!endAt) return false
@@ -394,6 +439,9 @@ const signupClosed = computed(() => {
 const signupStatus = reactive({ signup_open: false, signup_status: 'closed', signup_start_at: null, signup_close_at: null })
 const topicStatus = reactive({ topic_open: false, topic_status: 'closed', topic_open_at: null, topic_close_at: null })
 const canEditTopic = computed(() => topicStatus.topic_open)
+// 按 cup_type 动态切换验收阶段标签：电信杯用 初赛/决赛，其他用 热身赛/正赛
+const firstInspectionLabel = computed(() => currentEvent.value?.cup_type === 'telecom' ? '初赛验收' : '热身赛验收')
+const secondInspectionLabel = computed(() => currentEvent.value?.cup_type === 'telecom' ? '决赛验收' : '正赛验收')
 const updateStatus = reactive({ info_update_open: false, info_update_close_at: null })
 const topics = ref([])
 const topicDocsByOptionId = ref({})
@@ -560,10 +608,24 @@ const openTopicDocument = (topic) => {
 
 const loadBaseData = async () => {
   try {
-    const currentRes = await getCurrentCompetitionEvent()
-    currentEvent.value = currentRes.data || null
+    // 先拉所有正在进行的比赛
+    const res = await getCurrentCompetitionEvents()
+    currentEvents.value = Array.isArray(res.data) ? res.data : []
 
-    if (!currentEvent.value) {
+    // 选默认：localStorage 里有且存在 → 用；否则取第一个（后端已按"报名开放中优先"排好序）
+    let chosen = null
+    try {
+      const savedId = localStorage.getItem(LS_SELECTED_EVENT_KEY)
+      if (savedId) {
+        const found = currentEvents.value.find(e => String(e.id) === String(savedId))
+        if (found) chosen = found
+      }
+    } catch (e) { /* ignore */ }
+    if (!chosen) chosen = currentEvents.value[0] || null
+
+    currentEvent.value = chosen
+    if (!chosen) {
+      selectedEventId.value = null
       topics.value = []
       topicDocsByOptionId.value = {}
       Object.assign(signupStatus, { signup_open: false, signup_status: 'closed', signup_start_at: null, signup_close_at: null })
@@ -571,32 +633,54 @@ const loadBaseData = async () => {
       Object.assign(updateStatus, { info_update_open: false, info_update_close_at: null })
       return
     }
+    selectedEventId.value = chosen.id
 
-    const moduleKey = currentEvent.value.module_key || DEFAULT_MODULE_KEY
-    const [signupRes, topicRes, updateRes, topicsRes] = await Promise.all([
-      getSignupStatus({ module_key: moduleKey }),
-      getTopicStatus({ module_key: moduleKey }),
-      getTeamUpdateStatus({ module_key: moduleKey }),
-      getTopics({ only_active: true, module_key: moduleKey })
-    ])
-
-    Object.assign(signupStatus, signupRes.data || {})
-    Object.assign(topicStatus, topicRes.data || {})
-    Object.assign(updateStatus, updateRes.data || {})
-    topics.value = Array.isArray(topicsRes.data) ? topicsRes.data : []
-
-    const eventTopicMap = {}
-    if (Array.isArray(currentEvent.value?.topics)) {
-      currentEvent.value.topics.forEach((item) => {
-        if (item?.topic_option_id && item?.document_url) {
-          eventTopicMap[item.topic_option_id] = item.document_url
-        }
-      })
-    }
-    topicDocsByOptionId.value = eventTopicMap
+    await refreshEventStatus()
   } catch (error) {
     ElMessage.error(error.response?.data?.msg || error.response?.data?.detail || '初始化失败')
   }
+}
+
+const refreshEventStatus = async () => {
+  if (!currentEvent.value?.module_key) return
+  const moduleKey = currentEvent.value.module_key
+  const [signupRes, topicRes, updateRes, topicsRes] = await Promise.all([
+    getSignupStatus({ module_key: moduleKey }),
+    getTopicStatus({ module_key: moduleKey }),
+    getTeamUpdateStatus({ module_key: moduleKey }),
+    getTopics({ only_active: true, module_key: moduleKey })
+  ])
+
+  Object.assign(signupStatus, signupRes.data || {})
+  Object.assign(topicStatus, topicRes.data || {})
+  Object.assign(updateStatus, updateRes.data || {})
+  topics.value = Array.isArray(topicsRes.data) ? topicsRes.data : []
+
+  // 同步 event.topics（用于选题列表）
+  if (Array.isArray(currentEvent.value?.topics)) {
+    const byOptionId = {}
+    currentEvent.value.topics.forEach((item) => {
+      if (item?.topic_option_id && item?.document_url) {
+        byOptionId[item.topic_option_id] = item.document_url
+      }
+    })
+    topicDocsByOptionId.value = byOptionId
+  } else {
+    topicDocsByOptionId.value = {}
+  }
+}
+
+const selectEvent = async (event) => {
+  if (!event || event.id === currentEvent.value?.id) return
+  try {
+    localStorage.setItem(LS_SELECTED_EVENT_KEY, String(event.id))
+  } catch (e) { /* ignore */ }
+  currentEvent.value = event
+  selectedEventId.value = event.id
+  // 关闭 popover
+  try { eventSelectPopoverRef.value?.hide?.() } catch (e) { /* ignore */ }
+  // 重拉状态（切比赛时 signup/topic/topics 全变）
+  await refreshEventStatus()
 }
 
 const submitSignup = async () => {

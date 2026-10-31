@@ -101,8 +101,8 @@
                 <p>包含全部队伍信息 + 验收安排 + 填写示例</p>
                 <p class="mt-1 font-semibold text-slate-600">导入（.xlsx）</p>
                 <p>• 队伍ID / 队长学号 / 队伍名称（任选其一匹配）</p>
-                <p>• 热身赛验收时间、地点、备注</p>
-                <p>• 正赛验收时间、地点、备注</p>
+                <p>• {{ firstInspLabel }}时间、地点、备注</p>
+                <p>• {{ secondInspLabel }}时间、地点、备注</p>
                 <p class="mt-1 text-slate-400">留空字段不会覆盖已有值</p>
                 <el-button link type="primary" size="small" class="mt-2" @click="handleDownloadTemplate">下载导入模板</el-button>
               </div>
@@ -227,7 +227,7 @@
                 <el-tag v-else type="success" size="small">正常</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="热身赛验收" min-width="250">
+            <el-table-column :label="firstInspLabel" min-width="250">
               <template #default="{ row }">
                 <div class="whitespace-pre-wrap text-xs leading-6 text-slate-600">
                   时间：{{ formatDate(row.inspection?.first_inspection_time, '待安排') }}
@@ -235,7 +235,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="正赛验收" min-width="250">
+            <el-table-column :label="secondInspLabel" min-width="250">
               <template #default="{ row }">
                 <div class="whitespace-pre-wrap text-xs leading-6 text-slate-600">
                   时间：{{ formatDate(row.inspection?.second_inspection_time, '待安排') }}
@@ -370,6 +370,9 @@ const hasPendingDelete = computed(() => tableData.value.some(t => t.delete_reque
 
 const selectedEvent = computed(() => events.value.find((item) => item.id === selectedEventId.value) || null)
 const activeModuleKey = computed(() => selectedEvent.value?.module_key || '')
+// 按 cup_type 动态切换验收阶段标签
+const firstInspLabel = computed(() => selectedEvent.value?.cup_type === 'telecom' ? '初赛验收' : '热身赛验收')
+const secondInspLabel = computed(() => selectedEvent.value?.cup_type === 'telecom' ? '决赛验收' : '正赛验收')
 
 const signupStatus = reactive({ signup_open: false, signup_close_at: null })
 
@@ -559,7 +562,9 @@ const handleExport = async () => {
 
 const handleDownloadTemplate = async () => {
   try {
-    const blobData = await downloadInspectionTemplate()
+    const blobData = await downloadInspectionTemplate({
+      cup_type: selectedEvent.value?.cup_type || undefined,
+    })
     const blob = new Blob([blobData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')

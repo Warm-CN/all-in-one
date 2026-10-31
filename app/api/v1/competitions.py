@@ -240,7 +240,7 @@ def _sync_channel_config_by_event(db: Session, event: CompetitionEvent) -> None:
     cfg.topic_close_at = event.topic_end_at
 
 
-@router.get("/competitions/current-event", response_model=dict, summary="获取当前进行中的比赛（公开）")
+@router.get("/competitions/current-event", response_model=dict, summary="获取当前进行中的比赛（公开，兼容旧前端）")
 async def get_current_event(db: Session = Depends(get_db)):
     event = (
         db.query(CompetitionEvent)
@@ -251,6 +251,40 @@ async def get_current_event(db: Session = Depends(get_db)):
     if not event:
         return success_response(data=None, msg="当前无进行中比赛")
     return success_response(data=_event_to_dict(db, event), msg="获取成功")
+
+
+@router.get("/competitions/current-events", response_model=dict, summary="获取所有正在进行的比赛（公开，多比赛支持）")
+async def get_current_events(db: Session = Depends(get_db)):
+    """返回所有 is_current=1 的比赛，排序规则：报名开放中的优先，然后按 updated_at 倒序。"""
+    now = datetime.now()
+    events = (
+        db.query(CompetitionEvent)
+        .filter(CompetitionEvent.is_current == 1)
+        .all()
+    )
+    # 实时更新已过期的自动置 0（和 _event_to_dict 里的逻辑一致）
+    still_current = []
+    for e in events:
+        if e.cycle_end_at and e.cycle_end_at < now:
+            e.is_current = 0
+            db.commit()
+        else:
+            still_current.append(e)
+
+    # 排序：报名开放中(signup_open=true 且 signup_start<=now<=signup_end)优先 → updated_at 倒序
+    def _signup_open(e):
+        cfg = db.query(TeamChannelConfig).filter(TeamChannelConfig.module_key == e.module_key).first()
+        if not cfg or not cfg.signup_open:
+            return False
+        # 报名起止时间存在 CompetitionEvent 上
+        if e.signup_start_at and e.signup_start_at > now:
+            return False
+        if e.signup_end_at and e.signup_end_at < now:
+            return False
+        return True
+
+    still_current.sort(key=lambda e: (not _signup_open(e), -(e.updated_at.timestamp() if e.updated_at else 0)))
+    return success_response(data=[_event_to_dict(db, e) for e in still_current], msg="获取成功")
 
 
 @router.get("/competitions/events", response_model=dict, summary="获取比赛历史列表")
@@ -418,12 +452,7 @@ async def update_active_state(
     if not event:
         return error_response(404, "比赛不存在")
 
-    if req.is_current:
-        db.query(CompetitionEvent).update({CompetitionEvent.is_current: 0}, synchronize_session=False)
-        event.is_current = 1
-    else:
-        event.is_current = 0
-
+    event.is_current = 1 if req.is_current else 0
     db.commit()
     return success_response(msg="状态切换成功")
 

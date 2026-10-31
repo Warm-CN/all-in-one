@@ -22,6 +22,13 @@ export function getCurrentCompetitionEvent() {
   })
 }
 
+export function getCurrentCompetitionEvents() {
+  return request({
+    url: '/api/v1/competitions/current-events',
+    method: 'get'
+  })
+}
+
 export function createCompetitionEvent(data) {
   return request({
     url: '/api/v1/competitions/events',

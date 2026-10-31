@@ -1081,6 +1081,15 @@ async def export_teams(
 
     teams = query.order_by(Team.created_at.desc()).all()
 
+    # 根据 module_key 查 cup_type 决定验收阶段标签
+    _first_lbl = "热身赛验收"
+    _second_lbl = "正赛验收"
+    if module_key:
+        _evt = db.query(CompetitionEvent).filter(CompetitionEvent.module_key == module_key).first()
+        if _evt and _evt.cup_type == "telecom":
+            _first_lbl = "初赛验收"
+            _second_lbl = "决赛验收"
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "队伍列表"
@@ -1109,12 +1118,12 @@ async def export_teams(
         "选题",
         "状态",
         "队员人数",
-        "热身赛验收时间",
-        "热身赛验收地点",
-        "热身赛验收备注",
-        "正赛验收时间",
-        "正赛验收地点",
-        "正赛验收备注",
+        f"{_first_lbl}时间",
+        f"{_first_lbl}地点",
+        f"{_first_lbl}备注",
+        f"{_second_lbl}时间",
+        f"{_second_lbl}地点",
+        f"{_second_lbl}备注",
     ]
     sheet.append(headers)
     for cell in sheet[1]:
@@ -1427,12 +1436,21 @@ async def import_teams(
 
 @router.get("/teams/inspection-template", summary="下载验收信息导入模板（仅管理员）")
 async def download_inspection_template(
+    cup_type: Optional[str] = None,
     current_user: User = Depends(require_admin),
 ):
+    # 根据 cup_type 决定验收阶段标签
+    if cup_type == "telecom":
+        _first_lbl, _second_lbl = "初赛验收", "决赛验收"
+    else:
+        _first_lbl, _second_lbl = "热身赛验收", "正赛验收"
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "验收信息导入"
-    headers = ["队伍ID", "队长学号", "队伍名称", "热身赛验收时间", "热身赛验收地点", "热身赛验收备注", "正赛验收时间", "正赛验收地点", "正赛验收备注"]
+    headers = ["队伍ID", "队长学号", "队伍名称",
+               f"{_first_lbl}时间", f"{_first_lbl}地点", f"{_first_lbl}备注",
+               f"{_second_lbl}时间", f"{_second_lbl}地点", f"{_second_lbl}备注"]
     sheet.append(headers)
     for cell in sheet[1]:
         cell.font = Font(bold=True)
@@ -1444,8 +1462,8 @@ async def download_inspection_template(
     help_sheet = workbook.create_sheet("填写说明")
     help_sheet.append(["字段", "说明"])
     help_sheet.append(["队伍ID/队长学号/队伍名称", "用于匹配队伍，填任一项即可"])
-    help_sheet.append(["热身赛验收时间/地点/备注", "热身赛验收安排，如：2026-07-15 14:00 / 教学楼A301 / 准备PPT"])
-    help_sheet.append(["正赛验收时间/地点/备注", "正赛验收安排"])
+    help_sheet.append([f"{_first_lbl}时间/地点/备注", f"{_first_lbl}安排，如：2026-07-15 14:00 / 教学楼A301 / 准备PPT"])
+    help_sheet.append([f"{_second_lbl}时间/地点/备注", f"{_second_lbl}安排"])
     help_sheet.append(["导入规则", "只更新 Excel 中填写了内容的单元格；留空不会清空已有安排"])
     for cell in help_sheet[1]:
         cell.font = Font(bold=True)
@@ -1534,12 +1552,12 @@ async def import_team_inspections(
             db.add(assignment)
 
         updates = {
-            "first_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["热身赛验收时间", "一验时间", "第一次验收时间", "first_inspection_time"])),
-            "first_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["热身赛验收地点", "一验地点", "第一次验收地点", "first_inspection_location"])),
-            "first_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["热身赛验收备注", "一验备注", "第一次验收备注", "first_notes"])),
-            "second_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["正赛验收时间", "二验时间", "第二次验收时间", "second_inspection_time"])),
-            "second_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["正赛验收地点", "二验地点", "第二次验收地点", "second_inspection_location"])),
-            "second_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["正赛验收备注", "二验备注", "第二次验收备注", "second_notes"])),
+            "first_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["热身赛验收时间", "初赛验收时间", "一验时间", "第一次验收时间", "first_inspection_time"])),
+            "first_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["热身赛验收地点", "初赛验收地点", "一验地点", "第一次验收地点", "first_inspection_location"])),
+            "first_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["热身赛验收备注", "初赛验收备注", "一验备注", "第一次验收备注", "first_notes"])),
+            "second_inspection_time": _parse_excel_datetime(_first_cell_value(row, header_map, ["正赛验收时间", "决赛验收时间", "二验时间", "第二次验收时间", "second_inspection_time"])),
+            "second_inspection_location": _normalize_excel_text(_first_cell_value(row, header_map, ["正赛验收地点", "决赛验收地点", "二验地点", "第二次验收地点", "second_inspection_location"])),
+            "second_notes": _normalize_excel_text(_first_cell_value(row, header_map, ["正赛验收备注", "决赛验收备注", "二验备注", "第二次验收备注", "second_notes"])),
         }
 
         row_changed = False

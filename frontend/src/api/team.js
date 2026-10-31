@@ -157,10 +157,11 @@ export function importTeamInspections(file, moduleKey) {
 /**
  * 下载验收信息导入模板
  */
-export function downloadInspectionTemplate() {
+export function downloadInspectionTemplate(params) {
     return request({
         url: '/api/v1/teams/inspection-template',
         method: 'get',
+        params,
         responseType: 'blob'
     })
 }
