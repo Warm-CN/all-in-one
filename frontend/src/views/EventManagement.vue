@@ -340,7 +340,7 @@
                     class="topic-upload"
                     drag
                     action="#"
-                    accept=".pdf,.doc,.docx"
+                    accept=".pdf,.doc,.docx,.zip"
                     :auto-upload="false"
                     :limit="1"
                     :file-list="topicUploadList"
@@ -351,7 +351,7 @@
                     <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
                     <div class="el-upload__text">拖拽文件到此处或<em>点击上传</em></div>
                     <template #tip>
-                      <div class="el-upload__tip">支持 pdf、doc、docx</div>
+                      <div class="el-upload__tip">支持 pdf、doc、docx、zip</div>
                     </template>
                   </el-upload>
                 </el-form-item>
@@ -810,11 +810,11 @@ const handleDeleteTopic = async (topic) => {
   }
 }
 
-const isAllowedTopicFile = (file) => /\.(pdf|doc|docx)$/i.test(file?.name || '')
+const isAllowedTopicFile = (file) => /\.(pdf|doc|docx|zip)$/i.test(file?.name || '')
 
 const handleFileChange = (file) => {
   if (!isAllowedTopicFile(file)) {
-    ElMessage.warning('仅支持 pdf、doc、docx 文件')
+    ElMessage.warning('仅支持 pdf、doc、docx、zip 文件')
     topicFile.value = null
     topicUploadList.value = []
     return false
@@ -828,7 +828,7 @@ const handleFileChange = (file) => {
 const handleFileExceed = (files) => {
   const rawFile = files?.[0]
   if (!isAllowedTopicFile(rawFile)) {
-    ElMessage.warning('仅支持 pdf、doc、docx 文件')
+    ElMessage.warning('仅支持 pdf、doc、docx、zip 文件')
     return
   }
 

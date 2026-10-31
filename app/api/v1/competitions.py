@@ -27,7 +27,7 @@ router = APIRouter()
 
 UPLOAD_DIR = Path("uploads/competition_topics")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-ALLOWED_EXT = {".pdf", ".doc", ".docx"}
+ALLOWED_EXT = {".pdf", ".doc", ".docx", ".zip"}
 
 
 class CompetitionEventCreateRequest(BaseModel):
@@ -485,7 +485,7 @@ async def add_event_topic(
     if document and document.filename:
         ext = Path(document.filename).suffix.lower()
         if ext not in ALLOWED_EXT:
-            return error_response(400, "仅支持 pdf/doc/docx 文件")
+            return error_response(400, "仅支持 pdf/doc/docx/zip 文件")
         safe_name = f"{event_id}_{uuid4().hex[:10]}{ext}"
         save_path = UPLOAD_DIR / safe_name
         content = await document.read()
@@ -564,7 +564,7 @@ async def update_event_topic(
     if document and document.filename:
         ext = Path(document.filename).suffix.lower()
         if ext not in ALLOWED_EXT:
-            return error_response(400, "仅支持 pdf/doc/docx 文件")
+            return error_response(400, "仅支持 pdf/doc/docx/zip 文件")
         safe_name = f"{event_id}_{uuid4().hex[:10]}{ext}"
         save_path = UPLOAD_DIR / safe_name
         content = await document.read()
