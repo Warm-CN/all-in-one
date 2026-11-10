@@ -728,7 +728,7 @@ function fullRange(b) {
 }
 function timeRange(b) {
   const start = fullTime(b.start_time),
-    end = fullTime(b.end_time);
+    end = fullTime(b.occupied_until || b.end_time);
   return `${start.slice(0, 10) === selectedDate.value ? start.slice(11) : "前日"} – ${end.slice(0, 10) === selectedDate.value ? end.slice(11) : "次日"}`;
 }
 function barStyle(b) {
@@ -738,7 +738,7 @@ function barStyle(b) {
       /(Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}+08:00`,
     ).getTime();
   const left = Math.max(0, ((instant(b.start_time) - begin) / 86400000) * 100);
-  const right = Math.min(100, ((instant(b.end_time) - begin) / 86400000) * 100);
+  const right = Math.min(100, ((instant(b.occupied_until || b.end_time) - begin) / 86400000) * 100);
   return { left: `${left}%`, width: `${Math.max(0, right - left)}%` };
 }
 function previousTeam(b) {

@@ -336,6 +336,31 @@ class PrinterTests(unittest.TestCase):
         records = self.client.get("/api/v1/printers/admin/incidents").json()["data"]
         self.assertEqual(records[0]["previous_booking_id"], prev)
 
+    def test_early_checkout_releases_remaining_slot_for_other_team(self):
+        _, current = self.seed_use()
+        moment = api.now().replace(microsecond=0)
+        start = moment + timedelta(minutes=1)
+        end = moment + timedelta(minutes=20)
+        other = {"Authorization": "Bearer " + api.create_access_token({"sub": "0", "scope": "printer_team", "competition_team_id": 2, "module_key": "bambu_cup", "captain_student_id": "2"})}
+        payload = {"printer_id": 1, "start_time": start.isoformat(), "end_time": end.isoformat()}
+        with patch.object(api, "now", return_value=moment):
+            self.assertEqual(self.post(f"/bookings/{current}/check-in").status_code, 200)
+            self.assertEqual(self.post("/bookings", payload, other).status_code, 409)
+            result = self.post(f"/bookings/{current}/check-out")
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual(result.json()["data"]["occupied_until"], api.iso(moment))
+            self.assertEqual(self.post("/bookings", payload, other).status_code, 200)
+            self.assertEqual(self.post("/bookings", payload).status_code, 409)
+            self.admin()
+            admin_payload = {**payload, "captain_student_id": "2", "start_time": end.isoformat(), "end_time": (end + timedelta(minutes=5)).isoformat()}
+            self.assertEqual(self.post("/admin/bookings", admin_payload).status_code, 200)
+        with self.Session() as db:
+            original = db.get(PrinterBooking, current)
+            self.assertEqual(original.status, "completed")
+            self.assertEqual(original.checked_out_at, moment)
+            self.assertGreater(original.end_time, end)
+            self.assertIsNotNone(original.checked_in_at)
+
     def test_report_before_check_in_and_no_previous(self):
         prev, current = self.seed_use()
         r = self.post(f"/bookings/{current}/incidents", {"description": "接机前发现平台损坏"})

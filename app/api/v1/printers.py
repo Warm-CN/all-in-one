@@ -90,6 +90,7 @@ def booking_data(b, private=False, current=None):
     result = {"id": b.id, "printer_id": b.printer_id, "team_name": b.team_name,
               "captain_phone": team.captain_phone if team else None,
               "start_time": iso(b.start_time), "end_time": iso(b.end_time),
+              "occupied_until": iso(min(b.end_time, b.checked_out_at) if b.checked_out_at else b.end_time),
               "status": status, "usage_status": b.status,
               "checked_in_at": iso(b.checked_in_at), "checked_out_at": iso(b.checked_out_at)}
     if private:
@@ -263,7 +264,7 @@ def add_booking(db, data, team):
         fail(400, "预约开始不能早于当前时间，结束必须晚于开始")
     if cfg.opening_hours_enabled and not any(h["weekday"] == data.start_time.weekday() and h["start"] <= data.start_time.strftime("%H:%M") < h["end"] for h in cfg.opening_hours):
         fail(400, "预约开始时间须在办公室开放时段内")
-    if db.query(PrinterBooking).filter(PrinterBooking.printer_id == p.id, PrinterBooking.status != "cancelled", PrinterBooking.start_time < data.end_time, PrinterBooking.end_time > data.start_time).with_for_update().first():
+    if db.query(PrinterBooking).filter(PrinterBooking.printer_id == p.id, PrinterBooking.status.in_(["reserved", "in_use"]), PrinterBooking.start_time < data.end_time, PrinterBooking.end_time > data.start_time).with_for_update().first():
         fail(409, "该打印机此时段已被预约")
     b = PrinterBooking(printer_id=p.id, competition_team_id=team.id, team_name=team.team_name, captain_name=team.captain_name,
                        captain_student_id=team.captain_student_id, start_time=data.start_time, end_time=data.end_time, purpose=data.purpose)

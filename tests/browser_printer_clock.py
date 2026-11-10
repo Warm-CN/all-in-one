@@ -42,6 +42,10 @@ def main():
         assert row.get_by_text('使用中', exact=True).count() == 1
         page.clock.fast_forward(3600000)
         assert row.get_by_text('已结束', exact=True).count() == 1
+        booking.update(status='completed', usage_status='completed', checked_out_at='2026-11-10T15:20:00+08:00', occupied_until='2026-11-10T15:20:00+08:00')
+        page.goto(BASE + '/printer-booking', wait_until='networkidle')
+        assert page.locator('.slot-list').get_by_text('15:00 – 15:20', exact=True).count() == 1
+        assert page.locator('.slot-list').get_by_text('已归还', exact=True).count() == 1
         assert not errors, errors
         print(json.dumps({'status': 'passed', 'checks': ['public_live_start_end', 'admin_live_start_end', 'no_reload', 'no_fake_checkin', 'captain_phone_tel_link', 'admin_contact_display', 'mobile_no_overflow']}, ensure_ascii=False))
         browser.close()
