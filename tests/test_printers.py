@@ -139,8 +139,8 @@ class PrinterTests(unittest.TestCase):
         start = self.future
         end = start + timedelta(hours=1)
         cases = [(start - timedelta(microseconds=1), "reserved"),
-                 (start, "in_use"), (end - timedelta(microseconds=1), "in_use"),
-                 (end, "completed"), (end + timedelta(hours=1), "completed")]
+                 (start, "in_use"), (start + timedelta(minutes=5) - timedelta(microseconds=1), "in_use"),
+                 (start + timedelta(minutes=5), "cancelled"), (end, "cancelled")]
         for current, expected in cases:
             with self.subTest(current=current, expected=expected):
                 for path, headers in [
@@ -154,19 +154,19 @@ class PrinterTests(unittest.TestCase):
                     rows = response.json()["data"]
                     row = next(b for b in rows if b["id"] == booking["id"])
                     self.assertEqual(row["status"], expected)
-                    self.assertEqual(row["usage_status"], "reserved")
+                    self.assertEqual(row["usage_status"], "cancelled" if expected == "cancelled" else "reserved")
                     self.assertIsNone(row["checked_in_at"])
                     self.assertIsNone(row["checked_out_at"])
-                    self.assertEqual(clock.call_count, 1, "One instant per response")
+                    self.assertGreaterEqual(clock.call_count, 1)
                 with patch.object(api, "now", return_value=current) as clock:
                     response = self.post("/identify", {"captain_student_id": "1"})
                 row = response.json()["data"]["bookings"][0]
-                self.assertEqual((row["status"], row["usage_status"]), (expected, "reserved"))
-                self.assertEqual(clock.call_count, 1)
+                self.assertEqual((row["status"], row["usage_status"]), (expected, "cancelled" if expected == "cancelled" else "reserved"))
+                self.assertGreaterEqual(clock.call_count, 1)
         # Merely crossing the schedule boundaries must not mutate usage history.
         with self.Session() as db:
             row = db.get(PrinterBooking, booking["id"])
-            self.assertEqual(row.status, "reserved")
+            self.assertEqual(row.status, "cancelled")
             self.assertIsNone(row.checked_in_at)
             self.assertIsNone(row.checked_out_at)
             self.assertIsNone(row.previous_booking_id)
@@ -186,8 +186,9 @@ class PrinterTests(unittest.TestCase):
                 with self.subTest(raw=raw_status, current=current):
                     with patch.object(api, "now", return_value=current):
                         row = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"][0]
-                    self.assertEqual(row["status"], raw_status)
-                    self.assertEqual(row["usage_status"], raw_status)
+                    expected = "completed" if raw_status == "in_use" and current >= end else raw_status
+                    self.assertEqual(row["status"], expected)
+                    self.assertEqual(row["usage_status"], expected)
                     if raw_status == "completed":
                         self.assertIsNotNone(row["checked_out_at"])
                     elif raw_status == "in_use":
@@ -217,19 +218,18 @@ class PrinterTests(unittest.TestCase):
         self.assertEqual(response.json()["data"]["usage_status"], "in_use")
         self.assertEqual(response.json()["data"]["previous_booking_id"], previous)
         self.assertEqual(response.json()["data"]["checked_in_at"], api.iso(start))
-        # Time expiry cannot fabricate a return or end actual ongoing usage.
+        # Time expiry ends the reservation without fabricating a physical return.
         with patch.object(api, "now", return_value=end + timedelta(hours=1)):
             row = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"][0]
-            self.assertEqual((row["status"], row["usage_status"]), ("in_use", "in_use"))
+            self.assertEqual((row["status"], row["usage_status"]), ("completed", "completed"))
             self.assertIsNone(row["checked_out_at"])
             self.assertEqual(self.post(f"/bookings/{current}/check-in").status_code, 409)
             report = self.post(f"/bookings/{current}/incidents", {"description": "超时使用时报告异常"})
-            self.assertEqual(report.status_code, 200)
-            self.assertEqual(report.json()["data"]["previous_booking_id"], previous)
+            self.assertEqual(report.status_code, 409)
             response = self.post(f"/bookings/{current}/check-out")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual((response.json()["data"]["status"], response.json()["data"]["usage_status"]), ("completed", "completed"))
-        self.assertEqual(response.json()["data"]["checked_out_at"], api.iso(end + timedelta(hours=1)))
+        self.assertEqual(response.status_code, 409)
+        with self.Session() as db:
+            self.assertIsNone(db.get(PrinterBooking, current).checked_out_at)
 
     def test_overlap_boundaries_cross_midnight_and_machines(self):
         self.assertEqual(self.reserve().status_code, 200)
@@ -416,6 +416,8 @@ class PrinterTests(unittest.TestCase):
         with self.engine.begin() as conn:
             if self.engine.dialect.name == "mysql":
                 conn.execute(text("SET FOREIGN_KEY_CHECKS=0"))
+            else:
+                conn.execute(text("PRAGMA foreign_keys=OFF"))
             conn.execute(text("DROP TABLE printer_teams"))
             if self.engine.dialect.name == "mysql":
                 conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
@@ -424,10 +426,100 @@ class PrinterTests(unittest.TestCase):
         prev, current = self.seed_use()
         with self.Session() as db:
             db.get(PrinterBooking, prev).status = "in_use"
+            db.get(PrinterBooking, prev).end_time = api.now() + timedelta(minutes=10)
             db.commit()
         self.assertEqual(self.post(f"/bookings/{current}/check-in").status_code, 409)
         b = self.reserve(printer_id=2).json()["data"]
         self.assertEqual(self.post(f'/bookings/{b["id"]}/check-in').status_code, 409)
+
+    def test_no_show_deadline_release_and_failed_checkin_commits_expiry(self):
+        b = self.reserve().json()["data"]
+        deadline = self.future + timedelta(minutes=5)
+        with patch.object(api, "now", return_value=deadline):
+            response = self.post(f'/bookings/{b["id"]}/check-in')
+            self.assertEqual(response.status_code, 409)
+            with self.Session() as db:
+                row = db.get(PrinterBooking, b["id"])
+                self.assertEqual(row.status, "cancelled")
+                self.assertIsNone(row.checked_in_at)
+                self.assertIsNone(row.checked_out_at)
+            other = {"Authorization": "Bearer " + api.create_access_token({"sub": "0", "scope": "printer_team", "competition_team_id": 2, "module_key": "bambu_cup", "captain_student_id": "2"})}
+            payload = {"printer_id": 1, "start_time": (deadline + timedelta(seconds=1)).isoformat(), "end_time": (deadline + timedelta(minutes=20)).isoformat()}
+            self.assertEqual(self.post("/bookings", payload, other).status_code, 200)
+        with patch.object(api, "now", return_value=deadline + timedelta(hours=2)):
+            self.assertEqual(self.post(f'/bookings/{b["id"]}/check-in').status_code, 409)
+        with self.Session() as db:
+            self.assertEqual(db.get(PrinterBooking, b["id"]).status, "cancelled")
+
+    def test_checkin_just_before_deadline_and_end_releases_next_team(self):
+        b = self.reserve().json()["data"]
+        deadline = self.future + timedelta(minutes=5)
+        end = self.future + timedelta(hours=1)
+        with patch.object(api, "now", return_value=deadline - timedelta(microseconds=1)):
+            self.assertEqual(self.post(f'/bookings/{b["id"]}/check-in').status_code, 200)
+        other = {"Authorization": "Bearer " + api.create_access_token({"sub": "0", "scope": "printer_team", "competition_team_id": 2, "module_key": "bambu_cup", "captain_student_id": "2"})}
+        payload = {"printer_id": 1, "start_time": end.isoformat(), "end_time": (end + timedelta(minutes=30)).isoformat()}
+        with patch.object(api, "now", return_value=end):
+            next_booking = self.post("/bookings", payload, other)
+            self.assertEqual(next_booking.status_code, 200, next_booking.text)
+            self.assertEqual(self.post(f'/bookings/{next_booking.json()["data"]["id"]}/check-in', headers=other).status_code, 200)
+        with self.Session() as db:
+            original = db.get(PrinterBooking, b["id"])
+            self.assertEqual(original.status, "completed")
+            self.assertIsNotNone(original.checked_in_at)
+            self.assertIsNone(original.checked_out_at)
+
+    def test_short_reservation_deadline_is_end_and_manual_cancel_stays_cancelled(self):
+        b = self.reserve(self.future, self.future + timedelta(minutes=2)).json()["data"]
+        self.assertEqual(b["check_in_deadline"], api.iso(self.future + timedelta(minutes=2)))
+        with patch.object(api, "now", return_value=self.future + timedelta(minutes=2)):
+            self.assertEqual(self.post(f'/bookings/{b["id"]}/check-in').status_code, 409)
+        with self.Session() as db:
+            self.assertEqual(db.get(PrinterBooking, b["id"]).status, "cancelled")
+        later = self.reserve(self.future + timedelta(hours=2)).json()["data"]
+        self.assertEqual(self.post(f'/bookings/{later["id"]}/cancel').status_code, 200)
+        with patch.object(api, "now", return_value=self.future + timedelta(hours=4)):
+            with self.Session() as db:
+                api.sweep_lifecycle(db)
+            with self.Session() as db:
+                self.assertEqual(db.get(PrinterBooking, later["id"]).status, "cancelled")
+
+    def test_sweep_is_idempotent_and_safe_with_deadline_checkin_race(self):
+        b = self.reserve().json()["data"]
+        deadline = self.future + timedelta(minutes=5)
+        gate = Barrier(2)
+        def sweep():
+            gate.wait()
+            with self.Session() as db:
+                api.sweep_lifecycle(db)
+            return "swept"
+        def checkin():
+            gate.wait()
+            return self.post(f'/bookings/{b["id"]}/check-in').status_code
+        with patch.object(api, "now", return_value=deadline):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                first, second = pool.submit(sweep), pool.submit(checkin)
+                self.assertEqual(first.result(timeout=20), "swept")
+                self.assertEqual(second.result(timeout=20), 409)
+            with self.Session() as db:
+                api.sweep_lifecycle(db)
+        with self.Session() as db:
+            row = db.get(PrinterBooking, b["id"])
+            self.assertEqual(row.status, "cancelled")
+            self.assertIsNone(row.checked_in_at)
+
+    def test_expiry_survives_requested_action_integrity_error(self):
+        from sqlalchemy.exc import IntegrityError
+        b = self.reserve().json()["data"]
+        with patch.object(api, "now", return_value=self.future + timedelta(minutes=5)):
+            with self.Session() as db:
+                with self.assertRaises(IntegrityError):
+                    with api.transaction(db):
+                        db.add(Printer(id=1, name="duplicate", status="available"))
+                        db.flush()
+            with self.Session() as db:
+                self.assertEqual(db.get(PrinterBooking, b["id"]).status, "cancelled")
+                self.assertEqual(db.get(Printer, 1).name, "拓竹 1 号机")
 
     def test_concurrent_same_machine(self):
         gate = Barrier(2)

@@ -1,6 +1,8 @@
 """
 FastAPI 应用主入口
 """
+import asyncio
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from fastapi import FastAPI, Request
@@ -49,6 +51,8 @@ async def startup_event():
     Base.metadata.create_all(bind=engine)
     ensure_default_signup_config()
     auto_expire_competitions()
+    app.state.printer_lifecycle_stop = asyncio.Event()
+    app.state.printer_lifecycle_task = asyncio.create_task(printer_lifecycle_loop(app.state.printer_lifecycle_stop))
     print(f"✅ {settings.APP_NAME} v{settings.APP_VERSION} 启动成功！")
     print(f"📚 API 文档: http://localhost:8000/docs")
 
@@ -123,9 +127,32 @@ def ensure_default_signup_config():
         db.close()
 
 
+def sweep_printer_lifecycle():
+    with SessionLocal() as db:
+        printers.sweep_lifecycle(db)
+
+
+async def printer_lifecycle_loop(stop):
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(sweep_printer_lifecycle)
+        except Exception:
+            logging.getLogger(__name__).exception("打印机预约生命周期同步失败")
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=15)
+        except asyncio.TimeoutError:
+            pass
+
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """应用关闭事件"""
+    stop = getattr(app.state, "printer_lifecycle_stop", None)
+    task = getattr(app.state, "printer_lifecycle_task", None)
+    if stop is not None:
+        stop.set()
+    if task is not None:
+        await task
     print(f"👋 {settings.APP_NAME} 已关闭")
 
 

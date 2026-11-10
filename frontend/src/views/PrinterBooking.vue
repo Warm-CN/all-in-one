@@ -283,7 +283,7 @@
               >
               <div v-else class="booking-list">
                 <article
-                  v-for="booking in mine"
+                  v-for="booking in sortedMine"
                   :key="booking.id"
                   class="booking-card"
                 >
@@ -301,6 +301,22 @@
                   </div>
                   <p v-if="booking.purpose" class="muted">
                     {{ booking.purpose }}
+                  </p>
+                  <p
+                    v-if="
+                      usageStatus(booking) === 'reserved' &&
+                      reservationStatus(booking, currentTime) !== 'cancelled'
+                    "
+                    class="muted"
+                  >
+                    请在
+                    {{
+                      new Date(checkInDeadline(booking)).toLocaleString(
+                        "zh-CN",
+                        { timeZone: "Asia/Shanghai", hour12: false },
+                      )
+                    }}
+                    前确认设备状态并开始，逾期自动取消。
                   </p>
                   <p class="handover">
                     上一实际使用队伍：<strong>{{
@@ -324,9 +340,12 @@
                       type="primary"
                       :loading="busyId === booking.id"
                       @click="bookingAction(booking, 'check-in')"
-                      >检查完成，签到</el-button
+                      >确认设备状态并开始</el-button
                     ><el-button
-                      v-if="usageStatus(booking) === 'in_use'"
+                      v-if="
+                        usageStatus(booking) === 'in_use' &&
+                        reservationStatus(booking, currentTime) === 'in_use'
+                      "
                       type="success"
                       :loading="busyId === booking.id"
                       @click="bookingAction(booking, 'check-out')"
@@ -447,6 +466,7 @@ import {
   reservationStatus,
   reservationLabel,
   usageStatus,
+  checkInDeadline,
 } from "@/utils/printerStatus";
 const tabs = [
   { key: "schedule", label: "设备日程" },
@@ -605,6 +625,15 @@ function choosePrinter(id) {
   tab.value = session.value ? "reserve" : "identity";
 }
 const currentTime = ref(Date.now());
+const sortedMine = computed(() =>
+  [...mine.value].sort(
+    (a, b) =>
+      Number(reservationStatus(a, currentTime.value) === "cancelled") -
+        Number(reservationStatus(b, currentTime.value) === "cancelled") ||
+      b.start_time.localeCompare(a.start_time) ||
+      b.id - a.id,
+  ),
+);
 let clock;
 const instant = (value) =>
   new Date(
@@ -618,11 +647,10 @@ const canCancel = (b) =>
 const canCheckIn = (b) =>
   usageStatus(b) === "reserved" &&
   duringBooking(b) &&
+  currentTime.value < checkInDeadline(b) &&
   config.value.printers.find((p) => p.id === b.printer_id)?.status ===
     "available";
-const canReport = (b) =>
-  usageStatus(b) === "in_use" ||
-  (usageStatus(b) === "reserved" && duringBooking(b));
+const canReport = (b) => reservationStatus(b, currentTime.value) === "in_use";
 async function reserve() {
   if (!session.value) return;
   if (
@@ -638,7 +666,7 @@ async function reserve() {
     return ElMessage.warning("开始时间必须晚于当前时间");
   submitting.value = true;
   try {
-    await printerApi.reserve(
+    const created = await printerApi.reserve(
       {
         ...form,
         start_time: `${form.start_time}+08:00`,
@@ -650,6 +678,21 @@ async function reserve() {
     selectedDate.value = form.start_time.slice(0, 10);
     await Promise.all([loadMine(), loadSchedule()]);
     tab.value = "mine";
+    const deadline = new Date(checkInDeadline(created)).toLocaleString(
+      "zh-CN",
+      { timeZone: "Asia/Shanghai", hour12: false },
+    );
+    await ElMessageBox.alert(
+      `预约成功。请在预约开始后 5 分钟内（最迟 ${deadline}）进入“我的预约”，检查设备并点击“确认设备状态并开始”。逾期未确认将自动取消预约并释放时段；到达预约结束时间也会自动结束并释放，请按时结束使用。`,
+      "预约成功 · 使用提醒",
+      {
+        confirmButtonText: "我知道了",
+        type: "warning",
+        closeOnClickModal: false,
+        closeOnPressEscape: false,
+        showClose: false,
+      },
+    );
   } catch (e) {
     fail(e);
     if (e.status === 409) await loadSchedule();
@@ -712,7 +755,11 @@ async function submitIncident() {
 }
 const printerBookings = (id) =>
   bookings.value
-    .filter((b) => b.printer_id === id && b.status !== "cancelled")
+    .filter(
+      (b) =>
+        b.printer_id === id &&
+        reservationStatus(b, currentTime.value) !== "cancelled",
+    )
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 const printerName = (id) =>
   config.value.printers.find((p) => p.id === id)?.name || `打印机 ${id}`;
@@ -738,7 +785,10 @@ function barStyle(b) {
       /(Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}+08:00`,
     ).getTime();
   const left = Math.max(0, ((instant(b.start_time) - begin) / 86400000) * 100);
-  const right = Math.min(100, ((instant(b.occupied_until || b.end_time) - begin) / 86400000) * 100);
+  const right = Math.min(
+    100,
+    ((instant(b.occupied_until || b.end_time) - begin) / 86400000) * 100,
+  );
   return { left: `${left}%`, width: `${Math.max(0, right - left)}%` };
 }
 function previousTeam(b) {

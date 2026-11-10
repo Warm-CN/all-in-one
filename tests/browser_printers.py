@@ -51,7 +51,9 @@ def main():
             page.get_by_role('button', name='预约这台设备', exact=True).first.click()
             page.get_by_placeholder('如：底盘支架、外壳原型').fill('浏览器验收模型')
             page.get_by_role('button', name='确认预约', exact=True).click()
-            page.get_by_text('预约成功', exact=True).wait_for()
+            page.get_by_role('button', name='我知道了', exact=True).wait_for()
+            assert '5 分钟' in page.locator('.el-message-box').inner_text()
+            page.get_by_role('button', name='我知道了', exact=True).click()
             card = page.locator('.booking-card').filter(has_text='浏览器验收模型').filter(has=page.get_by_role('button', name='取消预约', exact=True)).first
             card.get_by_role('button', name='取消预约', exact=True).click()
             page.get_by_role('button', name='确认', exact=True).click()

@@ -44,19 +44,73 @@ def fail(code, message):
     raise HTTPException(code, message)
 
 
+CONFIRMATION_GRACE_MINUTES = 5
+
+
+def confirmation_deadline(booking):
+    return min(beijing_time(booking.start_time) + timedelta(minutes=CONFIRMATION_GRACE_MINUTES), beijing_time(booking.end_time))
+
+
+def effective_status(booking, current):
+    current = beijing_time(current)
+    if booking.status == "reserved" and current >= confirmation_deadline(booking):
+        return "cancelled"
+    if booking.status == "in_use" and current >= beijing_time(booking.end_time):
+        return "completed"
+    return booking.status
+
+
+def synchronize_lifecycle(db, current=None):
+    """Config lock precedes ordered machine/booking locks in every worker."""
+    current = beijing_time(current if current is not None else now())
+    for printer in db.query(Printer).order_by(Printer.id).with_for_update().all():
+        rows = db.query(PrinterBooking).filter(PrinterBooking.printer_id == printer.id, PrinterBooking.status.in_(["reserved", "in_use"])).order_by(PrinterBooking.id).with_for_update().all()
+        for booking in rows:
+            booking.status = effective_status(booking, current)
+    db.flush()
+
+
 @contextmanager
 def transaction(db):
-    # Auth dependencies may have started a read transaction. Release it before
-    # acquiring locks, so MySQL REPEATABLE READ sees the latest committed data.
+    # Commit expiry even when the subsequent requested action is rejected.
+    # Savepoints isolate that action, preserving automatic lifecycle writes.
     db.rollback()
+    action = None
     try:
         if db.get_bind().dialect.name == "sqlite":
             db.execute(text("BEGIN IMMEDIATE"))
+        cfg = db.query(PrinterConfig).filter(PrinterConfig.id == 1).with_for_update().first()
+        if cfg is not None:
+            synchronize_lifecycle(db)
+        action = db.begin_nested()
         yield
+        action.commit()
         db.commit()
     except Exception:
-        db.rollback()
+        if action is not None:
+            # A failed flush marks the savepoint inactive; rollback is still
+            # required to restore the Session before committing outer expiry.
+            try:
+                action.rollback()
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+        else:
+            db.rollback()
         raise
+
+
+def sweep_lifecycle(db):
+    with transaction(db):
+        pass
+
+
+def ensure_lifecycle(db: Session = Depends(get_db)):
+    sweep_lifecycle(db)
+
+
+router.dependencies.append(Depends(ensure_lifecycle))
 
 
 def config(db, lock=False):
@@ -78,12 +132,10 @@ def booking_data(b, private=False, current=None):
     # Status is a read-only schedule projection; actual use remains separately
     # audited by the raw status and explicit check-in/check-out timestamps.
     current = beijing_time(current if current is not None else now())
-    status = b.status
-    if status == "reserved":
-        if current >= beijing_time(b.end_time):
-            status = "completed"
-        elif current >= beijing_time(b.start_time):
-            status = "in_use"
+    usage_status = effective_status(b, current)
+    status = usage_status
+    if status == "reserved" and current >= beijing_time(b.start_time):
+        status = "in_use"
     db = object_session(b) if hasattr(b, "_sa_instance_state") else None
     team_id = getattr(b, "competition_team_id", None)
     team = db.get(Team, team_id) if db is not None and team_id else None
@@ -91,7 +143,8 @@ def booking_data(b, private=False, current=None):
               "captain_phone": team.captain_phone if team else None,
               "start_time": iso(b.start_time), "end_time": iso(b.end_time),
               "occupied_until": iso(min(b.end_time, b.checked_out_at) if b.checked_out_at else b.end_time),
-              "status": status, "usage_status": b.status,
+              "status": status, "usage_status": usage_status,
+              "check_in_deadline": iso(confirmation_deadline(b)),
               "checked_in_at": iso(b.checked_in_at), "checked_out_at": iso(b.checked_out_at)}
     if private:
         previous_id, previous_name = b.previous_booking_id, b.previous_team_name
@@ -220,7 +273,7 @@ def public_config(db, admin=False):
     result = {"printers": [{"id": p.id, "name": p.name, "status": p.status} for p in db.query(Printer).order_by(Printer.id)],
               "opening_hours_enabled": cfg.opening_hours_enabled, "opening_hours": cfg.opening_hours,
               "admin_contact": cfg.admin_contact,
-              "timezone": "Asia/Shanghai", "module_key": event.module_key if event else None,
+              "timezone": "Asia/Shanghai", "confirmation_grace_minutes": CONFIRMATION_GRACE_MINUTES, "module_key": event.module_key if event else None,
               "event": {"id": event.id, "name": event.portal_title or event.name, "module_key": event.module_key} if event else None,
               "signup_url": f"/team-portal?event_id={event.id}" if event else "/team-portal"}
     if admin:
@@ -309,7 +362,7 @@ def check_in(booking_id: int, team_id: int = Depends(team_auth), db: Session = D
         b = owned_booking(db, booking_id, team_id)
         p = machine(db, b.printer_id)
         current = now()
-        if p.status != "available" or b.status != "reserved" or not b.start_time <= current < b.end_time:
+        if p.status != "available" or b.status != "reserved" or not b.start_time <= current < confirmation_deadline(b):
             fail(409, "当前不可签到，请确认预约时间与机器状态")
         if db.query(PrinterBooking).filter_by(printer_id=p.id, status="in_use").first():
             fail(409, "上一队伍尚未签退，请先完成交接")

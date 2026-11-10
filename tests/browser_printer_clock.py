@@ -30,14 +30,15 @@ def main():
         slot = page.locator('.slot-list')
         assert slot.get_by_text('待使用', exact=True).count() == 1
         page.clock.fast_forward(12000)
-        assert slot.get_by_text('使用中', exact=True).count() == 1
-        page.clock.fast_forward(3600000)
-        assert slot.get_by_text('已结束', exact=True).count() == 1
+        assert slot.get_by_text('待确认开始', exact=True).count() == 1
+        page.clock.fast_forward(300000)
+        assert slot.locator('li').count() == 0
+        booking.update(status='in_use', usage_status='in_use', checked_in_at='2026-11-10T15:00:10+08:00')
         page.evaluate("localStorage.setItem('token','clock-test'); localStorage.setItem('userInfo', JSON.stringify({role:'admin',real_name:'测试'}))")
         page.clock.set_system_time(__import__('datetime').datetime.fromisoformat('2026-11-10T14:59:59+08:00'))
         page.goto(BASE + '/admin/printers', wait_until='networkidle')
         row = page.locator('.admin-bookings')
-        row.get_by_text('待使用', exact=True).wait_for(timeout=5000)
+        row.get_by_text('使用中', exact=True).wait_for(timeout=5000)
         page.clock.fast_forward(12000)
         assert row.get_by_text('使用中', exact=True).count() == 1
         page.clock.fast_forward(3600000)
