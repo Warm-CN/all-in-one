@@ -16,7 +16,7 @@ from app.models.signup import SignupConfig
 from app.models.competition_event import CompetitionEvent
 
 # 导入路由
-from app.api.v1 import auth, signups, room_bookings, admin, users, admin_bookings, schedules, admin_schedules, teams, competitions, suggestions
+from app.api.v1 import auth, signups, room_bookings, admin, users, admin_bookings, schedules, admin_schedules, teams, competitions, suggestions, printers
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -153,6 +153,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # ==================== 路由注册 ====================
+
+app.include_router(printers.router)
 
 # 认证路由
 app.include_router(

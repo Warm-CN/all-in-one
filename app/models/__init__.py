@@ -2,6 +2,7 @@
 模型包初始化
 导出所有模型
 """
+from app.models.printer_booking import Printer, PrinterConfig, PrinterTeam, PrinterBooking, PrinterIncident
 from app.models.base import BaseModel
 from app.models.user import User
 from app.models.room import Room
@@ -20,6 +21,11 @@ from app.models.suggestion import Suggestion, Screenshot, Annotation, StatusChan
 
 __all__ = [
     "BaseModel",
+    "Printer",
+    "PrinterConfig",
+    "PrinterTeam",
+    "PrinterBooking",
+    "PrinterIncident",
     "User",
     "Room",
     "RoomBooking",

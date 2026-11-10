@@ -41,7 +41,7 @@ def get_current_user(
     # 解码 Token
     payload = decode_access_token(token)
     
-    if payload is None:
+    if payload is None or payload.get("scope") == "printer_team":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的认证凭据或 Token 已过期",

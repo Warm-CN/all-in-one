@@ -29,6 +29,10 @@
             <el-icon><Monitor /></el-icon>
             <span>会议室预约</span>
           </el-menu-item>
+          <el-menu-item index="/printer-booking" class="menu-item">
+            <el-icon><Monitor /></el-icon>
+            <span>打印机预约</span>
+          </el-menu-item>
           <el-menu-item index="/recruitment" class="menu-item">
             <el-icon><UserFilled /></el-icon>
             <span>招新面试</span>
@@ -59,6 +63,10 @@
             <el-menu-item index="/admin/rooms" class="menu-item">
               <el-icon><Setting /></el-icon>
               <span>会议室管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/printers" class="menu-item">
+              <el-icon><Setting /></el-icon>
+              <span>打印机管理</span>
             </el-menu-item>
             <el-menu-item index="/admin/recruitment" class="menu-item">
               <el-icon><UserFilled /></el-icon>
@@ -220,6 +228,10 @@
             <el-icon><Monitor /></el-icon>
             <span>会议室预约</span>
           </el-menu-item>
+          <el-menu-item index="/printer-booking" class="menu-item">
+            <el-icon><Monitor /></el-icon>
+            <span>打印机预约</span>
+          </el-menu-item>
           <el-menu-item index="/recruitment" class="menu-item">
             <el-icon><UserFilled /></el-icon>
             <span>招新面试</span>
@@ -250,6 +262,10 @@
             <el-menu-item index="/admin/rooms" class="menu-item">
               <el-icon><Setting /></el-icon>
               <span>会议室管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/printers" class="menu-item">
+              <el-icon><Setting /></el-icon>
+              <span>打印机管理</span>
             </el-menu-item>
             <el-menu-item index="/admin/recruitment" class="menu-item">
               <el-icon><UserFilled /></el-icon>

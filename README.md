@@ -70,6 +70,8 @@ python scripts/init_admin.py
 | [frontend/README.md](frontend/README.md) | 前端目录、环境变量、构建说明 |
 | [docs/API_会议室预约.md](docs/API_会议室预约.md) | 会议室预约接口细节 |
 | [docs/API_日程管理.md](docs/API_日程管理.md) | 日程查询与管理接口细节 |
+| [docs/打印机预约部署指南.md](docs/打印机预约部署指南.md) | 拓竹杯打印机预约、增量建表、本地构建与 SCP 发布 |
+| [docs/打印机预约测试案例.md](docs/打印机预约测试案例.md) | 打印机预约规则与验收案例 |
 | [docs/共建模块设计.md](docs/共建模块设计.md) | 共建模块元素选择模式设计文档 |
 
 ## 生产部署入口

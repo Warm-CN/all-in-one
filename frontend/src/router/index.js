@@ -44,6 +44,12 @@ const routes = [
         }
     },
     {
+        path: '/printer-booking',
+        name: 'PrinterBooking',
+        component: () => import('@/views/PrinterBooking.vue'),
+        meta: { title: '拓竹杯打印机预约', requiresAuth: false }
+    },
+    {
         path: '/',
         component: () => import('@/layout/MainLayout.vue'),
         redirect: '/home',
@@ -128,6 +134,12 @@ const routes = [
                 name: 'AdminRooms',
                 component: () => import('@/views/MeetingRoomAdmin.vue'),
                 meta: { title: '会议室管理', requiresAuth: true, requireAdmin: true }
+            },
+            {
+                path: 'admin/printers',
+                name: 'AdminPrinters',
+                component: () => import('@/views/PrinterManagement.vue'),
+                meta: { title: '打印机管理', requiresAuth: true, requireAdmin: true }
             },
             {
                 path: 'admin/schedule',
