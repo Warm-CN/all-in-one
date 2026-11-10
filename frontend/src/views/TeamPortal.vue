@@ -103,7 +103,7 @@
             type="warning"
             :closable="false"
             class="mb-5"
-            title="当前没有进行中的比赛，请联系管理员在赛事中心设置“正在比赛”后再进行报名。"
+             :title="route.query.event_id ? '该赛事报名入口当前未开放，请等待管理员开放对应赛事后再报名。' : '当前没有进行中的比赛，请联系管理员在赛事中心设置“正在比赛”后再进行报名。'"
           />
 
           <div v-show="activeTab === 'signup'" class="mx-auto w-full">
@@ -406,8 +406,9 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import { Trophy } from '@element-plus/icons-vue'
 import {
   createTeam,
@@ -422,6 +423,7 @@ import {
 } from '@/api/team'
 import { getCurrentCompetitionEvents } from '@/api/competition'
 
+const route = useRoute()
 const DEFAULT_MODULE_KEY = 'wireless_cup_2026'
 const LS_SELECTED_EVENT_KEY = 'selected_competition_event_id'
 const activeTab = ref('signup')
@@ -612,16 +614,19 @@ const loadBaseData = async () => {
     const res = await getCurrentCompetitionEvents()
     currentEvents.value = Array.isArray(res.data) ? res.data : []
 
-    // 选默认：localStorage 里有且存在 → 用；否则取第一个（后端已按"报名开放中优先"排好序）
+    // 指定赛事链接优先于浏览器记忆；未开放时不跳到其他比赛。
+    const requestedId = Array.isArray(route.query.event_id) ? route.query.event_id[0] : route.query.event_id
     let chosen = null
-    try {
-      const savedId = localStorage.getItem(LS_SELECTED_EVENT_KEY)
-      if (savedId) {
-        const found = currentEvents.value.find(e => String(e.id) === String(savedId))
-        if (found) chosen = found
-      }
-    } catch (e) { /* ignore */ }
-    if (!chosen) chosen = currentEvents.value[0] || null
+    if (requestedId) {
+      chosen = currentEvents.value.find(e => String(e.id) === String(requestedId)) || null
+      if (!chosen) ElMessage.warning('该赛事报名入口当前未开放，请等待管理员开放对应赛事。')
+    } else {
+      try {
+        const savedId = localStorage.getItem(LS_SELECTED_EVENT_KEY)
+        if (savedId) chosen = currentEvents.value.find(e => String(e.id) === String(savedId)) || null
+      } catch (e) { /* ignore */ }
+      if (!chosen) chosen = currentEvents.value[0] || null
+    }
 
     currentEvent.value = chosen
     if (!chosen) {
@@ -900,6 +905,8 @@ const syncCompactMode = () => {
     signupCollapse.value = ['basic', 'captain']
   }
 }
+
+watch(() => route.query.event_id, () => loadBaseData())
 
 onMounted(() => {
   loadBaseData()

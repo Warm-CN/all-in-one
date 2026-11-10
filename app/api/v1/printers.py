@@ -11,17 +11,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import text
-from passlib.hash import pbkdf2_sha256
 from sqlalchemy.orm import Session, object_session
 from app.core.database import get_db
 from app.core.dependencies import require_admin
 from app.core.security import create_access_token, decode_access_token
 
-# PBKDF2 accepts Unicode without bcrypt's 72-byte truncation pitfall.
-get_password_hash = pbkdf2_sha256.hash
-verify_password = pbkdf2_sha256.verify
 from app.core.limiter import limiter
-from app.models.printer_booking import Printer, PrinterConfig, PrinterTeam, PrinterBooking, PrinterIncident
+from app.models.printer_booking import Printer, PrinterConfig, PrinterBooking, PrinterIncident
+from app.models.team import Team, TeamStatus
+from app.models.competition_event import CompetitionEvent
 from app.schemas.response import success_response
 
 router = APIRouter(prefix="/api/v1/printers", tags=["打印机预约"])
@@ -86,40 +84,63 @@ def booking_data(b, private=False):
     return result
 
 
+def selected_event(db, cfg):
+    # Explicit binding always wins. Auto-detect only an unambiguous Bambu event.
+    event = db.query(CompetitionEvent).filter_by(module_key=cfg.module_key).first() if cfg.module_key else None
+    if event:
+        return event
+    if cfg.module_key and cfg.module_key != "bambu_cup":
+        return None
+    candidates = [e for e in db.query(CompetitionEvent).all() if is_bambu(e)]
+    current = [e for e in candidates if e.is_current]
+    return current[0] if len(current) == 1 else (candidates[0] if len(candidates) == 1 else None)
+
+
+def is_bambu(event):
+    return event.cup_type == "bambu" or "拓竹" in (event.name or "") or "拓竹" in (event.portal_title or "")
+
+
+def active_team(db, cfg, sid=None, team_id=None):
+    event = selected_event(db, cfg)
+    if not event:
+        fail(409, "尚未绑定拓竹杯赛事，请联系管理员")
+    query = db.query(Team).filter(Team.module_key == event.module_key, Team.status != TeamStatus.CANCELLED, Team.delete_requested == False)
+    if sid is not None:
+        query = query.filter(Team.captain_student_id == sid)
+    if team_id is not None:
+        query = query.filter(Team.id == team_id)
+    teams = query.all()
+    if len(teams) != 1:
+        fail(404 if not teams else 409, "未找到该赛事的有效队长队伍，请先报名或联系管理员")
+    return teams[0]
+
+
 def team_auth(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer), db: Session = Depends(get_db)):
     payload = decode_access_token(credentials.credentials) if credentials else None
-    if not payload or payload.get("scope") != "printer_team":
-        fail(401, "请先验证打印队伍身份")
-    team = db.get(PrinterTeam, payload.get("printer_team_id"))
+    if not payload or payload.get("scope") != "printer_team" or not payload.get("competition_team_id"):
+        fail(401, "请先输入队长学号查询队伍")
     cfg = config(db)
-    if not team or team.module_key != cfg.module_key:
-        fail(401, "队伍凭据已失效，请重新验证")
+    team = active_team(db, cfg, team_id=payload["competition_team_id"])
+    if payload.get("module_key") != team.module_key or payload.get("captain_student_id") != team.captain_student_id:
+        fail(401, "队伍所属赛事已变化，请重新查询")
     return team.id
 
 
 def identity(db, team):
-    return {"token": create_access_token({"sub": "0", "printer_team_id": team.id, "scope": "printer_team"}, timedelta(hours=8)),
+    return {"token": create_access_token({"sub": "0", "competition_team_id": team.id, "module_key": team.module_key, "captain_student_id": team.captain_student_id, "scope": "printer_team"}, timedelta(hours=8)),
             "team": {"id": team.id, "team_name": team.team_name},
-            "bookings": [booking_data(b, True) for b in db.query(PrinterBooking).filter_by(team_id=team.id).order_by(PrinterBooking.start_time.desc()).all()]}
+            "bookings": [booking_data(b, True) for b in db.query(PrinterBooking).filter_by(competition_team_id=team.id).order_by(PrinterBooking.start_time.desc()).all()]}
 
 
 class Identify(BaseModel):
-    captain_student_id: str = Field(min_length=1, max_length=30)
-    captain_phone: str = Field(pattern=r"^1[3-9]\d{9}$")
-    access_code: str = Field(min_length=8, max_length=72)
+    captain_student_id: str = Field(min_length=1, max_length=20)
 
-
-class Register(Identify):
-    team_name: str = Field(min_length=1, max_length=100)
-    captain_name: str = Field(min_length=1, max_length=50)
-    registration_code: str = Field(min_length=8, max_length=72)
-
-    @field_validator("team_name", "captain_name", "captain_student_id")
+    @field_validator("captain_student_id")
     @classmethod
     def nonblank(cls, value):
         value = value.strip()
         if not value:
-            raise ValueError("不能为空")
+            raise ValueError("请输入队长学号")
         return value
 
 
@@ -154,11 +175,14 @@ class OpeningHour(BaseModel):
 
 
 class ConfigUpdate(BaseModel):
-    module_key: str = Field(default="bambu_cup", pattern=r"^[a-zA-Z0-9_-]{1,80}$")
+    event_id: Optional[int] = Field(default=None, ge=1)
+    module_key: Optional[str] = Field(default=None, max_length=80)
     opening_hours_enabled: bool = False
     opening_hours: list[OpeningHour] = Field(default_factory=list, max_length=28)
-    registration_code: Optional[str] = Field(default=None, min_length=8, max_length=72)
-    registration_enabled: Optional[bool] = None
+
+
+class AdminBookingCreate(BookingCreate):
+    captain_student_id: str = Field(min_length=1, max_length=20)
 
 
 class MachineUpdate(BaseModel):
@@ -169,12 +193,17 @@ class Resolve(BaseModel):
     resolution: str = Field(min_length=3, max_length=3000)
 
 
-def public_config(db):
+def public_config(db, admin=False):
     cfg = config(db)
-    return {"printers": [{"id": p.id, "name": p.name, "status": p.status} for p in db.query(Printer).order_by(Printer.id)],
-            "opening_hours_enabled": cfg.opening_hours_enabled, "opening_hours": cfg.opening_hours,
-            "timezone": "Asia/Shanghai", "module_key": cfg.module_key,
-            "registration_enabled": cfg.registration_enabled and bool(cfg.registration_code_hash)}
+    event = selected_event(db, cfg)
+    result = {"printers": [{"id": p.id, "name": p.name, "status": p.status} for p in db.query(Printer).order_by(Printer.id)],
+              "opening_hours_enabled": cfg.opening_hours_enabled, "opening_hours": cfg.opening_hours,
+              "timezone": "Asia/Shanghai", "module_key": event.module_key if event else None,
+              "event": {"id": event.id, "name": event.portal_title or event.name, "module_key": event.module_key} if event else None,
+              "signup_url": f"/team-portal?event_id={event.id}" if event else "/team-portal"}
+    if admin:
+        result["events"] = [{"id": e.id, "name": e.portal_title or e.name, "module_key": e.module_key, "is_bambu": is_bambu(e)} for e in sorted(db.query(CompetitionEvent).all(), key=lambda e: (not is_bambu(e), -e.id))]
+    return result
 
 
 @router.get("/config")
@@ -182,32 +211,10 @@ def get_config(db: Session = Depends(get_db)):
     return success_response(public_config(db))
 
 
-@router.post("/teams")
-@limiter.limit("5/minute")
-def register(request: Request, data: Register, db: Session = Depends(get_db)):
-    with transaction(db):
-        cfg = config(db, True)
-        if not cfg.registration_enabled or not cfg.registration_code_hash or not verify_password(data.registration_code, cfg.registration_code_hash):
-            fail(403, "报名邀请码无效或登记尚未开放")
-        if db.query(PrinterTeam).filter_by(module_key=cfg.module_key, captain_student_id=data.captain_student_id).first():
-            fail(409, "该队长已登记，请直接验证身份")
-        team = PrinterTeam(module_key=cfg.module_key, team_name=data.team_name, captain_name=data.captain_name,
-                           captain_student_id=data.captain_student_id, captain_phone_hash=get_password_hash(data.captain_phone),
-                           access_code_hash=get_password_hash(data.access_code))
-        db.add(team)
-        db.flush()
-        result = identity(db, team)
-    return success_response(result, "队伍登记成功")
-
-
 @router.post("/identify")
-@limiter.limit("10/minute")
+@limiter.limit("30/minute")
 def identify(request: Request, data: Identify, db: Session = Depends(get_db)):
-    cfg = config(db)
-    team = db.query(PrinterTeam).filter_by(module_key=cfg.module_key, captain_student_id=data.captain_student_id).first()
-    if not team or not verify_password(data.access_code, team.access_code_hash) or not verify_password(data.captain_phone, team.captain_phone_hash):
-        fail(401, "队长信息或队伍口令不正确")
-    return success_response(identity(db, team))
+    return success_response(identity(db, active_team(db, config(db), sid=data.captain_student_id)))
 
 
 @router.get("/bookings")
@@ -219,29 +226,33 @@ def list_bookings(date: date, db: Session = Depends(get_db)):
 
 @router.get("/my-bookings")
 def my_bookings(team_id: int = Depends(team_auth), db: Session = Depends(get_db)):
-    return success_response([booking_data(b, True) for b in db.query(PrinterBooking).filter_by(team_id=team_id).order_by(PrinterBooking.start_time.desc()).all()])
+    return success_response([booking_data(b, True) for b in db.query(PrinterBooking).filter_by(competition_team_id=team_id).order_by(PrinterBooking.start_time.desc()).all()])
+
+
+def add_booking(db, data, team):
+    cfg = config(db, True)
+    # Revalidate existing team within the transaction; no approval state required.
+    team = active_team(db, cfg, team_id=team.id)
+    p = machine(db, data.printer_id)
+    if p.status != "available":
+        fail(409, "打印机停机维护中")
+    if data.start_time < now() or data.end_time <= data.start_time:
+        fail(400, "预约开始不能早于当前时间，结束必须晚于开始")
+    if cfg.opening_hours_enabled and not any(h["weekday"] == data.start_time.weekday() and h["start"] <= data.start_time.strftime("%H:%M") < h["end"] for h in cfg.opening_hours):
+        fail(400, "预约开始时间须在办公室开放时段内")
+    if db.query(PrinterBooking).filter(PrinterBooking.printer_id == p.id, PrinterBooking.status != "cancelled", PrinterBooking.start_time < data.end_time, PrinterBooking.end_time > data.start_time).with_for_update().first():
+        fail(409, "该打印机此时段已被预约")
+    b = PrinterBooking(printer_id=p.id, competition_team_id=team.id, team_name=team.team_name, captain_name=team.captain_name,
+                       captain_student_id=team.captain_student_id, start_time=data.start_time, end_time=data.end_time, purpose=data.purpose)
+    db.add(b)
+    db.flush()
+    return booking_data(b, True)
 
 
 @router.post("/bookings")
 def create_booking(data: BookingCreate, team_id: int = Depends(team_auth), db: Session = Depends(get_db)):
     with transaction(db):
-        cfg = config(db, True)
-        p = machine(db, data.printer_id)
-        if p.status != "available":
-            fail(409, "打印机停机维护中")
-        if data.start_time < now() or data.end_time <= data.start_time:
-            fail(400, "预约开始不能早于当前时间，结束必须晚于开始")
-        if cfg.opening_hours_enabled and not any(h["weekday"] == data.start_time.weekday() and h["start"] <= data.start_time.strftime("%H:%M") < h["end"] for h in cfg.opening_hours):
-            fail(400, "预约开始时间须在办公室开放时段内")
-        conflict = db.query(PrinterBooking).filter(PrinterBooking.printer_id == p.id, PrinterBooking.status != "cancelled", PrinterBooking.start_time < data.end_time, PrinterBooking.end_time > data.start_time).first()
-        if conflict:
-            fail(409, "该打印机此时段已被预约")
-        team = db.get(PrinterTeam, team_id)
-        b = PrinterBooking(printer_id=p.id, team_id=team.id, team_name=team.team_name, captain_name=team.captain_name,
-                           captain_student_id=team.captain_student_id, start_time=data.start_time, end_time=data.end_time, purpose=data.purpose)
-        db.add(b)
-        db.flush()
-        result = booking_data(b, True)
+        result = add_booking(db, data, db.get(Team, team_id))
     return success_response(result, "预约成功")
 
 
@@ -249,7 +260,7 @@ def owned_booking(db, booking_id, team_id):
     b = db.get(PrinterBooking, booking_id)
     if b is None:
         fail(404, "预约不存在")
-    if b.team_id != team_id:
+    if b.competition_team_id != team_id:
         fail(403, "只能操作本队预约")
     return b
 
@@ -328,7 +339,7 @@ def incident(booking_id: int, data: IncidentCreate, team_id: int = Depends(team_
 
 @router.get("/admin/config")
 def admin_config(admin=Depends(require_admin), db: Session = Depends(get_db)):
-    return success_response(public_config(db))
+    return success_response(public_config(db, True))
 
 
 @router.put("/admin/config")
@@ -339,17 +350,50 @@ def update_config(data: ConfigUpdate, admin=Depends(require_admin), db: Session 
         fail(400, "启用开始限制时至少配置一个开放时段")
     with transaction(db):
         cfg = config(db, True)
-        cfg.module_key = data.module_key
+        if data.event_id is not None or data.module_key is not None:
+            event = db.get(CompetitionEvent, data.event_id) if data.event_id else db.query(CompetitionEvent).filter_by(module_key=data.module_key).first()
+            if event is None:
+                fail(404, "请选择已有赛事")
+            cfg.module_key = event.module_key
         cfg.opening_hours_enabled = data.opening_hours_enabled
         cfg.opening_hours = [h.model_dump() for h in data.opening_hours]
-        if data.registration_code:
-            cfg.registration_code_hash = get_password_hash(data.registration_code)
-            cfg.registration_enabled = True
-        if data.registration_enabled is not None:
-            if data.registration_enabled and not cfg.registration_code_hash:
-                fail(400, "请先设置报名邀请码")
-            cfg.registration_enabled = data.registration_enabled
-    return success_response(public_config(db))
+    return success_response(public_config(db, True))
+
+
+@router.get("/admin/bookings")
+def admin_bookings(date: Optional[date] = None, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    query = db.query(PrinterBooking)
+    if date:
+        start = datetime.combine(date, time.min)
+        query = query.filter(PrinterBooking.start_time < start + timedelta(days=1), PrinterBooking.end_time > start)
+    return success_response([{**booking_data(b, True), "captain_name": b.captain_name, "captain_student_id": b.captain_student_id,
+                              "competition_team_id": b.competition_team_id, "deleted_by": b.deleted_by}
+                             for b in query.order_by(PrinterBooking.start_time.desc()).all()])
+
+
+@router.post("/admin/bookings")
+def admin_create_booking(data: AdminBookingCreate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    with transaction(db):
+        cfg = config(db, True)
+        team = active_team(db, cfg, sid=data.captain_student_id.strip())
+        result = add_booking(db, data, team)
+    return success_response(result, "预约已添加")
+
+
+@router.delete("/admin/bookings/{booking_id}")
+def admin_delete_booking(booking_id: int, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    admin_id = admin.id
+    with transaction(db):
+        config(db, True)
+        b = db.get(PrinterBooking, booking_id)
+        if b is None:
+            fail(404, "预约不存在")
+        machine(db, b.printer_id)
+        if b.status == "in_use":
+            b.checked_out_at = now()
+        b.status, b.deleted_by = "cancelled", admin_id
+        result = booking_data(b, True)
+    return success_response(result, "预约已删除，历史使用及异常记录保留")
 
 
 @router.put("/admin/printers/{printer_id}")

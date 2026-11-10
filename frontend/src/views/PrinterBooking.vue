@@ -18,7 +18,7 @@
           <span class="eyebrow">预约规则</span
           ><strong>3 台设备，各自独立预约</strong>
           <p>
-            时间以北京时间为准。开始时间须符合已启用的办公室开放规则，结束时间可跨越关闭时间。
+            无需审批，同队可同时预约三台设备。时间以北京时间为准，开始时间遵循已启用的开放规则。
           </p>
         </aside>
       </header>
@@ -157,13 +157,15 @@
               <div class="section-heading">
                 <div>
                   <h2>预约打印时间</h2>
-                  <p>先完成队伍核验，再选择设备与开始、结束时间。</p>
+                  <p>
+                    先输入队长学号查询队伍，再选择设备与开始、结束时间。同队可以同时预约不同设备。
+                  </p>
                 </div>
               </div>
               <div v-if="!session" class="state-panel">
-                <p>请先核验队伍身份</p>
+                <p>请先输入队长学号查询参赛队伍</p>
                 <el-button type="primary" @click="tab = 'identity'"
-                  >去核验队伍</el-button
+                  >去查询队伍</el-button
                 >
               </div>
               <template v-else
@@ -249,9 +251,9 @@
                 >
               </div>
               <div v-if="!session" class="state-panel">
-                <p>核验队伍后查看预约记录</p>
+                <p>查询到参赛队伍后查看预约记录</p>
                 <el-button type="primary" @click="tab = 'identity'"
-                  >去核验队伍</el-button
+                  >去查询队伍</el-button
                 >
               </div>
               <div v-else-if="mineLoading" class="state-panel" role="status">
@@ -327,7 +329,7 @@
               <div class="section-heading">
                 <div>
                   <h2>队伍身份</h2>
-                  <p>打印预约使用独立队伍身份，无需登录社团账号。</p>
+                  <p>直接查询已报名的拓竹杯队伍，无需登录社团账号。</p>
                 </div>
               </div>
               <div v-if="session" class="identity-strip">
@@ -335,84 +337,58 @@
                   >已核验：<strong>{{ session.team.team_name }}</strong></span
                 ><el-button @click="logout">退出队伍</el-button>
               </div>
-              <template v-else
-                ><div class="identity-modes">
-                  <el-radio-group v-model="identityMode"
-                    ><el-radio-button value="identify" label="identify"
-                      >已有队伍核验</el-radio-button
-                    ><el-radio-button
-                      v-if="config.registration_enabled"
-                      value="register"
-                      label="register"
-                      >登记新队伍</el-radio-button
-                    ></el-radio-group
-                  >
-                </div>
+              <template v-else>
+                <p class="muted form-tip">
+                  当前赛事：{{
+                    config.event?.name || "尚未绑定拓竹杯赛事"
+                  }}。输入报名时填写的队长学号，查到参赛队伍后即可预约。
+                </p>
                 <el-form
                   label-position="top"
                   size="large"
                   @submit.prevent="identify"
-                  ><div class="form-grid">
-                    <template v-if="identityMode === 'register'"
-                      ><el-form-item label="队伍名称"
-                        ><el-input
-                          v-model="identity.team_name"
-                          maxlength="100" /></el-form-item
-                      ><el-form-item label="队长姓名"
-                        ><el-input
-                          v-model="identity.captain_name"
-                          maxlength="50" /></el-form-item></template
-                    ><el-form-item label="队长学号"
-                      ><el-input
-                        v-model="identity.captain_student_id"
-                        autocomplete="username"
-                        maxlength="30" /></el-form-item
-                    ><el-form-item label="队长手机号"
-                      ><el-input
-                        v-model="identity.captain_phone"
-                        inputmode="tel"
-                        maxlength="20" /></el-form-item
-                    ><el-form-item
-                      :label="
-                        identityMode === 'register'
-                          ? '设置队伍口令（8–72个字符）'
-                          : '队伍口令'
-                      "
-                      ><el-input
-                        v-model="identity.access_code"
-                        type="password"
-                        show-password
-                        autocomplete="current-password"
-                        maxlength="72" /></el-form-item
-                    ><el-form-item
-                      v-if="identityMode === 'register'"
-                      label="管理员提供的报名邀请码"
-                      ><el-input
-                        v-model="identity.registration_code"
-                        type="password"
-                        show-password
-                        autocomplete="off"
-                    /></el-form-item>
-                  </div>
-                  <p class="muted form-tip">
-                    请妥善保管队伍口令，仅与本队成员共享。核验信息只保存在当前浏览器会话中。
-                  </p>
+                >
+                  <el-form-item label="队长学号">
+                    <el-input
+                      v-model="identity.captain_student_id"
+                      autocomplete="username"
+                      maxlength="30"
+                      placeholder="请输入已报名队伍的队长学号"
+                    />
+                  </el-form-item>
                   <el-button
                     type="primary"
                     native-type="submit"
                     :loading="submitting"
-                    >{{
-                      identityMode === "register" ? "登记并核验" : "核验队伍"
-                    }}</el-button
-                  ></el-form
-                >
+                    :disabled="!config.event"
+                    >查询队伍</el-button
+                  >
+                </el-form>
+                <el-alert
+                  v-if="identityError"
+                  :title="identityError"
+                  type="warning"
+                  :closable="false"
+                  show-icon
+                  class="identity-error"
+                />
+                <div class="signup-link">
+                  <p class="muted">
+                    还没有参赛队伍？先完成对应赛事的组队报名，再返回查询。
+                  </p>
+                  <router-link :to="signupUrl"
+                    ><el-button plain type="primary"
+                      >前往{{ config.event?.name || "赛事" }}报名</el-button
+                    ></router-link
+                  >
+                </div>
               </template>
             </section>
           </template>
         </div>
       </section>
       <footer class="portal-footer">
-        <router-link to="/team-portal">赛事组队入口</router-link><span>·</span
+        <router-link :to="signupUrl">对应赛事报名</router-link><span>·</span
         ><router-link to="/apply">招新报名</router-link><span>·</span
         ><router-link to="/admin/printers">管理员入口</router-link>
       </footer>
@@ -478,9 +454,9 @@ function shanghaiDate() {
   }).format(new Date());
 }
 const selectedDate = ref(shanghaiDate()),
-  session = ref(null),
-  identityMode = ref("identify");
+  session = ref(null);
 try {
+  sessionStorage.removeItem("printer-booking-session");
   const cached = JSON.parse(
     sessionStorage.getItem(printerSessionKey) || "null",
   );
@@ -489,14 +465,15 @@ try {
 } catch {
   sessionStorage.removeItem(printerSessionKey);
 }
-const identity = reactive({
-  team_name: "",
-  captain_name: "",
-  captain_student_id: "",
-  captain_phone: "",
-  access_code: "",
-  registration_code: "",
-});
+const identity = reactive({ captain_student_id: "" });
+const identityError = ref("");
+const signupUrl = computed(
+  () =>
+    config.value.signup_url ||
+    (config.value.event?.id
+      ? `/team-portal?event_id=${config.value.event.id}`
+      : "/team-portal"),
+);
 const form = reactive({
   printer_id: null,
   start_time: "",
@@ -569,41 +546,22 @@ function logout() {
   sessionStorage.removeItem(printerSessionKey);
 }
 async function identify() {
-  if (
-    !identity.captain_student_id.trim() ||
-    !identity.captain_phone.trim() ||
-    !identity.access_code
-  )
-    return ElMessage.warning("请填写队长学号、手机号和队伍口令");
-  if (
-    identityMode.value === "register" &&
-    (!identity.team_name.trim() ||
-      !identity.captain_name.trim() ||
-      identity.access_code.length < 8 ||
-      !identity.registration_code)
-  )
-    return ElMessage.warning(
-      "请填写完整队伍信息、至少8个字符的口令和报名邀请码",
-    );
+  if (!identity.captain_student_id.trim())
+    return ElMessage.warning("请输入队长学号");
   submitting.value = true;
+  identityError.value = "";
   try {
-    const data = await (identityMode.value === "register"
-      ? printerApi.register({ ...identity })
-      : printerApi.identify({
-          captain_student_id: identity.captain_student_id.trim(),
-          captain_phone: identity.captain_phone.trim(),
-          access_code: identity.access_code,
-        }));
+    const data = await printerApi.identify({
+      captain_student_id: identity.captain_student_id.trim(),
+    });
     session.value = { token: data.token, team: data.team };
     sessionStorage.setItem(printerSessionKey, JSON.stringify(session.value));
-    identity.access_code = "";
-    identity.registration_code = "";
     mine.value = list(data.bookings);
     await loadMine();
-    ElMessage.success("队伍核验成功");
-    tab.value = "mine";
+    ElMessage.success("已查到参赛队伍");
+    tab.value = form.printer_id ? "reserve" : "mine";
   } catch (e) {
-    fail(e);
+    identityError.value = e.message;
   } finally {
     submitting.value = false;
   }
@@ -612,8 +570,12 @@ function choosePrinter(id) {
   form.printer_id = id;
   if (!form.start_time || form.start_time.slice(0, 10) !== selectedDate.value) {
     const desired = new Date(`${selectedDate.value}T09:00:00+08:00`).getTime();
-    const start = Math.max(desired, Math.ceil((Date.now() + 60000) / 1800000) * 1800000);
-    const beijingInput = time => new Date(time + 8 * 3600000).toISOString().slice(0, 19);
+    const start = Math.max(
+      desired,
+      Math.ceil((Date.now() + 60000) / 1800000) * 1800000,
+    );
+    const beijingInput = (time) =>
+      new Date(time + 8 * 3600000).toISOString().slice(0, 19);
     form.start_time = beijingInput(start);
     form.end_time = beijingInput(start + 2 * 3600000);
   }
@@ -791,6 +753,15 @@ onBeforeUnmount(() => window.clearInterval(clock));
 </script>
 
 <style scoped>
+.signup-link {
+  margin-top: 24px;
+}
+.signup-link .el-button {
+  margin-top: 10px;
+}
+.identity-error {
+  margin-top: 18px;
+}
 .printer-page {
   min-height: 100vh;
   padding: 32px 24px;

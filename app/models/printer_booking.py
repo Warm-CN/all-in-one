@@ -1,6 +1,10 @@
-"""Printer reservations use independent tables; stored datetimes are naive Asia/Shanghai."""
+"""Printer reservations reference the existing competition teams.
+
+Legacy printer_teams tables remain untouched but are no longer mapped or written.
+Datetimes are stored as naive Asia/Shanghai values.
+"""
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON, ForeignKey, Index, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON, ForeignKey, Index
 from app.models.base import BaseModel
 
 
@@ -24,28 +28,17 @@ class Printer(PrinterBase):
 class PrinterConfig(PrinterBase):
     __tablename__ = "printer_configs"
     __table_args__ = {"mysql_engine": "InnoDB"}
-    module_key = Column(String(80), nullable=False, default="bambu_cup")
+    module_key = Column(String(80), nullable=False, default="")
     opening_hours_enabled = Column(Boolean, nullable=False, default=False)
     opening_hours = Column(JSON, nullable=False, default=list)
-    registration_code_hash = Column(String(255), nullable=True)
-    registration_enabled = Column(Boolean, nullable=False, default=False)
-
-
-class PrinterTeam(PrinterBase):
-    __tablename__ = "printer_teams"
-    module_key = Column(String(80), nullable=False)
-    team_name = Column(String(100), nullable=False)
-    captain_name = Column(String(50), nullable=False)
-    captain_student_id = Column(String(30), nullable=False)
-    captain_phone_hash = Column(String(255), nullable=False)
-    access_code_hash = Column(String(255), nullable=False)
-    __table_args__ = (UniqueConstraint("module_key", "captain_student_id", name="uq_printer_team_captain"), {"mysql_engine": "InnoDB"})
 
 
 class PrinterBooking(PrinterBase):
     __tablename__ = "printer_bookings"
     printer_id = Column(Integer, ForeignKey("printers.id"), nullable=False)
-    team_id = Column(Integer, ForeignKey("printer_teams.id"), nullable=False)
+    # Retained only to preserve old database rows; never used for new identity.
+    team_id = Column(Integer, nullable=True)
+    competition_team_id = Column(Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True)
     team_name = Column(String(100), nullable=False)
     captain_name = Column(String(50), nullable=False)
     captain_student_id = Column(String(30), nullable=False)
@@ -57,6 +50,7 @@ class PrinterBooking(PrinterBase):
     checked_out_at = Column(DateTime, nullable=True)
     previous_booking_id = Column(Integer, ForeignKey("printer_bookings.id"), nullable=True)
     previous_team_name = Column(String(100), nullable=True)
+    deleted_by = Column(Integer, nullable=True)
     __table_args__ = (Index("ix_printer_booking_overlap", "printer_id", "status", "start_time", "end_time"), {"mysql_engine": "InnoDB"})
 
 
@@ -75,13 +69,13 @@ class PrinterIncident(PrinterBase):
     resolved_by = Column(Integer, nullable=True)
 
 
-PRINTER_TABLES = [Printer.__table__, PrinterConfig.__table__, PrinterTeam.__table__, PrinterBooking.__table__, PrinterIncident.__table__]
+PRINTER_TABLES = [Printer.__table__, PrinterConfig.__table__, PrinterBooking.__table__, PrinterIncident.__table__]
 
 
 def initialize_printers(db):
-    """Run once before serving requests, safe to repeat; never overwrites configuration."""
+    """Seed devices only; never creates competition events or teams."""
     if not db.get(PrinterConfig, 1):
-        db.add(PrinterConfig(id=1, module_key="bambu_cup", opening_hours_enabled=False,
+        db.add(PrinterConfig(id=1, module_key="", opening_hours_enabled=False,
                              opening_hours=[{"weekday": i, "start": "09:00", "end": "18:00"} for i in range(7)]))
     for i in range(1, 4):
         if not db.get(Printer, i):

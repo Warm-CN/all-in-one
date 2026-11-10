@@ -13,7 +13,7 @@ const client = axios.create({
   baseURL: printerApiBase(import.meta.env.VITE_API_BASE_URL),
   timeout: 15000,
 });
-export const printerSessionKey = "printer-booking-session";
+export const printerSessionKey = "printer-booking-event-session-v2";
 const auth = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
 async function call(method, path, data, token, params) {
   try {
@@ -44,7 +44,19 @@ async function call(method, path, data, token, params) {
 export const printerApi = {
   config: () => call("get", "/config"),
   identify: (data) => call("post", "/identify", data),
-  register: (data) => call("post", "/teams", data),
+  adminBookings: (date) =>
+    call("get", "/admin/bookings", undefined, localStorage.getItem("token"), {
+      date,
+    }),
+  addAdminBooking: (data) =>
+    call("post", "/admin/bookings", data, localStorage.getItem("token")),
+  deleteAdminBooking: (id) =>
+    call(
+      "delete",
+      `/admin/bookings/${id}`,
+      undefined,
+      localStorage.getItem("token"),
+    ),
   bookings: (date) => call("get", "/bookings", undefined, undefined, { date }),
   mine: (token) => call("get", "/my-bookings", undefined, token),
   reserve: (data, token) => call("post", "/bookings", data, token),

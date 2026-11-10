@@ -54,13 +54,10 @@
         </p>
       </section>
       <section class="admin-card">
-        <h2>预约与登记设置</h2>
+        <h2>绑定赛事与预约设置</h2>
         <el-form label-position="top" @submit.prevent="save"
           ><div class="setting-toggles">
-            <el-form-item label="开放新队伍登记"
-              ><el-switch
-                v-model="settings.registration_enabled" /></el-form-item
-            ><el-form-item label="限制预约开始时间"
+            <el-form-item label="限制预约开始时间"
               ><el-switch v-model="settings.opening_hours_enabled"
             /></el-form-item>
           </div>
@@ -112,20 +109,20 @@
             >
           </div>
           <div class="config-grid">
-            <el-form-item label="赛事模块标识"
-              ><el-input
+            <el-form-item label="绑定拓竹杯赛事">
+              <el-select
                 v-model="settings.module_key"
-                placeholder="如 bambu_cup"
-                maxlength="100" /></el-form-item
-            ><el-form-item label="更新报名邀请码（留空则保留原值）"
-              ><el-input
-                v-model="registrationCode"
-                type="password"
-                show-password
-                autocomplete="new-password"
-                placeholder="新队伍登记时填写"
-                maxlength="72"
-            /></el-form-item>
+                placeholder="选择现有赛事"
+                filterable
+              >
+                <el-option
+                  v-for="event in config.events || []"
+                  :key="event.id"
+                  :label="event.name"
+                  :value="event.module_key"
+                />
+              </el-select>
+            </el-form-item>
           </div>
           <el-button
             type="primary"
@@ -134,6 +131,116 @@
             >保存设置</el-button
           ></el-form
         >
+      </section>
+      <section class="admin-card">
+        <div class="incident-heading">
+          <h2>当日预约管理</h2>
+          <el-date-picker
+            v-model="bookingDate"
+            type="date"
+            value-format="YYYY-MM-DD"
+            :clearable="false"
+            aria-label="管理预约日期"
+            @change="loadBookings"
+          />
+        </div>
+        <p class="hint">
+          管理员可以直接添加或删除预约，无需审批。同队可以同时预约不同设备；同机时间不能交叠。删除后释放时段，历史记录保留。
+        </p>
+        <el-form
+          class="add-booking-form"
+          label-position="top"
+          @submit.prevent="addBooking"
+        >
+          <div class="config-grid">
+            <el-form-item label="队长学号"
+              ><el-input
+                v-model="newBooking.captain_student_id"
+                placeholder="已报名队伍的队长学号"
+                maxlength="30"
+            /></el-form-item>
+            <el-form-item label="打印机"
+              ><el-select v-model="newBooking.printer_id" placeholder="选择设备"
+                ><el-option
+                  v-for="printer in config.printers"
+                  :key="printer.id"
+                  :label="printer.name"
+                  :value="printer.id"
+                  :disabled="printer.status !== 'available'" /></el-select
+            ></el-form-item>
+            <el-form-item label="开始时间（北京时间）"
+              ><el-date-picker
+                v-model="newBooking.start_time"
+                type="datetime"
+                value-format="YYYY-MM-DDTHH:mm:ss"
+                format="YYYY-MM-DD HH:mm"
+                placeholder="选择开始时间"
+            /></el-form-item>
+            <el-form-item label="结束时间"
+              ><el-date-picker
+                v-model="newBooking.end_time"
+                type="datetime"
+                value-format="YYYY-MM-DDTHH:mm:ss"
+                format="YYYY-MM-DD HH:mm"
+                placeholder="选择结束时间"
+            /></el-form-item>
+            <el-form-item label="打印用途"
+              ><el-input
+                v-model="newBooking.purpose"
+                placeholder="填写用途"
+                maxlength="500"
+            /></el-form-item>
+          </div>
+          <el-button
+            type="primary"
+            native-type="submit"
+            :loading="busy === 'add-booking'"
+            >直接添加预约</el-button
+          >
+        </el-form>
+        <div v-if="bookingsLoading" class="loading-state">正在加载预约…</div>
+        <el-alert
+          v-else-if="bookingsError"
+          :title="bookingsError"
+          type="error"
+          :closable="false"
+          ><template #default
+            ><el-button text @click="loadBookings">重试</el-button></template
+          ></el-alert
+        >
+        <el-empty v-else-if="!bookings.length" description="当日暂无预约" />
+        <div v-else class="admin-bookings">
+          <article v-for="booking in bookings" :key="booking.id">
+            <div class="incident-heading">
+              <h3>
+                {{ printerName(booking.printer_id) }} · {{ booking.team_name }}
+              </h3>
+              <el-tag
+                :type="booking.status === 'cancelled' ? 'info' : 'primary'"
+                >{{ bookingStatus(booking) }}</el-tag
+              >
+            </div>
+            <p>
+              {{ formatTime(booking.start_time) }} →
+              {{ formatTime(booking.end_time) }}
+            </p>
+            <p class="hint">
+              队长：{{ booking.captain_name || "—" }} · 学号：{{
+                booking.captain_student_id || "—"
+              }}<template v-if="booking.purpose">
+                · 用途：{{ booking.purpose }}</template
+              >
+            </p>
+            <el-button
+              v-if="booking.status !== 'cancelled'"
+              type="danger"
+              plain
+              :loading="busy === `delete-${booking.id}`"
+              @click="deleteBooking(booking)"
+              >删除预约</el-button
+            >
+          </article>
+        </div>
       </section>
       <section class="admin-card">
         <div class="incident-heading">
@@ -208,14 +315,108 @@ const loading = ref(true),
   error = ref(""),
   config = ref(null),
   incidents = ref([]),
-  busy = ref(""),
-  registrationCode = ref("");
+  busy = ref("");
 const settings = reactive({
-  registration_enabled: false,
   opening_hours_enabled: false,
   opening_hours: [],
   module_key: "bambu_cup",
 });
+const bookingDate = ref(
+  new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date()),
+);
+const bookings = ref([]),
+  bookingsLoading = ref(false),
+  bookingsError = ref("");
+const newBooking = reactive({
+  captain_student_id: "",
+  printer_id: null,
+  start_time: "",
+  end_time: "",
+  purpose: "",
+});
+let bookingsRequest = 0;
+async function loadBookings() {
+  const request = ++bookingsRequest;
+  bookingsLoading.value = true;
+  bookingsError.value = "";
+  try {
+    const data = await printerApi.adminBookings(bookingDate.value);
+    if (request === bookingsRequest)
+      bookings.value = Array.isArray(data) ? data : [];
+  } catch (e) {
+    if (request === bookingsRequest) {
+      bookingsError.value = e.message;
+      bookings.value = [];
+    }
+  } finally {
+    if (request === bookingsRequest) bookingsLoading.value = false;
+  }
+}
+async function addBooking() {
+  if (
+    !newBooking.captain_student_id.trim() ||
+    !newBooking.printer_id ||
+    !newBooking.start_time ||
+    !newBooking.end_time ||
+    !newBooking.purpose.trim()
+  )
+    return ElMessage.warning("请填写队长学号、设备、起止时间与用途");
+  if (newBooking.start_time >= newBooking.end_time)
+    return ElMessage.warning("结束时间必须晚于开始时间");
+  busy.value = "add-booking";
+  try {
+    await printerApi.addAdminBooking({
+      ...newBooking,
+      captain_student_id: newBooking.captain_student_id.trim(),
+      start_time: `${newBooking.start_time}+08:00`,
+      end_time: `${newBooking.end_time}+08:00`,
+    });
+    bookingDate.value = newBooking.start_time.slice(0, 10);
+    ElMessage.success("预约已添加");
+    await loadBookings();
+  } catch (e) {
+    ElMessage.error(e.message);
+  } finally {
+    busy.value = "";
+  }
+}
+async function deleteBooking(booking) {
+  try {
+    await ElMessageBox.confirm(
+      `确认删除 ${booking.team_name} 在 ${printerName(booking.printer_id)} 的预约？删除后释放时段，使用与异常历史仍保留。`,
+      "删除预约",
+      {
+        type: "warning",
+        confirmButtonText: "确认删除",
+        cancelButtonText: "返回",
+      },
+    );
+  } catch {
+    return;
+  }
+  busy.value = `delete-${booking.id}`;
+  try {
+    await printerApi.deleteAdminBooking(booking.id);
+    ElMessage.success("预约已删除，历史已保留");
+    await loadBookings();
+  } catch (e) {
+    ElMessage.error(e.message);
+  } finally {
+    busy.value = "";
+  }
+}
+const bookingStatus = (b) =>
+  b.status === "cancelled"
+    ? b.deleted_by
+      ? "管理员已删除"
+      : "已取消"
+    : { reserved: "待使用", in_use: "使用中", completed: "已归还" }[b.status] ||
+      b.status;
 const weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 async function load() {
   loading.value = true;
@@ -223,12 +424,11 @@ async function load() {
   try {
     config.value = await printerApi.adminConfig();
     Object.assign(settings, {
-      registration_enabled: config.value.registration_enabled,
       opening_hours_enabled: config.value.opening_hours_enabled,
       opening_hours: (config.value.opening_hours || []).map((h) => ({ ...h })),
       module_key: config.value.module_key,
     });
-    await loadIncidents();
+    await Promise.all([loadIncidents(), loadBookings()]);
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -271,8 +471,7 @@ async function changeStatus(p) {
   }
 }
 async function save() {
-  if (!settings.module_key?.trim())
-    return ElMessage.warning("请填写赛事模块标识");
+  if (!settings.module_key?.trim()) return ElMessage.warning("请选择绑定赛事");
   if (settings.opening_hours_enabled && !settings.opening_hours.length)
     return ElMessage.warning("启用开始时间限制时，请至少配置一个开放时段");
   if (
@@ -281,17 +480,10 @@ async function save() {
     return ElMessage.warning(
       "每个开放时段的结束时间须晚于开始时间；跨夜请拆成两天配置",
     );
-  if (registrationCode.value && registrationCode.value.length < 8)
-    return ElMessage.warning("报名邀请码至少需要8个字符");
   busy.value = "config";
   try {
-    await printerApi.saveConfig({
-      ...settings,
-      ...(registrationCode.value
-        ? { registration_code: registrationCode.value }
-        : {}),
-    });
-    registrationCode.value = "";
+    await printerApi.saveConfig({ ...settings });
+    config.value = await printerApi.adminConfig();
     ElMessage.success("设置已保存");
   } catch (e) {
     ElMessage.error(e.message);
@@ -335,6 +527,28 @@ onMounted(load);
 </script>
 
 <style scoped>
+.add-booking-form {
+  margin-top: 20px;
+}
+.admin-bookings {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+.admin-bookings article {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 18px;
+  background: white;
+}
+.admin-bookings article > .el-button {
+  margin-top: 12px;
+}
+.config-grid :deep(.el-select),
+.config-grid :deep(.el-date-editor) {
+  width: 100%;
+}
+
 .printer-admin {
   max-width: 1180px;
   margin: auto;

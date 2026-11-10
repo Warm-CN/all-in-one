@@ -27,7 +27,10 @@ from app.api.v1 import printers as api
 from app.core.database import Base, get_db
 from app.core.dependencies import require_admin
 from app.core.limiter import limiter
-from app.models.printer_booking import PRINTER_TABLES, PrinterConfig, PrinterBooking, PrinterTeam, Printer, initialize_printers
+from app.models.printer_booking import PRINTER_TABLES, PrinterConfig, PrinterBooking, PrinterIncident, Printer, initialize_printers
+from app.models.team import Team, TeamStatus
+from app.models.team_member import TeamMember
+from app.models.competition_event import CompetitionEvent
 
 
 class PrinterTests(unittest.TestCase):
@@ -43,15 +46,19 @@ class PrinterTests(unittest.TestCase):
         cls.tmp.cleanup()
 
     def setUp(self):
-        Base.metadata.drop_all(self.engine, tables=list(reversed(PRINTER_TABLES)))
-        Base.metadata.create_all(self.engine, tables=PRINTER_TABLES)
+        if self.engine.dialect.name == "sqlite":
+            with self.engine.connect() as conn:
+                conn.execute(text("PRAGMA foreign_keys=OFF"))
+        Base.metadata.drop_all(self.engine)
+        Base.metadata.create_all(self.engine)
         with self.Session() as db:
             initialize_printers(db)
-            cfg = db.get(PrinterConfig, 1)
-            cfg.registration_code_hash = api.get_password_hash("invite-test-2026")
-            cfg.registration_enabled = True
+            db.add(CompetitionEvent(id=1, name="拓竹杯2026", cup_type="wireless", module_key="bambu_cup", is_current=1))
+            db.add(CompetitionEvent(id=2, name="无线杯", cup_type="wireless", module_key="wireless_cup", is_current=1))
             for i in (1, 2):
-                db.add(PrinterTeam(id=i, module_key="bambu_cup", team_name=f"Team {i}", captain_name=f"Captain {i}", captain_student_id=str(i), captain_phone_hash=api.get_password_hash("13800000000"), access_code_hash=api.get_password_hash("private-team-code")))
+                db.add(Team(id=i, module_key="bambu_cup", team_name=f"Team {i}", captain_name=f"Captain {i}", captain_student_id=str(i), captain_phone="13800000000", status=TeamStatus.SUBMITTED))
+            db.add(Team(id=3, module_key="wireless_cup", team_name="Other event", captain_name="Other", captain_student_id="3", captain_phone="13800000000"))
+            db.add(TeamMember(team_id=1, name="Member", student_id="member1", phone="13800000000"))
             db.commit()
         self.app = FastAPI()
         self.app.state.limiter = limiter
@@ -62,7 +69,7 @@ class PrinterTests(unittest.TestCase):
                 yield db
         self.app.dependency_overrides[get_db] = db_dep
         self.client = TestClient(self.app)
-        self.token = api.create_access_token({"sub": "0", "scope": "printer_team", "printer_team_id": 1})
+        self.token = api.create_access_token({"sub": "0", "scope": "printer_team", "competition_team_id": 1, "module_key": "bambu_cup", "captain_student_id": "1"})
         self.headers = {"Authorization": "Bearer " + self.token}
         self.future = api.now().replace(microsecond=0) + timedelta(days=2)
 
@@ -115,30 +122,52 @@ class PrinterTests(unittest.TestCase):
         r = self.post("/bookings", {"printer_id": 2, "start_time": day.strftime("%Y-%m-%dT01:00:00Z"), "end_time": day.strftime("%Y-%m-%dT02:00:00Z")})
         self.assertEqual(r.status_code, 200)
 
-    def test_registration_identification_password_unicode_and_scope(self):
-        data = {"captain_student_id": "new1", "captain_phone": "13800000000", "access_code": "中文口令测试" * 8, "team_name": "新队伍", "captain_name": "队长", "registration_code": "invite-test-2026"}
-        r = self.post("/teams", data)
+    def test_existing_captain_identify_scope_and_event(self):
+        r = self.post("/identify", {"captain_student_id": "1"})
         self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(self.post("/teams", data).status_code, 409)
-        auth = {k: data[k] for k in ("captain_student_id", "captain_phone", "access_code")}
-        self.assertEqual(self.post("/identify", auth).status_code, 200)
-        auth["access_code"] += "错"
-        self.assertEqual(self.post("/identify", auth).status_code, 401)
-        auth["access_code"] = data["access_code"]
-        auth["captain_phone"] = "13900000000"
-        self.assertEqual(self.post("/identify", auth).status_code, 401)
+        self.assertEqual(r.json()["data"]["team"]["id"], 1)
+        self.assertEqual(self.post("/identify", {"captain_student_id": "member1"}).status_code, 404)
+        self.assertEqual(self.post("/identify", {"captain_student_id": "3"}).status_code, 404)
+        self.assertEqual(self.post("/teams", {}).status_code, 404)
         self.assertEqual(self.client.get("/api/v1/printers/my-bookings").status_code, 401)
-        user_token = api.create_access_token({"sub": "1"})
-        self.assertEqual(self.client.get("/api/v1/printers/my-bookings", headers={"Authorization": "Bearer " + user_token}).status_code, 401)
+        old_token = api.create_access_token({"sub": "0", "scope": "printer_team", "printer_team_id": 1})
+        self.assertEqual(self.client.get("/api/v1/printers/my-bookings", headers={"Authorization": "Bearer " + old_token}).status_code, 401)
         self.assertEqual(self.client.get("/api/v1/printers/admin/config", headers=self.headers).status_code, 401)
         with self.Session() as db:
-            t = db.query(PrinterTeam).filter_by(captain_student_id="new1").one()
-            self.assertNotIn(data["access_code"], t.access_code_hash)
-            self.assertNotIn(data["captain_phone"], t.captain_phone_hash)
+            db.get(Team, 1).delete_requested = True
+            db.commit()
+        self.assertEqual(self.reserve().status_code, 404)
+
+    def test_same_team_three_machines_and_admin_add_delete(self):
+        for i in (1, 2, 3):
+            self.assertEqual(self.reserve(printer_id=i).status_code, 200)
+        self.assertIn(self.client.get("/api/v1/printers/admin/bookings").status_code, (401, 403))
+        self.admin()
+        payload = {"captain_student_id": "2", "printer_id": 1, "start_time": self.future.isoformat(), "end_time": (self.future + timedelta(hours=1)).isoformat()}
+        self.assertEqual(self.post("/admin/bookings", payload).status_code, 409)
+        rows = self.client.get("/api/v1/printers/admin/bookings").json()["data"]
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(self.client.delete(f"/api/v1/printers/admin/bookings/{rows[0]['id']}").status_code, 200)
+        payload["printer_id"] = rows[0]["printer_id"]
+        self.assertEqual(self.post("/admin/bookings", payload).status_code, 200)
+        with self.Session() as db:
+            self.assertEqual(db.get(PrinterBooking, rows[0]["id"]).deleted_by, 99)
+
+    def test_auto_event_selection_safe_and_admin_binding(self):
+        with self.Session() as db:
+            db.get(CompetitionEvent, 1).name = "其他赛事"
+            db.commit()
+        cfg = self.client.get("/api/v1/printers/config").json()["data"]
+        self.assertIsNone(cfg["event"])
+        self.assertEqual(self.post("/identify", {"captain_student_id": "1"}).status_code, 409)
+        self.admin()
+        response = self.client.put("/api/v1/printers/admin/config", json={"event_id": 1})
+        self.assertEqual(response.json()["data"]["event"]["id"], 1)
+        self.assertEqual(self.post("/identify", {"captain_student_id": "1"}).status_code, 200)
 
     def test_cancel_authorization_and_reuse(self):
         b = self.reserve().json()["data"]
-        other = {"Authorization": "Bearer " + api.create_access_token({"sub": "0", "scope": "printer_team", "printer_team_id": 2})}
+        other = {"Authorization": "Bearer " + api.create_access_token({"sub": "0", "scope": "printer_team", "competition_team_id": 2, "module_key": "bambu_cup", "captain_student_id": "2"})}
         self.assertEqual(self.post(f'/bookings/{b["id"]}/cancel', headers=other).status_code, 403)
         self.assertEqual(self.post(f'/bookings/{b["id"]}/cancel').status_code, 200)
         self.assertEqual(self.reserve().status_code, 200)
@@ -147,10 +176,10 @@ class PrinterTests(unittest.TestCase):
     def seed_use(self):
         t = api.now().replace(microsecond=0)
         with self.Session() as db:
-            prev = PrinterBooking(printer_id=1, team_id=2, team_name="Previous actual team", captain_name="Previous captain", captain_student_id="2", start_time=t-timedelta(hours=4), end_time=t-timedelta(hours=3), status="completed", checked_in_at=t-timedelta(hours=4), checked_out_at=t-timedelta(hours=3))
-            unused = PrinterBooking(printer_id=1, team_id=2, team_name="Never checked in", captain_name="Unused", captain_student_id="2", start_time=t-timedelta(hours=2), end_time=t-timedelta(hours=1), status="reserved")
-            current = PrinterBooking(printer_id=1, team_id=1, team_name="Team 1", captain_name="Captain 1", captain_student_id="1", start_time=t-timedelta(minutes=1), end_time=t+timedelta(minutes=30), status="reserved")
-            future = PrinterBooking(printer_id=1, team_id=2, team_name="Future team", captain_name="Future", captain_student_id="2", start_time=t+timedelta(hours=1), end_time=t+timedelta(hours=2), status="reserved")
+            prev = PrinterBooking(printer_id=1, competition_team_id=2, team_name="Previous actual team", captain_name="Previous captain", captain_student_id="2", start_time=t-timedelta(hours=4), end_time=t-timedelta(hours=3), status="completed", checked_in_at=t-timedelta(hours=4), checked_out_at=t-timedelta(hours=3))
+            unused = PrinterBooking(printer_id=1, competition_team_id=2, team_name="Never checked in", captain_name="Unused", captain_student_id="2", start_time=t-timedelta(hours=2), end_time=t-timedelta(hours=1), status="reserved")
+            current = PrinterBooking(printer_id=1, competition_team_id=1, team_name="Team 1", captain_name="Captain 1", captain_student_id="1", start_time=t-timedelta(minutes=1), end_time=t+timedelta(minutes=30), status="reserved")
+            future = PrinterBooking(printer_id=1, competition_team_id=2, team_name="Future team", captain_name="Future", captain_student_id="2", start_time=t+timedelta(hours=1), end_time=t+timedelta(hours=2), status="reserved")
             db.add_all([prev, unused, current, future])
             db.commit()
             return prev.id, current.id
@@ -184,6 +213,40 @@ class PrinterTests(unittest.TestCase):
             db.commit()
         r = self.post(f"/bookings/{current}/incidents", {"description": "再次检查发现耗材缺失"})
         self.assertIsNone(r.json()["data"]["previous_booking_id"])
+
+    def test_legacy_migration_preserves_unmatched_and_incidents(self):
+        from scripts.init_printers import migrate_printers
+        # Construct the previous release's schema with a distinct legacy id=1.
+        with self.engine.begin() as conn:
+            conn.execute(text("DROP TABLE printer_incidents"))
+            conn.execute(text("DROP TABLE printer_bookings"))
+            conn.execute(text("CREATE TABLE printer_teams (id INTEGER PRIMARY KEY, module_key VARCHAR(80), captain_student_id VARCHAR(30))"))
+            conn.execute(text("INSERT INTO printer_teams VALUES (1, 'bambu_cup', '2'), (2, 'bambu_cup', 'not-found')"))
+            booking_ddl = "CREATE TABLE printer_bookings (id INTEGER PRIMARY KEY, printer_id INTEGER NOT NULL, team_id INTEGER NOT NULL, team_name VARCHAR(100) NOT NULL, captain_name VARCHAR(50) NOT NULL, captain_student_id VARCHAR(30) NOT NULL, start_time DATETIME NOT NULL, end_time DATETIME NOT NULL, purpose VARCHAR(500), status VARCHAR(20), checked_in_at DATETIME, checked_out_at DATETIME, previous_booking_id INTEGER, previous_team_name VARCHAR(100), created_at DATETIME, updated_at DATETIME, FOREIGN KEY (team_id) REFERENCES printer_teams(id), FOREIGN KEY (previous_booking_id) REFERENCES printer_bookings(id))"
+            if self.engine.dialect.name == "mysql":
+                booking_ddl = booking_ddl.replace("id INTEGER PRIMARY KEY", "id INTEGER PRIMARY KEY AUTO_INCREMENT", 1)
+            conn.execute(text(booking_ddl))
+            conn.execute(text("INSERT INTO printer_bookings(id,printer_id,team_id,team_name,captain_name,captain_student_id,start_time,end_time,purpose,status,created_at,updated_at) VALUES (1,1,1,'legacy matched','captain','2','2026-01-01 09:00:00','2026-01-01 10:00:00','','completed','2026-01-01 09:00:00','2026-01-01 10:00:00'),(2,2,2,'legacy unmatched','captain','not-found','2026-01-01 09:00:00','2026-01-01 10:00:00','','completed','2026-01-01 09:00:00','2026-01-01 10:00:00')"))
+        # Preserve actual incident and self-reference foreign keys during migration.
+        PrinterIncident.__table__.create(self.engine)
+        with self.engine.begin() as conn:
+            conn.execute(text("UPDATE printer_bookings SET previous_booking_id=1 WHERE id=2"))
+            conn.execute(text("INSERT INTO printer_incidents(id,printer_id,booking_id,reporter_team_name,previous_booking_id,responsible_team_name,description,created_at,updated_at) VALUES (1,2,2,'legacy unmatched',1,'legacy matched','historical incident','2026-01-01 09:00:00','2026-01-01 10:00:00')"))
+        migrate_printers(self.engine)
+        migrate_printers(self.engine)
+        with self.Session() as db:
+            self.assertEqual(db.get(PrinterBooking, 1).competition_team_id, 2)
+            self.assertIsNone(db.get(PrinterBooking, 2).competition_team_id)
+            self.assertEqual(db.get(PrinterBooking, 2).team_name, "legacy unmatched")
+            self.assertEqual(db.get(PrinterBooking, 2).previous_booking_id, 1)
+            self.assertEqual(db.get(PrinterIncident, 1).responsible_team_name, "legacy matched")
+        self.assertEqual(self.reserve().status_code, 200)
+        with self.engine.begin() as conn:
+            if self.engine.dialect.name == "mysql":
+                conn.execute(text("SET FOREIGN_KEY_CHECKS=0"))
+            conn.execute(text("DROP TABLE printer_teams"))
+            if self.engine.dialect.name == "mysql":
+                conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
 
     def test_simultaneous_use_prevented_and_early_checkin(self):
         prev, current = self.seed_use()
