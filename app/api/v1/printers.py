@@ -31,8 +31,13 @@ def now():
     return datetime.now(TZ).replace(tzinfo=None)
 
 
+def beijing_time(value):
+    """Normalize aware instants to the database's naive Beijing-time convention."""
+    return value.astimezone(TZ).replace(tzinfo=None) if value.tzinfo else value
+
+
 def iso(value):
-    return value.replace(tzinfo=TZ).isoformat() if value else None
+    return beijing_time(value).replace(tzinfo=TZ).isoformat() if value else None
 
 
 def fail(code, message):
@@ -69,16 +74,26 @@ def machine(db, printer_id):
     return obj
 
 
-def booking_data(b, private=False):
+def booking_data(b, private=False, current=None):
+    # Status is a read-only schedule projection; actual use remains separately
+    # audited by the raw status and explicit check-in/check-out timestamps.
+    current = beijing_time(current if current is not None else now())
+    status = b.status
+    if status == "reserved":
+        if current >= beijing_time(b.end_time):
+            status = "completed"
+        elif current >= beijing_time(b.start_time):
+            status = "in_use"
     result = {"id": b.id, "printer_id": b.printer_id, "team_name": b.team_name,
-              "start_time": iso(b.start_time), "end_time": iso(b.end_time), "status": b.status,
+              "start_time": iso(b.start_time), "end_time": iso(b.end_time),
+              "status": status, "usage_status": b.status,
               "checked_in_at": iso(b.checked_in_at), "checked_out_at": iso(b.checked_out_at)}
     if private:
         previous_id, previous_name = b.previous_booking_id, b.previous_team_name
         # Preview is live until actual check-in; check-in fixes the historical snapshot.
         if b.status == "reserved" and b.checked_in_at is None:
             db = object_session(b)
-            previous = db.query(PrinterBooking).filter(PrinterBooking.printer_id == b.printer_id, PrinterBooking.checked_in_at.isnot(None), PrinterBooking.checked_in_at <= now()).order_by(PrinterBooking.checked_in_at.desc(), PrinterBooking.id.desc()).first()
+            previous = db.query(PrinterBooking).filter(PrinterBooking.printer_id == b.printer_id, PrinterBooking.checked_in_at.isnot(None), PrinterBooking.checked_in_at <= current).order_by(PrinterBooking.checked_in_at.desc(), PrinterBooking.id.desc()).first()
             previous_id, previous_name = (previous.id, previous.team_name) if previous else (None, None)
         result.update(purpose=b.purpose, previous_booking_id=previous_id, previous_team_name=previous_name)
     return result
@@ -127,9 +142,10 @@ def team_auth(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bear
 
 
 def identity(db, team):
+    current = now()
     return {"token": create_access_token({"sub": "0", "competition_team_id": team.id, "module_key": team.module_key, "captain_student_id": team.captain_student_id, "scope": "printer_team"}, timedelta(hours=8)),
             "team": {"id": team.id, "team_name": team.team_name},
-            "bookings": [booking_data(b, True) for b in db.query(PrinterBooking).filter_by(competition_team_id=team.id).order_by(PrinterBooking.start_time.desc()).all()]}
+            "bookings": [booking_data(b, True, current) for b in db.query(PrinterBooking).filter_by(competition_team_id=team.id).order_by(PrinterBooking.start_time.desc()).all()]}
 
 
 class Identify(BaseModel):
@@ -221,12 +237,14 @@ def identify(request: Request, data: Identify, db: Session = Depends(get_db)):
 def list_bookings(date: date, db: Session = Depends(get_db)):
     start = datetime.combine(date, time.min)
     rows = db.query(PrinterBooking).filter(PrinterBooking.start_time < start + timedelta(days=1), PrinterBooking.end_time > start).order_by(PrinterBooking.start_time).all()
-    return success_response([booking_data(b) for b in rows])
+    current = now()
+    return success_response([booking_data(b, current=current) for b in rows])
 
 
 @router.get("/my-bookings")
 def my_bookings(team_id: int = Depends(team_auth), db: Session = Depends(get_db)):
-    return success_response([booking_data(b, True) for b in db.query(PrinterBooking).filter_by(competition_team_id=team_id).order_by(PrinterBooking.start_time.desc()).all()])
+    current = now()
+    return success_response([booking_data(b, True, current) for b in db.query(PrinterBooking).filter_by(competition_team_id=team_id).order_by(PrinterBooking.start_time.desc()).all()])
 
 
 def add_booking(db, data, team):
@@ -366,7 +384,8 @@ def admin_bookings(date: Optional[date] = None, admin=Depends(require_admin), db
     if date:
         start = datetime.combine(date, time.min)
         query = query.filter(PrinterBooking.start_time < start + timedelta(days=1), PrinterBooking.end_time > start)
-    return success_response([{**booking_data(b, True), "captain_name": b.captain_name, "captain_student_id": b.captain_student_id,
+    current = now()
+    return success_response([{**booking_data(b, True, current), "captain_name": b.captain_name, "captain_student_id": b.captain_student_id,
                               "competition_team_id": b.competition_team_id, "deleted_by": b.deleted_by}
                              for b in query.order_by(PrinterBooking.start_time.desc()).all()])
 

@@ -98,6 +98,104 @@ class PrinterTests(unittest.TestCase):
         self.assertNotIn("purpose", rows[0])
         self.assertTrue(rows[0]["start_time"].endswith("+08:00"))
 
+    def test_schedule_status_boundaries_public_private_identity_and_admin(self):
+        booking = self.reserve().json()["data"]
+        self.admin()
+        start = self.future
+        end = start + timedelta(hours=1)
+        cases = [(start - timedelta(microseconds=1), "reserved"),
+                 (start, "in_use"), (end - timedelta(microseconds=1), "in_use"),
+                 (end, "completed"), (end + timedelta(hours=1), "completed")]
+        for current, expected in cases:
+            with self.subTest(current=current, expected=expected):
+                for path, headers in [
+                    ("/bookings?date=" + start.date().isoformat(), None),
+                    ("/my-bookings", self.headers),
+                    ("/admin/bookings?date=" + start.date().isoformat(), None),
+                ]:
+                    with patch.object(api, "now", return_value=current) as clock:
+                        response = self.client.get("/api/v1/printers" + path, headers=headers)
+                    self.assertEqual(response.status_code, 200, response.text)
+                    rows = response.json()["data"]
+                    row = next(b for b in rows if b["id"] == booking["id"])
+                    self.assertEqual(row["status"], expected)
+                    self.assertEqual(row["usage_status"], "reserved")
+                    self.assertIsNone(row["checked_in_at"])
+                    self.assertIsNone(row["checked_out_at"])
+                    self.assertEqual(clock.call_count, 1, "One instant per response")
+                with patch.object(api, "now", return_value=current) as clock:
+                    response = self.post("/identify", {"captain_student_id": "1"})
+                row = response.json()["data"]["bookings"][0]
+                self.assertEqual((row["status"], row["usage_status"]), (expected, "reserved"))
+                self.assertEqual(clock.call_count, 1)
+        # Merely crossing the schedule boundaries must not mutate usage history.
+        with self.Session() as db:
+            row = db.get(PrinterBooking, booking["id"])
+            self.assertEqual(row.status, "reserved")
+            self.assertIsNone(row.checked_in_at)
+            self.assertIsNone(row.checked_out_at)
+            self.assertIsNone(row.previous_booking_id)
+            self.assertIsNone(row.previous_team_name)
+
+    def test_usage_status_precedence_and_timezone_serialization(self):
+        booking = self.reserve().json()["data"]
+        start, end = self.future, self.future + timedelta(hours=1)
+        for raw_status in ("cancelled", "completed", "in_use"):
+            with self.Session() as db:
+                row = db.get(PrinterBooking, booking["id"])
+                row.status = raw_status
+                row.checked_in_at = start - timedelta(minutes=5) if raw_status != "cancelled" else None
+                row.checked_out_at = start if raw_status == "completed" else None
+                db.commit()
+            for current in (start - timedelta(hours=1), start, end, end + timedelta(days=1)):
+                with self.subTest(raw=raw_status, current=current):
+                    with patch.object(api, "now", return_value=current):
+                        row = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"][0]
+                    self.assertEqual(row["status"], raw_status)
+                    self.assertEqual(row["usage_status"], raw_status)
+                    if raw_status == "completed":
+                        self.assertIsNotNone(row["checked_out_at"])
+                    elif raw_status == "in_use":
+                        self.assertIsNone(row["checked_out_at"])
+        # Equivalent aware UTC instants and naive Beijing database values agree.
+        from datetime import timezone
+        utc_start = start.replace(tzinfo=api.TZ).astimezone(timezone.utc)
+        item = SimpleNamespace(id=999, printer_id=1, team_name="timezone",
+                               start_time=utc_start, end_time=end.replace(tzinfo=api.TZ),
+                               status="reserved", checked_in_at=None, checked_out_at=None)
+        with patch.object(api, "now", return_value=utc_start):
+            data = api.booking_data(item)
+        self.assertEqual((data["status"], data["usage_status"]), ("in_use", "reserved"))
+        self.assertEqual(data["start_time"], start.replace(tzinfo=api.TZ).isoformat())
+
+    def test_schedule_projection_does_not_replace_actual_checkin_and_handover(self):
+        previous, current = self.seed_use()
+        with self.Session() as db:
+            start = db.get(PrinterBooking, current).start_time
+            end = db.get(PrinterBooking, current).end_time
+        with patch.object(api, "now", return_value=start):
+            visible = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"][0]
+            self.assertEqual((visible["status"], visible["usage_status"]), ("in_use", "reserved"))
+            self.assertIsNone(visible["checked_in_at"])
+            response = self.post(f"/bookings/{current}/check-in")
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["data"]["usage_status"], "in_use")
+        self.assertEqual(response.json()["data"]["previous_booking_id"], previous)
+        self.assertEqual(response.json()["data"]["checked_in_at"], api.iso(start))
+        # Time expiry cannot fabricate a return or end actual ongoing usage.
+        with patch.object(api, "now", return_value=end + timedelta(hours=1)):
+            row = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"][0]
+            self.assertEqual((row["status"], row["usage_status"]), ("in_use", "in_use"))
+            self.assertIsNone(row["checked_out_at"])
+            self.assertEqual(self.post(f"/bookings/{current}/check-in").status_code, 409)
+            report = self.post(f"/bookings/{current}/incidents", {"description": "超时使用时报告异常"})
+            self.assertEqual(report.status_code, 200)
+            self.assertEqual(report.json()["data"]["previous_booking_id"], previous)
+            response = self.post(f"/bookings/{current}/check-out")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual((response.json()["data"]["status"], response.json()["data"]["usage_status"]), ("completed", "completed"))
+        self.assertEqual(response.json()["data"]["checked_out_at"], api.iso(end + timedelta(hours=1)))
+
     def test_overlap_boundaries_cross_midnight_and_machines(self):
         self.assertEqual(self.reserve().status_code, 200)
         self.assertEqual(self.reserve().status_code, 409)

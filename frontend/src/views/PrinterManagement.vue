@@ -216,7 +216,13 @@
                 {{ printerName(booking.printer_id) }} · {{ booking.team_name }}
               </h3>
               <el-tag
-                :type="booking.status === 'cancelled' ? 'info' : 'primary'"
+                :type="
+                  reservationStatus(booking, currentTime) === 'in_use'
+                    ? 'warning'
+                    : reservationStatus(booking, currentTime) === 'cancelled'
+                      ? 'info'
+                      : 'primary'
+                "
                 >{{ bookingStatus(booking) }}</el-tag
               >
             </div>
@@ -307,9 +313,12 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, onBeforeUnmount, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { printerApi } from "@/api/printers";
+import { reservationStatus, reservationLabel } from "@/utils/printerStatus";
+const currentTime = ref(Date.now());
+let statusClock;
 const loading = ref(true),
   incidentLoading = ref(false),
   error = ref(""),
@@ -411,12 +420,9 @@ async function deleteBooking(booking) {
   }
 }
 const bookingStatus = (b) =>
-  b.status === "cancelled"
-    ? b.deleted_by
-      ? "管理员已删除"
-      : "已取消"
-    : { reserved: "待使用", in_use: "使用中", completed: "已归还" }[b.status] ||
-      b.status;
+  reservationStatus(b, currentTime.value) === "cancelled" && b.deleted_by
+    ? "管理员已删除"
+    : reservationLabel(b, currentTime.value);
 const weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 async function load() {
   loading.value = true;
@@ -523,7 +529,13 @@ const printerName = (id) =>
   config.value?.printers.find((p) => p.id === id)?.name || `打印机 ${id}`;
 const formatTime = (value) =>
   value ? String(value).replace("T", " ").slice(0, 16) : "—";
-onMounted(load);
+onMounted(() => {
+  load();
+  statusClock = window.setInterval(() => {
+    currentTime.value = Date.now();
+  }, 1000);
+});
+onBeforeUnmount(() => window.clearInterval(statusClock));
 </script>
 
 <style scoped>

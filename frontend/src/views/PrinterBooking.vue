@@ -121,8 +121,10 @@
                       ><strong>{{ booking.team_name }}</strong
                       ><el-tag
                         size="small"
-                        :type="statusType(booking.status)"
-                        >{{ statusLabel(booking.status) }}</el-tag
+                        :type="
+                          statusType(reservationStatus(booking, currentTime))
+                        "
+                        >{{ reservationLabel(booking, currentTime) }}</el-tag
                       >
                     </li>
                   </ul>
@@ -277,9 +279,12 @@
                       <h3>{{ printerName(booking.printer_id) }}</h3>
                       <p>{{ fullRange(booking) }}</p>
                     </div>
-                    <el-tag :type="statusType(booking.status)">{{
-                      statusLabel(booking.status)
-                    }}</el-tag>
+                    <el-tag
+                      :type="
+                        statusType(reservationStatus(booking, currentTime))
+                      "
+                      >{{ reservationLabel(booking, currentTime) }}</el-tag
+                    >
                   </div>
                   <p v-if="booking.purpose" class="muted">
                     {{ booking.purpose }}
@@ -308,7 +313,7 @@
                       @click="bookingAction(booking, 'check-in')"
                       >检查完成，签到</el-button
                     ><el-button
-                      v-if="booking.status === 'in_use'"
+                      v-if="usageStatus(booking) === 'in_use'"
                       type="success"
                       :loading="busyId === booking.id"
                       @click="bookingAction(booking, 'check-out')"
@@ -425,6 +430,11 @@ import { computed, onMounted, onBeforeUnmount, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Loading, Printer, InfoFilled } from "@element-plus/icons-vue";
 import { printerApi, printerSessionKey } from "@/api/printers";
+import {
+  reservationStatus,
+  reservationLabel,
+  usageStatus,
+} from "@/utils/printerStatus";
 const tabs = [
   { key: "schedule", label: "设备日程" },
   { key: "reserve", label: "预约时间" },
@@ -591,14 +601,15 @@ const duringBooking = (b) =>
   instant(b.start_time) <= currentTime.value &&
   currentTime.value < instant(b.end_time);
 const canCancel = (b) =>
-  b.status === "reserved" && instant(b.start_time) > currentTime.value;
+  usageStatus(b) === "reserved" && instant(b.start_time) > currentTime.value;
 const canCheckIn = (b) =>
-  b.status === "reserved" &&
+  usageStatus(b) === "reserved" &&
   duringBooking(b) &&
   config.value.printers.find((p) => p.id === b.printer_id)?.status ===
     "available";
 const canReport = (b) =>
-  b.status === "in_use" || (b.status === "reserved" && duringBooking(b));
+  usageStatus(b) === "in_use" ||
+  (usageStatus(b) === "reserved" && duringBooking(b));
 async function reserve() {
   if (!session.value) return;
   if (
@@ -719,19 +730,9 @@ function barStyle(b) {
 }
 function previousTeam(b) {
   if (b?.previous_team_name) return b.previous_team_name;
-  if (b?.status === "reserved")
+  if (b && usageStatus(b) === "reserved")
     return "将在签到或提交异常时根据实际使用记录确定";
   return "暂无上一使用记录";
-}
-function statusLabel(s) {
-  return (
-    {
-      reserved: "待使用",
-      in_use: "使用中",
-      completed: "已归还",
-      cancelled: "已取消",
-    }[s] || s
-  );
 }
 function statusType(s) {
   return (
@@ -747,7 +748,7 @@ onMounted(() => {
   loadAll();
   clock = window.setInterval(() => {
     currentTime.value = Date.now();
-  }, 15000);
+  }, 1000);
 });
 onBeforeUnmount(() => window.clearInterval(clock));
 </script>
