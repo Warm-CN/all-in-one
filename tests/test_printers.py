@@ -98,6 +98,41 @@ class PrinterTests(unittest.TestCase):
         self.assertNotIn("purpose", rows[0])
         self.assertTrue(rows[0]["start_time"].endswith("+08:00"))
 
+    def test_schedule_captain_phone_and_admin_contact(self):
+        self.reserve()
+        path = "/api/v1/printers/bookings?date=" + self.future.date().isoformat()
+        self.assertEqual(self.client.get(path).json()["data"][0]["captain_phone"], "13800000000")
+        with self.Session() as db:
+            db.get(Team, 1).captain_phone = "13900000000"
+            db.commit()
+        self.assertEqual(self.client.get(path).json()["data"][0]["captain_phone"], "13900000000")
+        # Contacts are deliberately public for handover; no other captain identity is exposed.
+        self.assertNotIn("captain_student_id", self.client.get(path).json()["data"][0])
+        self.assertEqual(self.client.put("/api/v1/printers/admin/config", json={"admin_contact": "不能修改"}, headers=self.headers).status_code, 401)
+        self.admin()
+        response = self.client.put("/api/v1/printers/admin/config", json={"admin_contact": "  管理员 王老师：020-12345678 / 微信 office-admin  "})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/printers/config").json()["data"]["admin_contact"], "管理员 王老师：020-12345678 / 微信 office-admin")
+        # Other config edits preserve contacts when omitted; empty input explicitly clears.
+        self.client.put("/api/v1/printers/admin/config", json={"opening_hours_enabled": False})
+        self.assertTrue(self.client.get("/api/v1/printers/config").json()["data"]["admin_contact"])
+        self.assertEqual(self.client.put("/api/v1/printers/admin/config", json={"admin_contact": "x" * 301}).status_code, 422)
+        self.client.put("/api/v1/printers/admin/config", json={"admin_contact": ""})
+        self.assertEqual(self.client.get("/api/v1/printers/config").json()["data"]["admin_contact"], "")
+
+    def test_contact_column_incremental_migration(self):
+        from scripts.init_printers import migrate_printers
+        with self.engine.begin() as conn:
+            conn.execute(text("ALTER TABLE printer_configs DROP COLUMN admin_contact"))
+        migrate_printers(self.engine)
+        migrate_printers(self.engine)
+        with self.Session() as db:
+            self.assertEqual(db.get(PrinterConfig, 1).admin_contact, "")
+            db.get(PrinterConfig, 1).admin_contact = "联系办公室管理员"
+            db.commit()
+        migrate_printers(self.engine)
+        self.assertEqual(self.client.get("/api/v1/printers/config").json()["data"]["admin_contact"], "联系办公室管理员")
+
     def test_schedule_status_boundaries_public_private_identity_and_admin(self):
         booking = self.reserve().json()["data"]
         self.admin()

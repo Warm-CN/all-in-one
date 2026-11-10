@@ -31,6 +31,7 @@ class PrinterConfig(PrinterBase):
     module_key = Column(String(80), nullable=False, default="")
     opening_hours_enabled = Column(Boolean, nullable=False, default=False)
     opening_hours = Column(JSON, nullable=False, default=list)
+    admin_contact = Column(String(300), nullable=True)
 
 
 class PrinterBooking(PrinterBase):

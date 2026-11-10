@@ -126,6 +126,13 @@
                         "
                         >{{ reservationLabel(booking, currentTime) }}</el-tag
                       >
+                      <div class="captain-contact">
+                        队长手机号：<a
+                          v-if="booking.captain_phone"
+                          :href="`tel:${booking.captain_phone}`"
+                          >{{ booking.captain_phone }}</a
+                        ><span v-else>暂未提供</span>
+                      </div>
                     </li>
                   </ul>
                   <el-button
@@ -137,6 +144,12 @@
                     >预约这台设备</el-button
                   >
                 </article>
+              </div>
+              <div class="admin-contact-panel">
+                <strong>管理员联系方式</strong>
+                <p>
+                  {{ config.admin_contact || "暂未配置，请联系赛事组织方。" }}
+                </p>
               </div>
               <div class="rule-note">
                 <el-icon><InfoFilled /></el-icon>
@@ -754,6 +767,32 @@ onBeforeUnmount(() => window.clearInterval(clock));
 </script>
 
 <style scoped>
+.captain-contact {
+  width: 100%;
+  color: #64748b;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.captain-contact a {
+  color: #0369a1;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.admin-contact-panel {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid #a7f3d0;
+  border-radius: 18px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 14px;
+}
+.admin-contact-panel p {
+  margin-top: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+}
 .signup-link {
   margin-top: 24px;
 }

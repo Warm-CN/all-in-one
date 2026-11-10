@@ -84,15 +84,18 @@ def booking_data(b, private=False, current=None):
             status = "completed"
         elif current >= beijing_time(b.start_time):
             status = "in_use"
+    db = object_session(b) if hasattr(b, "_sa_instance_state") else None
+    team_id = getattr(b, "competition_team_id", None)
+    team = db.get(Team, team_id) if db is not None and team_id else None
     result = {"id": b.id, "printer_id": b.printer_id, "team_name": b.team_name,
+              "captain_phone": team.captain_phone if team else None,
               "start_time": iso(b.start_time), "end_time": iso(b.end_time),
               "status": status, "usage_status": b.status,
               "checked_in_at": iso(b.checked_in_at), "checked_out_at": iso(b.checked_out_at)}
     if private:
         previous_id, previous_name = b.previous_booking_id, b.previous_team_name
         # Preview is live until actual check-in; check-in fixes the historical snapshot.
-        if b.status == "reserved" and b.checked_in_at is None:
-            db = object_session(b)
+        if b.status == "reserved" and b.checked_in_at is None and db is not None:
             previous = db.query(PrinterBooking).filter(PrinterBooking.printer_id == b.printer_id, PrinterBooking.checked_in_at.isnot(None), PrinterBooking.checked_in_at <= current).order_by(PrinterBooking.checked_in_at.desc(), PrinterBooking.id.desc()).first()
             previous_id, previous_name = (previous.id, previous.team_name) if previous else (None, None)
         result.update(purpose=b.purpose, previous_booking_id=previous_id, previous_team_name=previous_name)
@@ -195,6 +198,7 @@ class ConfigUpdate(BaseModel):
     module_key: Optional[str] = Field(default=None, max_length=80)
     opening_hours_enabled: bool = False
     opening_hours: list[OpeningHour] = Field(default_factory=list, max_length=28)
+    admin_contact: Optional[str] = Field(default=None, max_length=300)
 
 
 class AdminBookingCreate(BookingCreate):
@@ -214,6 +218,7 @@ def public_config(db, admin=False):
     event = selected_event(db, cfg)
     result = {"printers": [{"id": p.id, "name": p.name, "status": p.status} for p in db.query(Printer).order_by(Printer.id)],
               "opening_hours_enabled": cfg.opening_hours_enabled, "opening_hours": cfg.opening_hours,
+              "admin_contact": cfg.admin_contact,
               "timezone": "Asia/Shanghai", "module_key": event.module_key if event else None,
               "event": {"id": event.id, "name": event.portal_title or event.name, "module_key": event.module_key} if event else None,
               "signup_url": f"/team-portal?event_id={event.id}" if event else "/team-portal"}
@@ -375,6 +380,8 @@ def update_config(data: ConfigUpdate, admin=Depends(require_admin), db: Session 
             cfg.module_key = event.module_key
         cfg.opening_hours_enabled = data.opening_hours_enabled
         cfg.opening_hours = [h.model_dump() for h in data.opening_hours]
+        if data.admin_contact is not None:
+            cfg.admin_contact = data.admin_contact.strip()
     return success_response(public_config(db, True))
 
 

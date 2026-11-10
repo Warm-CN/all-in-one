@@ -123,6 +123,16 @@
                 />
               </el-select>
             </el-form-item>
+            <el-form-item label="管理员联系方式（在设备日程公开显示）">
+              <el-input
+                v-model="settings.admin_contact"
+                type="textarea"
+                :rows="3"
+                maxlength="300"
+                show-word-limit
+                placeholder="填写管理员姓名、手机号或微信等联系方式"
+              />
+            </el-form-item>
           </div>
           <el-button
             type="primary"
@@ -329,6 +339,7 @@ const settings = reactive({
   opening_hours_enabled: false,
   opening_hours: [],
   module_key: "bambu_cup",
+  admin_contact: "",
 });
 const bookingDate = ref(
   new Intl.DateTimeFormat("sv-SE", {
@@ -433,6 +444,7 @@ async function load() {
       opening_hours_enabled: config.value.opening_hours_enabled,
       opening_hours: (config.value.opening_hours || []).map((h) => ({ ...h })),
       module_key: config.value.module_key,
+      admin_contact: config.value.admin_contact || "",
     });
     await Promise.all([loadIncidents(), loadBookings()]);
   } catch (e) {

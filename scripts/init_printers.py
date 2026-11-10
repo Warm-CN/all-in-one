@@ -48,6 +48,11 @@ def migrate_printers(target_engine):
                     conn.commit()
                     conn.execute(text("PRAGMA foreign_keys=ON"))
             conn.commit()
+    if "printer_configs" in existing:
+        with target_engine.begin() as conn:
+            config_columns = {c["name"] for c in inspect(conn).get_columns("printer_configs")}
+            if "admin_contact" not in config_columns:
+                conn.execute(text("ALTER TABLE printer_configs ADD COLUMN admin_contact VARCHAR(300) NOT NULL DEFAULT ''"))
     Base.metadata.create_all(target_engine, tables=PRINTER_TABLES)
     # Recreate missing indexes after SQLite's safe table rebuild.
     for index in PrinterBooking.__table__.indexes:
@@ -65,7 +70,7 @@ def migrate_printers(target_engine):
         reflected = Table("printer_configs", MetaData(), autoload_with=conn)
         if not conn.execute(select(reflected.c.id).where(reflected.c.id == 1)).first():
             from app.models.printer_booking import beijing_now
-            values = dict(id=1, module_key="", opening_hours_enabled=False, opening_hours=[], created_at=beijing_now(), updated_at=beijing_now())
+            values = dict(id=1, module_key="", opening_hours_enabled=False, opening_hours=[], admin_contact="", created_at=beijing_now(), updated_at=beijing_now())
             if "registration_enabled" in reflected.c:
                 values["registration_enabled"] = False
             conn.execute(reflected.insert().values(**values))
