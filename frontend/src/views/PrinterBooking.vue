@@ -462,6 +462,7 @@ import { computed, onMounted, onBeforeUnmount, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Loading, Printer, InfoFilled } from "@element-plus/icons-vue";
 import { printerApi, printerSessionKey } from "@/api/printers";
+import { scheduleTime } from "@/utils/printerTime";
 import {
   reservationStatus,
   reservationLabel,
@@ -774,9 +775,7 @@ function fullRange(b) {
   return `${fullTime(b.start_time)} → ${fullTime(b.end_time)}`;
 }
 function timeRange(b) {
-  const start = fullTime(b.start_time),
-    end = fullTime(b.occupied_until || b.end_time);
-  return `${start.slice(0, 10) === selectedDate.value ? start.slice(11) : "前日"} – ${end.slice(0, 10) === selectedDate.value ? end.slice(11) : "次日"}`;
+  return `${scheduleTime(b.start_time, selectedDate.value)} – ${scheduleTime(b.occupied_until || b.end_time, selectedDate.value)}`;
 }
 function barStyle(b) {
   const begin = new Date(`${selectedDate.value}T00:00:00+08:00`).getTime();
