@@ -306,6 +306,20 @@ class PrinterTests(unittest.TestCase):
         self.assertEqual(self.reserve().status_code, 200)
         self.assertEqual(self.post(f'/bookings/{b["id"]}/check-in').status_code, 409)
 
+    def test_my_bookings_cancelled_last_after_cancel_and_identify(self):
+        early = self.reserve().json()["data"]
+        later = self.reserve(self.future + timedelta(hours=2)).json()["data"]
+        latest = self.reserve(self.future + timedelta(hours=4)).json()["data"]
+        self.assertEqual(self.post(f'/bookings/{latest["id"]}/cancel').status_code, 200)
+        expected = [later["id"], early["id"], latest["id"]]
+        rows = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"]
+        self.assertEqual([b["id"] for b in rows], expected)
+        identity = self.post("/identify", {"captain_student_id": "1"}).json()["data"]
+        self.assertEqual([b["id"] for b in identity["bookings"]], expected)
+        self.assertEqual(self.post(f'/bookings/{later["id"]}/cancel').status_code, 200)
+        rows = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"]
+        self.assertEqual([b["id"] for b in rows], [early["id"], latest["id"], later["id"]])
+
     def seed_use(self):
         t = api.now().replace(microsecond=0)
         with self.Session() as db:

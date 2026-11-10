@@ -149,7 +149,7 @@ def identity(db, team):
     current = now()
     return {"token": create_access_token({"sub": "0", "competition_team_id": team.id, "module_key": team.module_key, "captain_student_id": team.captain_student_id, "scope": "printer_team"}, timedelta(hours=8)),
             "team": {"id": team.id, "team_name": team.team_name},
-            "bookings": [booking_data(b, True, current) for b in db.query(PrinterBooking).filter_by(competition_team_id=team.id).order_by(PrinterBooking.start_time.desc()).all()]}
+            "bookings": [booking_data(b, True, current) for b in db.query(PrinterBooking).filter_by(competition_team_id=team.id).order_by((PrinterBooking.status == "cancelled").asc(), PrinterBooking.start_time.desc(), PrinterBooking.id.desc()).all()]}
 
 
 class Identify(BaseModel):
@@ -250,7 +250,7 @@ def list_bookings(date: date, db: Session = Depends(get_db)):
 @router.get("/my-bookings")
 def my_bookings(team_id: int = Depends(team_auth), db: Session = Depends(get_db)):
     current = now()
-    return success_response([booking_data(b, True, current) for b in db.query(PrinterBooking).filter_by(competition_team_id=team_id).order_by(PrinterBooking.start_time.desc()).all()])
+    return success_response([booking_data(b, True, current) for b in db.query(PrinterBooking).filter_by(competition_team_id=team_id).order_by((PrinterBooking.status == "cancelled").asc(), PrinterBooking.start_time.desc(), PrinterBooking.id.desc()).all()])
 
 
 def add_booking(db, data, team):
