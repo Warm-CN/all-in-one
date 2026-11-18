@@ -73,12 +73,35 @@ class PrinterIncident(PrinterBase):
 PRINTER_TABLES = [Printer.__table__, PrinterConfig.__table__, PrinterBooking.__table__, PrinterIncident.__table__]
 
 
+START_WINDOWS = (("09:00", "12:00"), ("14:00", "17:00"), ("19:00", "21:30"))
+PRINTER_NAMES = {
+    1: "五山 A1 1号机",
+    2: "五山 A1 2号机",
+    3: "五山 X2D",
+    4: "大学城 A1",
+    5: "大学城 A2 单机 / A2L 多色",
+}
+
+
+def daily_opening_hours():
+    return [
+        {"weekday": day, "start": start, "end": end}
+        for day in range(7) for start, end in START_WINDOWS
+    ]
+
+
 def initialize_printers(db):
-    """Seed devices only; never creates competition events or teams."""
-    if not db.get(PrinterConfig, 1):
-        db.add(PrinterConfig(id=1, module_key="", opening_hours_enabled=False,
-                             opening_hours=[{"weekday": i, "start": "09:00", "end": "18:00"} for i in range(7)]))
-    for i in range(1, 4):
-        if not db.get(Printer, i):
-            db.add(Printer(id=i, name=f"拓竹 {i} 号机", status="available"))
+    """Update the fleet in place so existing booking and incident IDs stay linked."""
+    cfg = db.get(PrinterConfig, 1)
+    if cfg is None:
+        cfg = PrinterConfig(id=1, module_key="")
+        db.add(cfg)
+    cfg.opening_hours_enabled = True
+    cfg.opening_hours = daily_opening_hours()
+    for printer_id, name in PRINTER_NAMES.items():
+        printer = db.get(Printer, printer_id)
+        if printer is None:
+            db.add(Printer(id=printer_id, name=name, status="available"))
+        else:
+            printer.name = name
     db.commit()

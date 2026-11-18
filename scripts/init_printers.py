@@ -82,7 +82,7 @@ def migrate_printers(target_engine):
 def main():
     argparse.ArgumentParser(description=__doc__).parse_args()
     migrate_printers(engine)
-    print("打印机迁移完成：复用现有赛事及队伍，旧记录保留，三台设备就绪。")
+    print("打印机迁移完成：复用现有赛事及队伍，旧记录保留，五台设备就绪。")
 
 
 if __name__ == "__main__":

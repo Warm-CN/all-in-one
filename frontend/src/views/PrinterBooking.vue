@@ -16,10 +16,8 @@
         </div>
         <aside class="hero-summary">
           <span class="eyebrow">预约规则</span
-          ><strong>3 台设备，各自独立预约</strong>
-          <p>
-            无需审批，同队可同时预约三台设备。时间以北京时间为准，开始时间遵循已启用的开放规则。
-          </p>
+          ><strong>{{ config.printers.length }} 个设备预约位</strong>
+          <p>无需审批，同队可同时预约不同设备。时间以北京时间为准。</p>
         </aside>
       </header>
 
@@ -154,13 +152,9 @@
               <div class="rule-note">
                 <el-icon><InfoFilled /></el-icon>
                 <div>
-                  <strong>办公室开放时间</strong>
-                  <p v-if="!config.opening_hours_enabled">
-                    当前未限制预约开始时间。请确认现场开放后再到场使用。
-                  </p>
-                  <p v-else>
-                    {{ openingText || "尚未配置可预约时段，请联系管理员。" }}
-                  </p>
+                  <strong>每日可预约开始时段（北京时间）</strong>
+                  <p>{{ openingText }}</p>
+                  <p>结束时间不限，可跨时段或跨天。</p>
                   <p>
                     检查设备后再签到；发现异常请在对应预约中报告，系统会记录上一实际使用队伍，由管理员核实处理。
                   </p>
@@ -203,6 +197,7 @@
                       ><el-select
                         v-model="form.printer_id"
                         placeholder="选择设备"
+                        @change="fillDefaultTimes"
                         ><el-option
                           v-for="p in config.printers"
                           :key="p.id"
@@ -238,7 +233,7 @@
                     /></el-form-item>
                   </div>
                   <p class="muted form-tip">
-                    提交后立即占用该时间段，请合理预估耗时。设备日程可能变化，最终以提交结果为准。
+                    每日可选的开始时段为 {{ openingText }}（右端时刻不含）。结束时间不限，可跨时段或跨天。
                   </p>
                   <el-button
                     type="primary"
@@ -478,8 +473,7 @@ const tabs = [
 const tab = ref("schedule"),
   config = ref({
     printers: [],
-    opening_hours: [],
-    opening_hours_enabled: false,
+    start_windows: [],
   }),
   bookings = ref([]),
   mine = ref([]);
@@ -527,11 +521,16 @@ const form = reactive({
 const incidentVisible = ref(false),
   incidentBooking = ref(null),
   incidentDescription = ref("");
-const weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+const fixedStartWindows = [
+  { start: "09:00", end: "12:00" },
+  { start: "14:00", end: "17:00" },
+  { start: "19:00", end: "21:30" },
+];
+const startWindows = computed(() =>
+  config.value.start_windows?.length ? config.value.start_windows : fixedStartWindows,
+);
 const openingText = computed(() =>
-  (config.value.opening_hours || [])
-    .map((h) => `${weekdays[h.weekday]} ${h.start}–${h.end}`)
-    .join("；"),
+  startWindows.value.map(({ start, end }) => `${start}–${end}`).join("、"),
 );
 const list = (data) => (Array.isArray(data) ? data : data?.bookings || []);
 function fail(e) {
@@ -610,19 +609,32 @@ async function identify() {
     submitting.value = false;
   }
 }
+function fillDefaultTimes() {
+  if (form.start_time || form.end_time) return;
+
+  const minute = 60_000;
+  const day = 24 * 60 * minute;
+  const beijingInput = (time) =>
+    new Date(time + 8 * 60 * minute).toISOString().slice(0, 19);
+  const nextMinute = (Math.floor(Date.now() / minute) + 1) * minute;
+  const today = beijingInput(nextMinute).slice(0, 10);
+  const date = selectedDate.value > today ? selectedDate.value : today;
+  const midnight = Date.parse(`${date}T00:00:00+08:00`);
+
+  for (const offset of [0, day]) {
+    const windowDate = beijingInput(midnight + offset).slice(0, 10);
+    for (const { start, end } of startWindows.value) {
+      const candidate = Math.max(nextMinute, Date.parse(`${windowDate}T${start}:00+08:00`));
+      if (candidate >= Date.parse(`${windowDate}T${end}:00+08:00`)) continue;
+      form.start_time = beijingInput(candidate);
+      form.end_time = beijingInput(candidate + 2 * 60 * minute);
+      return;
+    }
+  }
+}
 function choosePrinter(id) {
   form.printer_id = id;
-  if (!form.start_time || form.start_time.slice(0, 10) !== selectedDate.value) {
-    const desired = new Date(`${selectedDate.value}T09:00:00+08:00`).getTime();
-    const start = Math.max(
-      desired,
-      Math.ceil((Date.now() + 60000) / 1800000) * 1800000,
-    );
-    const beijingInput = (time) =>
-      new Date(time + 8 * 3600000).toISOString().slice(0, 19);
-    form.start_time = beijingInput(start);
-    form.end_time = beijingInput(start + 2 * 3600000);
-  }
+  fillDefaultTimes();
   tab.value = session.value ? "reserve" : "identity";
 }
 const currentTime = ref(Date.now());
@@ -665,6 +677,10 @@ async function reserve() {
     return ElMessage.warning("结束时间必须晚于开始时间");
   if (new Date(`${form.start_time}+08:00`).getTime() <= Date.now())
     return ElMessage.warning("开始时间必须晚于当前时间");
+  const startTime = form.start_time.slice(11, 16);
+  if (!startWindows.value.some(({ start, end }) => start <= startTime && startTime < end)) {
+    return ElMessage.warning(`开始时间须在每日开放时段内（${openingText.value}）`);
+  }
   submitting.value = true;
   try {
     const created = await printerApi.reserve(

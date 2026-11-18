@@ -71,7 +71,7 @@ class PrinterTests(unittest.TestCase):
         self.client = TestClient(self.app)
         self.token = api.create_access_token({"sub": "0", "scope": "printer_team", "competition_team_id": 1, "module_key": "bambu_cup", "captain_student_id": "1"})
         self.headers = {"Authorization": "Bearer " + self.token}
-        self.future = api.now().replace(microsecond=0) + timedelta(days=2)
+        self.future = api.now().replace(hour=9, minute=10, second=0, microsecond=0) + timedelta(days=2)
 
     def post(self, path, data=None, headers=None):
         return self.client.post("/api/v1/printers" + path, json=data, headers=headers or self.headers)
@@ -87,10 +87,14 @@ class PrinterTests(unittest.TestCase):
     def test_seed_idempotent_config_and_private_data(self):
         with self.Session() as db:
             initialize_printers(db)
-            self.assertEqual(db.query(Printer).count(), 3)
+            self.assertEqual([(p.id, p.name) for p in db.query(Printer).order_by(Printer.id)], [
+                (1, "五山 A1 1号机"), (2, "五山 A1 2号机"), (3, "五山 X2D"),
+                (4, "大学城 A1"), (5, "大学城 A2 单机 / A2L 多色"),
+            ])
         cfg = self.client.get("/api/v1/printers/config").json()["data"]
         self.assertEqual(cfg["timezone"], "Asia/Shanghai")
-        self.assertFalse(cfg["opening_hours_enabled"])
+        self.assertTrue(cfg["opening_hours_enabled"])
+        self.assertEqual(len(cfg["opening_hours"]), 21)
         self.reserve()
         rows = self.client.get("/api/v1/printers/bookings", params={"date": self.future.date().isoformat()}).json()["data"]
         self.assertEqual(len(rows), 1)
@@ -237,9 +241,10 @@ class PrinterTests(unittest.TestCase):
         self.assertEqual(self.reserve(self.future - timedelta(minutes=10), self.future + timedelta(minutes=10)).status_code, 409)
         self.assertEqual(self.reserve(self.future + timedelta(hours=1)).status_code, 200)
         self.assertEqual(self.reserve(printer_id=2).status_code, 200)
-        midnight = self.future.replace(hour=23, minute=0)
-        self.assertEqual(self.reserve(midnight, midnight + timedelta(hours=4), 3).status_code, 200)
-        self.assertEqual(self.reserve(midnight + timedelta(hours=2), midnight + timedelta(hours=5), 3).status_code, 409)
+        evening = self.future.replace(hour=19, minute=0)
+        overnight_end = evening.replace(hour=10) + timedelta(days=1)
+        self.assertEqual(self.reserve(evening, overnight_end, 5).status_code, 200)
+        self.assertEqual(self.reserve(overnight_end - timedelta(hours=1), overnight_end + timedelta(hours=1), 5).status_code, 409)
 
     def test_input_open_hours_and_timezone(self):
         self.assertEqual(self.reserve(self.future, self.future).status_code, 400)
@@ -249,8 +254,12 @@ class PrinterTests(unittest.TestCase):
         response = self.client.put("/api/v1/printers/admin/config", json={"opening_hours_enabled": True, "opening_hours": [{"weekday": day.weekday(), "start": "09:00", "end": "18:00"}]})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.reserve(day, day + timedelta(days=1)).status_code, 200)
-        self.assertEqual(self.reserve(day.replace(hour=18), day.replace(hour=19), 2).status_code, 400)
-        self.assertEqual(self.reserve(day.replace(hour=8), day.replace(hour=9), 2).status_code, 400)
+        for hour, minute in [(8, 59), (12, 0), (17, 0), (18, 59), (21, 30)]:
+            start = day.replace(hour=hour, minute=minute)
+            self.assertEqual(self.reserve(start, start + timedelta(minutes=10), 2).status_code, 400)
+        for hour, minute in [(11, 59), (14, 0), (16, 59), (19, 0), (21, 29)]:
+            start = day.replace(hour=hour, minute=minute)
+            self.assertEqual(self.reserve(start, start + timedelta(minutes=1), 4).status_code, 200)
         # UTC 01:00 is local 09:00.
         r = self.post("/bookings", {"printer_id": 2, "start_time": day.strftime("%Y-%m-%dT01:00:00Z"), "end_time": day.strftime("%Y-%m-%dT02:00:00Z")})
         self.assertEqual(r.status_code, 200)
@@ -271,15 +280,15 @@ class PrinterTests(unittest.TestCase):
             db.commit()
         self.assertEqual(self.reserve().status_code, 404)
 
-    def test_same_team_three_machines_and_admin_add_delete(self):
-        for i in (1, 2, 3):
+    def test_same_team_five_machines_and_admin_add_delete(self):
+        for i in range(1, 6):
             self.assertEqual(self.reserve(printer_id=i).status_code, 200)
         self.assertIn(self.client.get("/api/v1/printers/admin/bookings").status_code, (401, 403))
         self.admin()
         payload = {"captain_student_id": "2", "printer_id": 1, "start_time": self.future.isoformat(), "end_time": (self.future + timedelta(hours=1)).isoformat()}
         self.assertEqual(self.post("/admin/bookings", payload).status_code, 409)
         rows = self.client.get("/api/v1/printers/admin/bookings").json()["data"]
-        self.assertEqual(len(rows), 3)
+        self.assertEqual(len(rows), 5)
         self.assertEqual(self.client.delete(f"/api/v1/printers/admin/bookings/{rows[0]['id']}").status_code, 200)
         payload["printer_id"] = rows[0]["printer_id"]
         self.assertEqual(self.post("/admin/bookings", payload).status_code, 200)
@@ -309,7 +318,7 @@ class PrinterTests(unittest.TestCase):
     def test_my_bookings_cancelled_last_after_cancel_and_identify(self):
         early = self.reserve().json()["data"]
         later = self.reserve(self.future + timedelta(hours=2)).json()["data"]
-        latest = self.reserve(self.future + timedelta(hours=4)).json()["data"]
+        latest = self.reserve(self.future + timedelta(hours=5)).json()["data"]
         self.assertEqual(self.post(f'/bookings/{latest["id"]}/cancel').status_code, 200)
         expected = [later["id"], early["id"], latest["id"]]
         rows = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"]
@@ -320,8 +329,8 @@ class PrinterTests(unittest.TestCase):
         rows = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"]
         self.assertEqual([b["id"] for b in rows], [early["id"], latest["id"], later["id"]])
 
-    def seed_use(self):
-        t = api.now().replace(microsecond=0)
+    def seed_use(self, t=None):
+        t = t or api.now().replace(microsecond=0)
         with self.Session() as db:
             prev = PrinterBooking(printer_id=1, competition_team_id=2, team_name="Previous actual team", captain_name="Previous captain", captain_student_id="2", start_time=t-timedelta(hours=4), end_time=t-timedelta(hours=3), status="completed", checked_in_at=t-timedelta(hours=4), checked_out_at=t-timedelta(hours=3))
             unused = PrinterBooking(printer_id=1, competition_team_id=2, team_name="Never checked in", captain_name="Unused", captain_student_id="2", start_time=t-timedelta(hours=2), end_time=t-timedelta(hours=1), status="reserved")
@@ -351,8 +360,8 @@ class PrinterTests(unittest.TestCase):
         self.assertEqual(records[0]["previous_booking_id"], prev)
 
     def test_early_checkout_releases_remaining_slot_for_other_team(self):
-        _, current = self.seed_use()
-        moment = api.now().replace(microsecond=0)
+        moment = self.future
+        _, current = self.seed_use(moment)
         start = moment + timedelta(minutes=1)
         end = moment + timedelta(minutes=20)
         other = {"Authorization": "Bearer " + api.create_access_token({"sub": "0", "scope": "printer_team", "competition_team_id": 2, "module_key": "bambu_cup", "captain_student_id": "2"})}
@@ -519,7 +528,7 @@ class PrinterTests(unittest.TestCase):
                         db.flush()
             with self.Session() as db:
                 self.assertEqual(db.get(PrinterBooking, b["id"]).status, "cancelled")
-                self.assertEqual(db.get(Printer, 1).name, "拓竹 1 号机")
+                self.assertEqual(db.get(Printer, 1).name, "五山 A1 1号机")
 
     def test_concurrent_same_machine(self):
         gate = Barrier(2)

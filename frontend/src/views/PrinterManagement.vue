@@ -55,59 +55,10 @@
       </section>
       <section class="admin-card">
         <h2>绑定赛事与预约设置</h2>
-        <el-form label-position="top" @submit.prevent="save"
-          ><div class="setting-toggles">
-            <el-form-item label="限制预约开始时间"
-              ><el-switch v-model="settings.opening_hours_enabled"
-            /></el-form-item>
-          </div>
-          <p class="hint">
-            仅约束预约开始节点；打印结束时间可以超过办公室关闭时间。修改后影响新预约，不会取消已有预约。
-          </p>
-          <div v-if="settings.opening_hours_enabled" class="hours-list">
-            <div
-              v-for="(hour, index) in settings.opening_hours"
-              :key="index"
-              class="hour-row"
-            >
-              <el-select v-model="hour.weekday" aria-label="开放星期"
-                ><el-option
-                  v-for="(name, day) in weekdays"
-                  :key="day"
-                  :label="name"
-                  :value="day" /></el-select
-              ><el-time-select
-                v-model="hour.start"
-                start="00:00"
-                end="23:45"
-                step="00:15"
-                placeholder="开放时间"
-              /><span>至</span
-              ><el-time-select
-                v-model="hour.end"
-                start="00:15"
-                end="23:45"
-                step="00:15"
-                placeholder="关闭时间"
-              /><el-button
-                type="danger"
-                text
-                @click="settings.opening_hours.splice(index, 1)"
-                >移除</el-button
-              >
-            </div>
-            <el-button
-              plain
-              @click="
-                settings.opening_hours.push({
-                  weekday: 0,
-                  start: '09:00',
-                  end: '18:00',
-                })
-              "
-              >添加开放时段</el-button
-            >
-          </div>
+        <p class="hint fixed-start-rule">
+          每日可选的开始时段为 {{ openingText }}（北京时间，右端时刻不含）。结束时间不限，可跨时段或跨天。
+        </p>
+        <el-form label-position="top" @submit.prevent="save">
           <div class="config-grid">
             <el-form-item label="绑定拓竹杯赛事">
               <el-select
@@ -170,7 +121,7 @@
                 maxlength="30"
             /></el-form-item>
             <el-form-item label="打印机"
-              ><el-select v-model="newBooking.printer_id" placeholder="选择设备"
+              ><el-select v-model="newBooking.printer_id" placeholder="选择设备" @change="fillDefaultTimes"
                 ><el-option
                   v-for="printer in config.printers"
                   :key="printer.id"
@@ -323,7 +274,7 @@
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount, reactive, ref } from "vue";
+import { computed, onMounted, onBeforeUnmount, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { printerApi } from "@/api/printers";
 import { reservationStatus, reservationLabel } from "@/utils/printerStatus";
@@ -335,9 +286,18 @@ const loading = ref(true),
   config = ref(null),
   incidents = ref([]),
   busy = ref("");
+const fixedStartWindows = [
+  { start: "09:00", end: "12:00" },
+  { start: "14:00", end: "17:00" },
+  { start: "19:00", end: "21:30" },
+];
+const startWindows = computed(() =>
+  config.value?.start_windows?.length ? config.value.start_windows : fixedStartWindows,
+);
+const openingText = computed(() =>
+  startWindows.value.map(({ start, end }) => `${start}–${end}`).join("、"),
+);
 const settings = reactive({
-  opening_hours_enabled: false,
-  opening_hours: [],
   module_key: "bambu_cup",
   admin_contact: "",
 });
@@ -359,6 +319,29 @@ const newBooking = reactive({
   end_time: "",
   purpose: "",
 });
+function fillDefaultTimes() {
+  if (newBooking.start_time || newBooking.end_time) return;
+
+  const minute = 60_000;
+  const day = 24 * 60 * minute;
+  const beijingInput = (time) =>
+    new Date(time + 8 * 60 * minute).toISOString().slice(0, 19);
+  const nextMinute = (Math.floor(Date.now() / minute) + 1) * minute;
+  const today = beijingInput(nextMinute).slice(0, 10);
+  const date = bookingDate.value > today ? bookingDate.value : today;
+  const midnight = Date.parse(`${date}T00:00:00+08:00`);
+
+  for (const offset of [0, day]) {
+    const windowDate = beijingInput(midnight + offset).slice(0, 10);
+    for (const { start, end } of startWindows.value) {
+      const candidate = Math.max(nextMinute, Date.parse(`${windowDate}T${start}:00+08:00`));
+      if (candidate >= Date.parse(`${windowDate}T${end}:00+08:00`)) continue;
+      newBooking.start_time = beijingInput(candidate);
+      newBooking.end_time = beijingInput(candidate + 2 * 60 * minute);
+      return;
+    }
+  }
+}
 let bookingsRequest = 0;
 async function loadBookings() {
   const request = ++bookingsRequest;
@@ -388,6 +371,12 @@ async function addBooking() {
     return ElMessage.warning("请填写队长学号、设备、起止时间与用途");
   if (newBooking.start_time >= newBooking.end_time)
     return ElMessage.warning("结束时间必须晚于开始时间");
+  if (Date.parse(`${newBooking.start_time}+08:00`) <= Date.now())
+    return ElMessage.warning("开始时间必须晚于当前时间");
+  const startTime = newBooking.start_time.slice(11, 16);
+  if (!startWindows.value.some(({ start, end }) => start <= startTime && startTime < end)) {
+    return ElMessage.warning(`开始时间须在每日开放时段内（${openingText.value}）`);
+  }
   busy.value = "add-booking";
   try {
     await printerApi.addAdminBooking({
@@ -434,15 +423,12 @@ const bookingStatus = (b) =>
   reservationStatus(b, currentTime.value) === "cancelled" && b.deleted_by
     ? "管理员已删除"
     : reservationLabel(b, currentTime.value);
-const weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 async function load() {
   loading.value = true;
   error.value = "";
   try {
     config.value = await printerApi.adminConfig();
     Object.assign(settings, {
-      opening_hours_enabled: config.value.opening_hours_enabled,
-      opening_hours: (config.value.opening_hours || []).map((h) => ({ ...h })),
       module_key: config.value.module_key,
       admin_contact: config.value.admin_contact || "",
     });
@@ -490,14 +476,6 @@ async function changeStatus(p) {
 }
 async function save() {
   if (!settings.module_key?.trim()) return ElMessage.warning("请选择绑定赛事");
-  if (settings.opening_hours_enabled && !settings.opening_hours.length)
-    return ElMessage.warning("启用开始时间限制时，请至少配置一个开放时段");
-  if (
-    settings.opening_hours.some((h) => !h.start || !h.end || h.start >= h.end)
-  )
-    return ElMessage.warning(
-      "每个开放时段的结束时间须晚于开始时间；跨夜请拆成两天配置",
-    );
   busy.value = "config";
   try {
     await printerApi.saveConfig({ ...settings });
@@ -633,26 +611,8 @@ onBeforeUnmount(() => window.clearInterval(statusClock));
 .devices .el-button {
   width: 100%;
 }
-.setting-toggles {
-  display: flex;
-  gap: 40px;
-}
-.hours-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 22px 0;
-}
-.hour-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.hour-row > .el-select {
-  max-width: 120px;
-}
-.hour-row :deep(.el-input) {
-  min-width: 100px;
+.fixed-start-rule {
+  margin-bottom: 16px;
 }
 .config-grid {
   display: grid;
@@ -724,9 +684,6 @@ onBeforeUnmount(() => window.clearInterval(statusClock));
   .devices {
     grid-template-columns: 1fr;
   }
-  .hour-row {
-    flex-wrap: wrap;
-  }
 }
 @media (max-width: 600px) {
   .admin-heading {
@@ -739,16 +696,6 @@ onBeforeUnmount(() => window.clearInterval(statusClock));
   .config-grid,
   .incident-meta {
     grid-template-columns: 1fr;
-  }
-  .setting-toggles {
-    gap: 20px;
-  }
-  .hour-row > .el-select {
-    max-width: none;
-    width: 100%;
-  }
-  .hour-row :deep(.el-time-select) {
-    width: calc(50% - 24px);
   }
   .incident-heading {
     flex-wrap: wrap;

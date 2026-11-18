@@ -17,7 +17,10 @@ from app.core.dependencies import require_admin
 from app.core.security import create_access_token, decode_access_token
 
 from app.core.limiter import limiter
-from app.models.printer_booking import Printer, PrinterConfig, PrinterBooking, PrinterIncident
+from app.models.printer_booking import (
+    Printer, PrinterConfig, PrinterBooking, PrinterIncident,
+    START_WINDOWS, daily_opening_hours,
+)
 from app.models.team import Team, TeamStatus
 from app.models.competition_event import CompetitionEvent
 from app.schemas.response import success_response
@@ -218,7 +221,7 @@ class Identify(BaseModel):
 
 
 class BookingCreate(BaseModel):
-    printer_id: int = Field(ge=1, le=3)
+    printer_id: int = Field(ge=1)
     start_time: datetime
     end_time: datetime
     purpose: str = Field(default="", max_length=500)
@@ -271,7 +274,8 @@ def public_config(db, admin=False):
     cfg = config(db)
     event = selected_event(db, cfg)
     result = {"printers": [{"id": p.id, "name": p.name, "status": p.status} for p in db.query(Printer).order_by(Printer.id)],
-              "opening_hours_enabled": cfg.opening_hours_enabled, "opening_hours": cfg.opening_hours,
+              "opening_hours_enabled": True, "opening_hours": daily_opening_hours(),
+              "start_windows": [{"start": start, "end": end} for start, end in START_WINDOWS],
               "admin_contact": cfg.admin_contact,
               "timezone": "Asia/Shanghai", "confirmation_grace_minutes": CONFIRMATION_GRACE_MINUTES, "module_key": event.module_key if event else None,
               "event": {"id": event.id, "name": event.portal_title or event.name, "module_key": event.module_key} if event else None,
@@ -315,8 +319,9 @@ def add_booking(db, data, team):
         fail(409, "打印机停机维护中")
     if data.start_time < now() or data.end_time <= data.start_time:
         fail(400, "预约开始不能早于当前时间，结束必须晚于开始")
-    if cfg.opening_hours_enabled and not any(h["weekday"] == data.start_time.weekday() and h["start"] <= data.start_time.strftime("%H:%M") < h["end"] for h in cfg.opening_hours):
-        fail(400, "预约开始时间须在办公室开放时段内")
+    start_time = data.start_time.strftime("%H:%M")
+    if not any(start <= start_time < end for start, end in START_WINDOWS):
+        fail(400, "预约开始时间须在北京时间 09:00–12:00、14:00–17:00 或 19:00–21:30 内")
     if db.query(PrinterBooking).filter(PrinterBooking.printer_id == p.id, PrinterBooking.status.in_(["reserved", "in_use"]), PrinterBooking.start_time < data.end_time, PrinterBooking.end_time > data.start_time).with_for_update().first():
         fail(409, "该打印机此时段已被预约")
     b = PrinterBooking(printer_id=p.id, competition_team_id=team.id, team_name=team.team_name, captain_name=team.captain_name,
@@ -421,10 +426,6 @@ def admin_config(admin=Depends(require_admin), db: Session = Depends(get_db)):
 
 @router.put("/admin/config")
 def update_config(data: ConfigUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
-    if any(h.start >= h.end for h in data.opening_hours):
-        fail(400, "开放时段结束必须晚于开始；跨午夜请拆成两段")
-    if data.opening_hours_enabled and not data.opening_hours:
-        fail(400, "启用开始限制时至少配置一个开放时段")
     with transaction(db):
         cfg = config(db, True)
         if data.event_id is not None or data.module_key is not None:
@@ -432,8 +433,8 @@ def update_config(data: ConfigUpdate, admin=Depends(require_admin), db: Session 
             if event is None:
                 fail(404, "请选择已有赛事")
             cfg.module_key = event.module_key
-        cfg.opening_hours_enabled = data.opening_hours_enabled
-        cfg.opening_hours = [h.model_dump() for h in data.opening_hours]
+        cfg.opening_hours_enabled = True
+        cfg.opening_hours = daily_opening_hours()
         if data.admin_contact is not None:
             cfg.admin_contact = data.admin_contact.strip()
     return success_response(public_config(db, True))
