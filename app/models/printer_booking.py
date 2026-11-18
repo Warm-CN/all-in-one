@@ -75,11 +75,12 @@ PRINTER_TABLES = [Printer.__table__, PrinterConfig.__table__, PrinterBooking.__t
 
 START_WINDOWS = (("09:00", "12:00"), ("14:00", "17:00"), ("19:00", "21:30"))
 PRINTER_NAMES = {
-    1: "五山 A1 1号机",
-    2: "五山 A1 2号机",
+    1: "五山 A1 单色",
+    2: "五山 A1 多色",
     3: "五山 X2D",
     4: "大学城 A1",
-    5: "大学城 A2 单机 / A2L 多色",
+    5: "大学城 A2 单机",
+    6: "大学城 A2L 多色",
 }
 
 

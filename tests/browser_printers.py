@@ -24,7 +24,7 @@ def main():
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(args.url + '/printer-booking', wait_until='networkidle')
         page.get_by_role('heading', name='打印机预约中心').wait_for()
-        assert page.locator('.machine-card').count() == 5, 'Expected five printers'
+        assert page.locator('.machine-card').count() == 6, 'Expected six printers'
         assert page.locator('.el-alert--error').count() == 0, 'Initial API load failed'
         page.screenshot(path=str(out / 'desktop.png'), full_page=True)
         for tab in ['预约时间', '我的预约', '队伍身份', '设备日程']:
@@ -65,7 +65,7 @@ def main():
             page.evaluate('(data) => { localStorage.setItem("token", data.token.access_token); localStorage.setItem("userInfo", JSON.stringify(data.user)) }', data)
             page.goto(args.url + '/admin/printers', wait_until='networkidle')
             page.get_by_role('heading', name='打印机管理', exact=True).wait_for()
-            assert page.locator('.devices article').count() == 5
+            assert page.locator('.devices article').count() == 6
             assert page.locator('.el-alert--error').count() == 0
             page.screenshot(path=str(out / 'admin-mobile.png'), full_page=True)
             page.set_viewport_size({'width': 1440, 'height': 1080})
@@ -77,7 +77,7 @@ def main():
                 form = page.locator('.add-booking-form')
                 form.get_by_placeholder('已报名队伍的队长学号').fill(os.environ['PRINTER_E2E_SID'])
                 form.locator('.el-select').click()
-                page.get_by_role('option', name='大学城 A2 单机 / A2L 多色', exact=True).click()
+                page.get_by_role('option', name='大学城 A2L 多色', exact=True).click()
                 for label, value in [('选择开始时间', start), ('选择结束时间', end)]:
                     field = form.get_by_placeholder(label)
                     field.fill(value.strftime('%Y-%m-%d %H:%M'))
@@ -94,11 +94,11 @@ def main():
             page.goto(args.url + signup_href, wait_until='networkidle')
             assert '拓竹' in page.locator('h1').inner_text(), 'Target event must override saved event'
         assert not errors, errors
-        checks = ['five_printers', 'public_tabs', 'mobile_no_overflow', 'no_js_errors']
+        checks = ['six_printers', 'public_tabs', 'mobile_no_overflow', 'no_js_errors']
         if os.getenv('PRINTER_E2E_SID'):
             checks += ['captain_sid_only_identity', 'no_independent_password', 'create_booking', 'cancel_booking']
         if os.getenv('PRINTER_E2E_ADMIN'):
-            checks += ['admin_identity', 'admin_page_five_printers', 'admin_direct_add_delete']
+            checks += ['admin_identity', 'admin_page_six_printers', 'admin_direct_add_delete']
         checks += ['registration_targets_correct_event']
         print(json.dumps({'status': 'passed', 'checks': checks, 'screenshots': str(out)}, ensure_ascii=False))
         browser.close()

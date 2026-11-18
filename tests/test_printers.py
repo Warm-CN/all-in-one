@@ -88,8 +88,8 @@ class PrinterTests(unittest.TestCase):
         with self.Session() as db:
             initialize_printers(db)
             self.assertEqual([(p.id, p.name) for p in db.query(Printer).order_by(Printer.id)], [
-                (1, "五山 A1 1号机"), (2, "五山 A1 2号机"), (3, "五山 X2D"),
-                (4, "大学城 A1"), (5, "大学城 A2 单机 / A2L 多色"),
+                (1, "五山 A1 单色"), (2, "五山 A1 多色"), (3, "五山 X2D"),
+                (4, "大学城 A1"), (5, "大学城 A2 单机"), (6, "大学城 A2L 多色"),
             ])
         cfg = self.client.get("/api/v1/printers/config").json()["data"]
         self.assertEqual(cfg["timezone"], "Asia/Shanghai")
@@ -280,15 +280,15 @@ class PrinterTests(unittest.TestCase):
             db.commit()
         self.assertEqual(self.reserve().status_code, 404)
 
-    def test_same_team_five_machines_and_admin_add_delete(self):
-        for i in range(1, 6):
+    def test_same_team_six_machines_and_admin_add_delete(self):
+        for i in range(1, 7):
             self.assertEqual(self.reserve(printer_id=i).status_code, 200)
         self.assertIn(self.client.get("/api/v1/printers/admin/bookings").status_code, (401, 403))
         self.admin()
         payload = {"captain_student_id": "2", "printer_id": 1, "start_time": self.future.isoformat(), "end_time": (self.future + timedelta(hours=1)).isoformat()}
         self.assertEqual(self.post("/admin/bookings", payload).status_code, 409)
         rows = self.client.get("/api/v1/printers/admin/bookings").json()["data"]
-        self.assertEqual(len(rows), 5)
+        self.assertEqual(len(rows), 6)
         self.assertEqual(self.client.delete(f"/api/v1/printers/admin/bookings/{rows[0]['id']}").status_code, 200)
         payload["printer_id"] = rows[0]["printer_id"]
         self.assertEqual(self.post("/admin/bookings", payload).status_code, 200)
@@ -528,7 +528,7 @@ class PrinterTests(unittest.TestCase):
                         db.flush()
             with self.Session() as db:
                 self.assertEqual(db.get(PrinterBooking, b["id"]).status, "cancelled")
-                self.assertEqual(db.get(Printer, 1).name, "五山 A1 1号机")
+                self.assertEqual(db.get(Printer, 1).name, "五山 A1 单色")
 
     def test_concurrent_same_machine(self):
         gate = Barrier(2)
