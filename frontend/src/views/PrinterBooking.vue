@@ -67,6 +67,25 @@
                   @change="loadSchedule"
                 />
               </div>
+              <div class="schedule-notices">
+                <div class="admin-contact-panel">
+                  <strong>管理员联系方式</strong>
+                  <p>
+                    {{ config.admin_contact || "暂未配置，请联系赛事组织方。" }}
+                  </p>
+                </div>
+                <div class="rule-note">
+                  <el-icon><InfoFilled /></el-icon>
+                  <div>
+                    <strong>每日可预约开始时段（北京时间）</strong>
+                    <p>{{ openingText }}</p>
+                    <p>结束时间不限，可跨时段或跨天。</p>
+                    <p>
+                      检查设备后再签到；发现异常请在对应预约中报告，系统会记录上一实际使用队伍，由管理员核实处理。
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div v-if="scheduleLoading" class="state-panel" role="status">
                 正在更新日程…
               </div>
@@ -142,23 +161,6 @@
                     >预约这台设备</el-button
                   >
                 </article>
-              </div>
-              <div class="admin-contact-panel">
-                <strong>管理员联系方式</strong>
-                <p>
-                  {{ config.admin_contact || "暂未配置，请联系赛事组织方。" }}
-                </p>
-              </div>
-              <div class="rule-note">
-                <el-icon><InfoFilled /></el-icon>
-                <div>
-                  <strong>每日可预约开始时段（北京时间）</strong>
-                  <p>{{ openingText }}</p>
-                  <p>结束时间不限，可跨时段或跨天。</p>
-                  <p>
-                    检查设备后再签到；发现异常请在对应预约中报告，系统会记录上一实际使用队伍，由管理员核实处理。
-                  </p>
-                </div>
               </div>
             </section>
 
@@ -843,8 +845,12 @@ onBeforeUnmount(() => window.clearInterval(clock));
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.schedule-notices {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
 .admin-contact-panel {
-  margin-top: 24px;
   padding: 18px;
   border: 1px solid #a7f3d0;
   border-radius: 18px;
@@ -1123,7 +1129,6 @@ onBeforeUnmount(() => window.clearInterval(clock));
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin-top: 24px;
   padding: 18px;
   border: 1px solid #bae6fd;
   border-radius: 18px;
