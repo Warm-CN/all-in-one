@@ -31,7 +31,9 @@ def main():
         assert slot.get_by_text('待使用', exact=True).count() == 1
         page.clock.fast_forward(12000)
         assert slot.get_by_text('待确认开始', exact=True).count() == 1
-        page.clock.fast_forward(300000)
+        page.clock.fast_forward(600000)
+        assert slot.get_by_text('待确认开始', exact=True).count() == 1
+        page.clock.fast_forward(1200000)
         assert slot.locator('li').count() == 0
         booking.update(status='in_use', usage_status='in_use', checked_in_at='2026-11-10T15:00:10+08:00')
         page.evaluate("localStorage.setItem('token','clock-test'); localStorage.setItem('userInfo', JSON.stringify({role:'admin',real_name:'测试'}))")

@@ -12,7 +12,7 @@ export function checkInDeadline(booking) {
   return booking.check_in_deadline
     ? instant(booking.check_in_deadline)
     : Math.min(
-        instant(booking.start_time) + 5 * 60000,
+        instant(booking.start_time) + 30 * 60000,
         instant(booking.end_time),
       );
 }

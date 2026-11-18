@@ -4,13 +4,13 @@ import { reservationStatus, reservationLabel, usageStatus, checkInDeadline } fro
 const start = Date.parse('2026-11-10T15:00:00+08:00')
 const end = Date.parse('2026-11-10T16:00:00+08:00')
 const booking = {status:'reserved', usage_status:'reserved', start_time:'2026-11-10T15:00:00+08:00',end_time:'2026-11-10T16:00:00+08:00'}
-test('unconfirmed reservation cancels exactly at five minutes', () => {
+test('unconfirmed reservation cancels exactly at thirty minutes', () => {
   assert.equal(reservationStatus(booking,start-1),'reserved')
   assert.equal(reservationStatus(booking,start),'in_use')
   assert.equal(reservationLabel(booking,start),'待确认开始')
-  assert.equal(reservationStatus(booking,start+300000-1),'in_use')
-  assert.equal(reservationStatus(booking,start+300000),'cancelled')
-  assert.equal(checkInDeadline(booking),start+300000)
+  assert.equal(reservationStatus(booking,start+1800000-1),'in_use')
+  assert.equal(reservationStatus(booking,start+1800000),'cancelled')
+  assert.equal(checkInDeadline(booking),start+1800000)
   assert.equal(usageStatus(booking),'reserved')
   assert.equal(booking.checked_in_at,undefined)
 })

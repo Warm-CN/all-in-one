@@ -47,7 +47,7 @@ def fail(code, message):
     raise HTTPException(code, message)
 
 
-CONFIRMATION_GRACE_MINUTES = 5
+CONFIRMATION_GRACE_MINUTES = 30
 
 
 def confirmation_deadline(booking):

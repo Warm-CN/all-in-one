@@ -143,8 +143,8 @@ class PrinterTests(unittest.TestCase):
         start = self.future
         end = start + timedelta(hours=1)
         cases = [(start - timedelta(microseconds=1), "reserved"),
-                 (start, "in_use"), (start + timedelta(minutes=5) - timedelta(microseconds=1), "in_use"),
-                 (start + timedelta(minutes=5), "cancelled"), (end, "cancelled")]
+                 (start, "in_use"), (start + timedelta(minutes=30) - timedelta(microseconds=1), "in_use"),
+                 (start + timedelta(minutes=30), "cancelled"), (end, "cancelled")]
         for current, expected in cases:
             with self.subTest(current=current, expected=expected):
                 for path, headers in [
@@ -443,7 +443,7 @@ class PrinterTests(unittest.TestCase):
 
     def test_no_show_deadline_release_and_failed_checkin_commits_expiry(self):
         b = self.reserve().json()["data"]
-        deadline = self.future + timedelta(minutes=5)
+        deadline = self.future + timedelta(minutes=30)
         with patch.object(api, "now", return_value=deadline):
             response = self.post(f'/bookings/{b["id"]}/check-in')
             self.assertEqual(response.status_code, 409)
@@ -462,7 +462,7 @@ class PrinterTests(unittest.TestCase):
 
     def test_checkin_just_before_deadline_and_end_releases_next_team(self):
         b = self.reserve().json()["data"]
-        deadline = self.future + timedelta(minutes=5)
+        deadline = self.future + timedelta(minutes=30)
         end = self.future + timedelta(hours=1)
         with patch.object(api, "now", return_value=deadline - timedelta(microseconds=1)):
             self.assertEqual(self.post(f'/bookings/{b["id"]}/check-in').status_code, 200)
@@ -495,7 +495,7 @@ class PrinterTests(unittest.TestCase):
 
     def test_sweep_is_idempotent_and_safe_with_deadline_checkin_race(self):
         b = self.reserve().json()["data"]
-        deadline = self.future + timedelta(minutes=5)
+        deadline = self.future + timedelta(minutes=30)
         gate = Barrier(2)
         def sweep():
             gate.wait()
@@ -520,7 +520,7 @@ class PrinterTests(unittest.TestCase):
     def test_expiry_survives_requested_action_integrity_error(self):
         from sqlalchemy.exc import IntegrityError
         b = self.reserve().json()["data"]
-        with patch.object(api, "now", return_value=self.future + timedelta(minutes=5)):
+        with patch.object(api, "now", return_value=self.future + timedelta(minutes=30)):
             with self.Session() as db:
                 with self.assertRaises(IntegrityError):
                     with api.transaction(db):
