@@ -242,9 +242,9 @@ class PrinterTests(unittest.TestCase):
         self.assertEqual(self.reserve(self.future + timedelta(hours=1)).status_code, 200)
         self.assertEqual(self.reserve(printer_id=2).status_code, 200)
         evening = self.future.replace(hour=19, minute=0)
-        overnight_end = evening.replace(hour=10) + timedelta(days=1)
+        overnight_end = evening + timedelta(hours=8)
         self.assertEqual(self.reserve(evening, overnight_end, 5).status_code, 200)
-        self.assertEqual(self.reserve(overnight_end - timedelta(hours=1), overnight_end + timedelta(hours=1), 5).status_code, 409)
+        self.assertEqual(self.reserve(evening + timedelta(hours=1), overnight_end, 5).status_code, 409)
 
     def test_input_open_hours_and_timezone(self):
         self.assertEqual(self.reserve(self.future, self.future).status_code, 400)
@@ -253,7 +253,7 @@ class PrinterTests(unittest.TestCase):
         day = self.future.replace(hour=9, minute=0)
         response = self.client.put("/api/v1/printers/admin/config", json={"opening_hours_enabled": True, "opening_hours": [{"weekday": day.weekday(), "start": "09:00", "end": "18:00"}]})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.reserve(day, day + timedelta(days=1)).status_code, 200)
+        self.assertEqual(self.reserve(day, day + timedelta(hours=8)).status_code, 200)
         for hour, minute in [(8, 59), (12, 0), (17, 0), (18, 59), (21, 30)]:
             start = day.replace(hour=hour, minute=minute)
             self.assertEqual(self.reserve(start, start + timedelta(minutes=10), 2).status_code, 400)
@@ -263,6 +263,16 @@ class PrinterTests(unittest.TestCase):
         # UTC 01:00 is local 09:00.
         r = self.post("/bookings", {"printer_id": 2, "start_time": day.strftime("%Y-%m-%dT01:00:00Z"), "end_time": day.strftime("%Y-%m-%dT02:00:00Z")})
         self.assertEqual(r.status_code, 200)
+
+    def test_eight_hour_limit_public_admin_and_cross_midnight(self):
+        start = self.future.replace(hour=19, minute=0)
+        self.assertEqual(self.reserve(start, start + timedelta(hours=8), 6).status_code, 200)
+        self.assertEqual(self.reserve(start, start + timedelta(hours=8, seconds=1), 5).status_code, 400)
+        self.admin()
+        payload = {"captain_student_id": "2", "printer_id": 4, "start_time": start.isoformat(), "end_time": (start + timedelta(hours=8, seconds=1)).isoformat()}
+        self.assertEqual(self.post("/admin/bookings", payload).status_code, 400)
+        payload["end_time"] = (start + timedelta(hours=8)).isoformat()
+        self.assertEqual(self.post("/admin/bookings", payload).status_code, 200)
 
     def test_existing_captain_identify_scope_and_event(self):
         r = self.post("/identify", {"captain_student_id": "1"})
