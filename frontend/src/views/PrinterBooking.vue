@@ -11,7 +11,7 @@
             <h1>打印机预约中心</h1>
           </div>
           <p>
-            选一台打印机，约好你的创作时间。使用前签到，完成后归还，让下一支队伍安心接力。
+            预约到点自动开始和结束，提前用完可归还设备并释放剩余时段。
           </p>
         </div>
         <aside class="hero-summary">
@@ -81,7 +81,7 @@
                     <p>{{ openingText }}</p>
                     <p>单次预约最长 8 小时，结束时间可跨时段或跨天。</p>
                     <p>
-                      检查设备后再签到；发现异常请在对应预约中报告，系统会记录上一实际使用队伍，由管理员核实处理。
+                      请在使用前检查设备。发现异常时，在对应预约中报告，由管理员核实处理。
                     </p>
                   </div>
                 </div>
@@ -252,7 +252,7 @@
                 <div>
                   <h2>我的预约</h2>
                   <p>
-                    使用前检查设备并签到，使用后及时归还。发现异常请保留现场并报告。
+                    预约到点自动开始和结束。提前用完可归还设备，发现异常请及时报告。
                   </p>
                 </div>
                 <el-button
@@ -299,32 +299,18 @@
                   <p v-if="booking.purpose" class="muted">
                     {{ booking.purpose }}
                   </p>
-                  <p
-                    v-if="
-                      usageStatus(booking) === 'reserved' &&
-                      reservationStatus(booking, currentTime) !== 'cancelled'
-                    "
-                    class="muted"
-                  >
-                    请在
-                    {{
-                      new Date(checkInDeadline(booking)).toLocaleString(
-                        "zh-CN",
-                        { timeZone: "Asia/Shanghai", hour12: false },
-                      )
-                    }}
-                    前确认设备状态并开始，逾期自动取消。
-                  </p>
                   <p class="handover">
-                    上一实际使用队伍：<strong>{{
+                    上一预约占用队伍：<strong>{{
                       previousTeam(booking)
                     }}</strong>
                   </p>
-                  <p v-if="booking.checked_in_at" class="muted">
-                    签到：{{ fullTime(booking.checked_in_at)
-                    }}<template v-if="booking.checked_out_at">
-                      · 归还：{{ fullTime(booking.checked_out_at) }}</template
-                    >
+                  <p v-if="booking.checked_in_at || booking.checked_out_at" class="muted">
+                    <template v-if="booking.checked_in_at">
+                      历史签到：{{ fullTime(booking.checked_in_at) }}
+                    </template>
+                    <template v-if="booking.checked_out_at">
+                      {{ booking.checked_in_at ? " · " : "" }}归还：{{ fullTime(booking.checked_out_at) }}
+                    </template>
                   </p>
                   <div class="booking-actions">
                     <el-button
@@ -333,16 +319,7 @@
                       @click="bookingAction(booking, 'cancel')"
                       >取消预约</el-button
                     ><el-button
-                      v-if="canCheckIn(booking)"
-                      type="primary"
-                      :loading="busyId === booking.id"
-                      @click="bookingAction(booking, 'check-in')"
-                      >确认设备状态并开始</el-button
-                    ><el-button
-                      v-if="
-                        usageStatus(booking) === 'in_use' &&
-                        reservationStatus(booking, currentTime) === 'in_use'
-                      "
+                      v-if="reservationStatus(booking, currentTime) === 'in_use'"
                       type="success"
                       :loading="busyId === booking.id"
                       @click="bookingAction(booking, 'check-out')"
@@ -432,7 +409,7 @@
       title="报告设备异常"
       width="min(560px, 94vw)"
       ><p class="incident-note">
-        请描述发现时间、异常现象及现场情况。上一实际使用队伍：<strong>{{
+        请描述发现时间、异常现象及现场情况。上一预约占用队伍：<strong>{{
           previousTeam(incidentBooking)
         }}</strong
         >。系统记录用于核查，不代表自动认定责任。
@@ -443,7 +420,7 @@
         :rows="5"
         maxlength="2000"
         show-word-limit
-        placeholder="例如：签到前检查发现喷嘴堵塞，打印平台有明显残留…"
+        placeholder="例如：使用前检查发现喷嘴堵塞，打印平台有明显残留…"
       /><template #footer
         ><el-button @click="incidentVisible = false">取消</el-button
         ><el-button type="warning" :loading="submitting" @click="submitIncident"
@@ -463,8 +440,6 @@ import { scheduleTime } from "@/utils/printerTime";
 import {
   reservationStatus,
   reservationLabel,
-  usageStatus,
-  checkInDeadline,
 } from "@/utils/printerStatus";
 const tabs = [
   { key: "schedule", label: "设备日程" },
@@ -650,21 +625,7 @@ const sortedMine = computed(() =>
   ),
 );
 let clock;
-const instant = (value) =>
-  new Date(
-    /(Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}+08:00`,
-  ).getTime();
-const duringBooking = (b) =>
-  instant(b.start_time) <= currentTime.value &&
-  currentTime.value < instant(b.end_time);
-const canCancel = (b) =>
-  usageStatus(b) === "reserved" && instant(b.start_time) > currentTime.value;
-const canCheckIn = (b) =>
-  usageStatus(b) === "reserved" &&
-  duringBooking(b) &&
-  currentTime.value < checkInDeadline(b) &&
-  config.value.printers.find((p) => p.id === b.printer_id)?.status ===
-    "available";
+const canCancel = (b) => reservationStatus(b, currentTime.value) === "reserved";
 const canReport = (b) => reservationStatus(b, currentTime.value) === "in_use";
 async function reserve() {
   if (!session.value) return;
@@ -687,7 +648,7 @@ async function reserve() {
   }
   submitting.value = true;
   try {
-    const created = await printerApi.reserve(
+    await printerApi.reserve(
       {
         ...form,
         start_time: `${form.start_time}+08:00`,
@@ -699,21 +660,6 @@ async function reserve() {
     selectedDate.value = form.start_time.slice(0, 10);
     await Promise.all([loadMine(), loadSchedule()]);
     tab.value = "mine";
-    const deadline = new Date(checkInDeadline(created)).toLocaleString(
-      "zh-CN",
-      { timeZone: "Asia/Shanghai", hour12: false },
-    );
-    await ElMessageBox.alert(
-      `预约成功。请在 ${deadline} 前进入“我的预约”，检查设备并点击“确认设备状态并开始”。一般须在预约开始后 30 分钟内确认，预约不足 30 分钟时以预约结束时间为截止。逾期未确认将自动取消预约并释放时段。到达预约结束时间也会自动结束并释放，请按时结束使用。`,
-      "预约成功 · 使用提醒",
-      {
-        confirmButtonText: "我知道了",
-        type: "warning",
-        closeOnClickModal: false,
-        closeOnPressEscape: false,
-        showClose: false,
-      },
-    );
   } catch (e) {
     fail(e);
     if (e.status === 409) await loadSchedule();
@@ -724,8 +670,7 @@ async function reserve() {
 async function bookingAction(booking, action) {
   const messages = {
     cancel: "确认取消这次预约？取消后该时间段将释放。",
-    "check-in": "确认已在现场检查设备，准备开始使用？",
-    "check-out": "确认打印已完成、设备与现场已整理，可以交给下一队伍？",
+    "check-out": "确认已停止使用并整理设备与现场？归还后将释放剩余预约时段。",
   };
   try {
     await ElMessageBox.confirm(messages[action], "确认操作", {
@@ -763,7 +708,7 @@ async function submitIncident() {
       session.value.token,
     );
     ElMessage.success(
-      `异常已记录。上一实际使用队伍：${report.responsible_team_name || "无上一记录"}，等待管理员核查`,
+      `异常已记录。上一预约占用队伍：${report.responsible_team_name || "无上一记录"}，等待管理员核查`,
     );
     incidentVisible.value = false;
     config.value = await printerApi.config();
@@ -812,8 +757,6 @@ function barStyle(b) {
 }
 function previousTeam(b) {
   if (b?.previous_team_name) return b.previous_team_name;
-  if (b && usageStatus(b) === "reserved")
-    return "将在签到或提交异常时根据实际使用记录确定";
   return "暂无上一使用记录";
 }
 function statusType(s) {

@@ -50,7 +50,7 @@
           </article>
         </div>
         <p class="hint">
-          维护状态会阻止新增预约与签到。恢复前请确认设备安全，并检查已有预约安排。
+          维护状态会阻止新增预约。恢复前请确认设备安全，并检查已有预约安排。
         </p>
       </section>
       <section class="admin-card">
@@ -217,7 +217,7 @@
           >
         </div>
         <p class="hint">
-          异常关联上一实际使用记录。请结合现场情况核查责任，处理记录会保留；设备恢复需在上方单独操作。
+          异常关联上一预约占用记录。请结合现场情况核查责任，处理记录会保留；设备恢复需在上方单独操作。
         </p>
         <div v-if="incidentLoading" class="loading-state">
           正在加载异常记录…
@@ -244,7 +244,7 @@
                 }}</span
               ><span>报告时间：{{ formatTime(incident.created_at) }}</span
               ><span
-                >上一实际使用队伍：<strong>{{
+                >上一预约占用队伍：<strong>{{
                   incident.responsible_team_name || "暂无上一使用记录"
                 }}</strong></span
               ><span
@@ -457,7 +457,7 @@ async function changeStatus(p) {
   try {
     await ElMessageBox.confirm(
       next === "maintenance"
-        ? "暂停后该设备无法新增预约或签到，已有预约仍会保留。确认暂停？"
+        ? "暂停后该设备无法新增预约，已有预约仍会保留。确认暂停？"
         : "确认已检查设备，可以恢复预约和使用？",
       "设备状态",
       { confirmButtonText: "确认", cancelButtonText: "返回", type: "warning" },

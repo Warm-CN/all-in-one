@@ -10,7 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import text
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session, object_session
 from app.core.database import get_db
 from app.core.dependencies import require_admin
@@ -47,20 +47,29 @@ def fail(code, message):
     raise HTTPException(code, message)
 
 
-CONFIRMATION_GRACE_MINUTES = 30
-
-
-def confirmation_deadline(booking):
-    return min(beijing_time(booking.start_time) + timedelta(minutes=CONFIRMATION_GRACE_MINUTES), beijing_time(booking.end_time))
-
-
 def effective_status(booking, current):
     current = beijing_time(current)
-    if booking.status == "reserved" and current >= confirmation_deadline(booking):
-        return "cancelled"
-    if booking.status == "in_use" and current >= beijing_time(booking.end_time):
-        return "completed"
+    if booking.status in ("reserved", "in_use"):
+        if current >= beijing_time(booking.end_time):
+            return "completed"
+        if current >= beijing_time(booking.start_time):
+            return "in_use"
     return booking.status
+
+
+def previous_occupancy(db, booking):
+    previous_start = func.coalesce(PrinterBooking.checked_in_at, PrinterBooking.start_time)
+    return db.query(PrinterBooking).filter(
+        PrinterBooking.printer_id == booking.printer_id,
+        PrinterBooking.id != booking.id,
+        previous_start < (booking.checked_in_at or booking.start_time),
+        or_(
+            PrinterBooking.status == "completed",
+            PrinterBooking.checked_in_at.isnot(None),
+            PrinterBooking.checked_out_at.isnot(None),
+            PrinterBooking.status.in_(("reserved", "in_use")) & (PrinterBooking.end_time <= booking.start_time),
+        ),
+    ).order_by(previous_start.desc(), PrinterBooking.id.desc()).first()
 
 
 def synchronize_lifecycle(db, current=None):
@@ -69,7 +78,13 @@ def synchronize_lifecycle(db, current=None):
     for printer in db.query(Printer).order_by(Printer.id).with_for_update().all():
         rows = db.query(PrinterBooking).filter(PrinterBooking.printer_id == printer.id, PrinterBooking.status.in_(["reserved", "in_use"])).order_by(PrinterBooking.id).with_for_update().all()
         for booking in rows:
-            booking.status = effective_status(booking, current)
+            status = effective_status(booking, current)
+            if booking.status == "reserved" and status != "reserved" and booking.previous_booking_id is None:
+                previous = previous_occupancy(db, booking)
+                if previous:
+                    booking.previous_booking_id = previous.id
+                    booking.previous_team_name = previous.team_name
+            booking.status = status
     db.flush()
 
 
@@ -132,13 +147,8 @@ def machine(db, printer_id):
 
 
 def booking_data(b, private=False, current=None):
-    # Status is a read-only schedule projection; actual use remains separately
-    # audited by the raw status and explicit check-in/check-out timestamps.
     current = beijing_time(current if current is not None else now())
-    usage_status = effective_status(b, current)
-    status = usage_status
-    if status == "reserved" and current >= beijing_time(b.start_time):
-        status = "in_use"
+    status = effective_status(b, current)
     db = object_session(b) if hasattr(b, "_sa_instance_state") else None
     team_id = getattr(b, "competition_team_id", None)
     team = db.get(Team, team_id) if db is not None and team_id else None
@@ -146,14 +156,12 @@ def booking_data(b, private=False, current=None):
               "captain_phone": team.captain_phone if team else None,
               "start_time": iso(b.start_time), "end_time": iso(b.end_time),
               "occupied_until": iso(min(b.end_time, b.checked_out_at) if b.checked_out_at else b.end_time),
-              "status": status, "usage_status": usage_status,
-              "check_in_deadline": iso(confirmation_deadline(b)),
+              "status": status, "usage_status": status,
               "checked_in_at": iso(b.checked_in_at), "checked_out_at": iso(b.checked_out_at)}
     if private:
         previous_id, previous_name = b.previous_booking_id, b.previous_team_name
-        # Preview is live until actual check-in; check-in fixes the historical snapshot.
-        if b.status == "reserved" and b.checked_in_at is None and db is not None:
-            previous = db.query(PrinterBooking).filter(PrinterBooking.printer_id == b.printer_id, PrinterBooking.checked_in_at.isnot(None), PrinterBooking.checked_in_at <= current).order_by(PrinterBooking.checked_in_at.desc(), PrinterBooking.id.desc()).first()
+        if b.status == "reserved" and previous_id is None and db is not None:
+            previous = previous_occupancy(db, b)
             previous_id, previous_name = (previous.id, previous.team_name) if previous else (None, None)
         result.update(purpose=b.purpose, previous_booking_id=previous_id, previous_team_name=previous_name)
     return result
@@ -277,7 +285,7 @@ def public_config(db, admin=False):
               "opening_hours_enabled": True, "opening_hours": daily_opening_hours(),
               "start_windows": [{"start": start, "end": end} for start, end in START_WINDOWS],
               "admin_contact": cfg.admin_contact,
-              "timezone": "Asia/Shanghai", "confirmation_grace_minutes": CONFIRMATION_GRACE_MINUTES, "module_key": event.module_key if event else None,
+              "timezone": "Asia/Shanghai", "module_key": event.module_key if event else None,
               "event": {"id": event.id, "name": event.portal_title or event.name, "module_key": event.module_key} if event else None,
               "signup_url": f"/team-portal?event_id={event.id}" if event else "/team-portal"}
     if admin:
@@ -362,35 +370,17 @@ def cancel(booking_id: int, team_id: int = Depends(team_auth), db: Session = Dep
     return success_response(result)
 
 
-@router.post("/bookings/{booking_id}/check-in")
-def check_in(booking_id: int, team_id: int = Depends(team_auth), db: Session = Depends(get_db)):
-    with transaction(db):
-        config(db, True)
-        b = owned_booking(db, booking_id, team_id)
-        p = machine(db, b.printer_id)
-        current = now()
-        if p.status != "available" or b.status != "reserved" or not b.start_time <= current < confirmation_deadline(b):
-            fail(409, "当前不可签到，请确认预约时间与机器状态")
-        if db.query(PrinterBooking).filter_by(printer_id=p.id, status="in_use").first():
-            fail(409, "上一队伍尚未签退，请先完成交接")
-        prev = db.query(PrinterBooking).filter(PrinterBooking.printer_id == p.id, PrinterBooking.checked_in_at.isnot(None), PrinterBooking.checked_in_at <= current).order_by(PrinterBooking.checked_in_at.desc(), PrinterBooking.id.desc()).first()
-        b.previous_booking_id = prev.id if prev else None
-        b.previous_team_name = prev.team_name if prev else None
-        b.checked_in_at, b.status = current, "in_use"
-        result = booking_data(b, True)
-    return success_response(result)
-
-
 @router.post("/bookings/{booking_id}/check-out")
 def check_out(booking_id: int, team_id: int = Depends(team_auth), db: Session = Depends(get_db)):
     with transaction(db):
         config(db, True)
         b = owned_booking(db, booking_id, team_id)
         machine(db, b.printer_id)
-        if b.status != "in_use":
-            fail(409, "仅使用中的预约可以签退")
-        b.checked_out_at, b.status = now(), "completed"
-        result = booking_data(b, True)
+        current = now()
+        if effective_status(b, current) != "in_use":
+            fail(409, "仅使用中的预约可以提前归还")
+        b.checked_out_at, b.status = current, "completed"
+        result = booking_data(b, True, current)
     return success_response(result)
 
 
@@ -401,16 +391,15 @@ def incident(booking_id: int, data: IncidentCreate, team_id: int = Depends(team_
         b = owned_booking(db, booking_id, team_id)
         p = machine(db, b.printer_id)
         current = now()
-        if b.status == "reserved" and b.start_time <= current < b.end_time:
-            if db.query(PrinterBooking).filter_by(printer_id=p.id, status="in_use").first():
-                fail(409, "上一队伍尚未签退，请先联系管理员完成交接")
-            previous = db.query(PrinterBooking).filter(PrinterBooking.printer_id == p.id, PrinterBooking.checked_in_at.isnot(None), PrinterBooking.checked_in_at <= current).order_by(PrinterBooking.checked_in_at.desc(), PrinterBooking.id.desc()).first()
-            b.previous_booking_id = previous.id if previous else None
-            b.previous_team_name = previous.team_name if previous else None
-        elif b.status == "in_use":
-            previous = db.get(PrinterBooking, b.previous_booking_id) if b.previous_booking_id else None
-        else:
-            fail(409, "仅可在预约时段检查机器或实际使用中报告异常")
+        if effective_status(b, current) != "in_use":
+            fail(409, "仅可在预约使用时段报告异常")
+        previous = (
+            db.get(PrinterBooking, b.previous_booking_id)
+            if b.previous_booking_id else previous_occupancy(db, b)
+        )
+        if previous and b.previous_booking_id is None:
+            b.previous_booking_id = previous.id
+            b.previous_team_name = previous.team_name
         row = PrinterIncident(printer_id=p.id, booking_id=b.id, reporter_team_name=b.team_name,
                               previous_booking_id=b.previous_booking_id, responsible_team_name=previous.team_name if previous else None,
                               responsible_captain_name=previous.captain_name if previous else None, description=data.description)
