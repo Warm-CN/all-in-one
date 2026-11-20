@@ -76,7 +76,7 @@ class PrinterTests(unittest.TestCase):
     def post(self, path, data=None, headers=None):
         return self.client.post("/api/v1/printers" + path, json=data, headers=headers or self.headers)
 
-    def reserve(self, start=None, end=None, printer_id=1):
+    def reserve(self, start=None, end=None, printer_id=3):
         start = start or self.future
         end = end or start + timedelta(hours=1)
         return self.post("/bookings", {"printer_id": printer_id, "start_time": start.isoformat(), "end_time": end.isoformat(), "purpose": "模型"})
@@ -87,10 +87,15 @@ class PrinterTests(unittest.TestCase):
     def test_seed_idempotent_config_and_private_data(self):
         with self.Session() as db:
             initialize_printers(db)
-            self.assertEqual([(p.id, p.name) for p in db.query(Printer).order_by(Printer.id)], [
-                (1, "五山 A1 单色"), (2, "五山 A1 多色"), (3, "五山 X2D"),
+            fleet = db.query(Printer).order_by(Printer.id).all()
+            self.assertEqual([(p.id, p.name) for p in fleet], [
+                (2, "五山 A1 多色"), (3, "五山 X2D"),
                 (4, "大学城 A1"), (5, "大学城 A2 单机"), (6, "大学城 A2L 多色"),
             ])
+            self.assertEqual([p.status for p in fleet], ["available"] * 5)
+        config = self.client.get("/api/v1/printers/config").json()["data"]
+        self.assertEqual([printer["id"] for printer in config["printers"]], [2, 3, 4, 5, 6])
+        self.assertEqual(config["retired_printer_names"], {"1": "五山 A1 单色"})
         cfg = self.client.get("/api/v1/printers/config").json()["data"]
         self.assertEqual(cfg["timezone"], "Asia/Shanghai")
         self.assertNotIn("confirmation_grace_minutes", cfg)
@@ -102,6 +107,59 @@ class PrinterTests(unittest.TestCase):
         self.assertNotIn("captain_student_id", rows[0])
         self.assertNotIn("purpose", rows[0])
         self.assertTrue(rows[0]["start_time"].endswith("+08:00"))
+
+    def test_retired_machine_hidden_without_migration_and_history_preserved(self):
+        # 模拟线上仍有旧设备和历史外键；仅更新代码就应隐藏旧预约入口。
+        with self.Session() as db:
+            db.add(Printer(id=1, name="五山 A1 单色", status="available"))
+            db.flush()
+            booking = PrinterBooking(
+                printer_id=1, competition_team_id=1, team_name="Team 1",
+                captain_name="Captain 1", captain_student_id="1",
+                start_time=self.future - timedelta(days=3),
+                end_time=self.future - timedelta(days=3) + timedelta(hours=1),
+                status="completed",
+            )
+            db.add(booking)
+            db.flush()
+            booking_id = booking.id
+            incident = PrinterIncident(
+                printer_id=1, booking_id=booking_id,
+                reporter_team_name="Team 1", description="旧设备历史异常",
+            )
+            db.add(incident)
+            db.flush()
+            incident_id = incident.id
+            db.commit()
+
+        config = self.client.get("/api/v1/printers/config").json()["data"]
+        self.assertEqual([p["id"] for p in config["printers"]], [2, 3, 4, 5, 6])
+        self.assertEqual(config["retired_printer_names"], {"1": "五山 A1 单色"})
+        self.assertEqual(self.reserve(printer_id=1).status_code, 409)
+        self.admin()
+        admin_config = self.client.get("/api/v1/printers/admin/config").json()["data"]
+        self.assertEqual([p["id"] for p in admin_config["printers"]], [2, 3, 4, 5, 6])
+        payload = {"captain_student_id": "1", "printer_id": 1,
+                   "start_time": self.future.isoformat(),
+                   "end_time": (self.future + timedelta(hours=1)).isoformat()}
+        self.assertEqual(self.post("/admin/bookings", payload).status_code, 409)
+        response = self.client.put("/api/v1/printers/admin/printers/1", json={"status": "available"})
+        self.assertEqual(response.status_code, 409)
+        rows = self.client.get("/api/v1/printers/my-bookings", headers=self.headers).json()["data"]
+        self.assertIn(booking_id, [row["id"] for row in rows])
+        incidents = self.client.get("/api/v1/printers/admin/incidents").json()["data"]
+        self.assertIn(incident_id, [row["id"] for row in incidents])
+
+        # 重复初始化也只能停用旧设备，不能删除它或破坏历史引用。
+        with self.Session() as db:
+            db.get(Printer, 2).status = "maintenance"
+            db.commit()
+            initialize_printers(db)
+            initialize_printers(db)
+            self.assertEqual(db.get(Printer, 1).status, "maintenance")
+            self.assertEqual(db.get(Printer, 2).status, "maintenance")
+            self.assertEqual(db.get(PrinterBooking, booking_id).printer_id, 1)
+            self.assertEqual(db.get(PrinterIncident, incident_id).booking_id, booking_id)
 
     def test_schedule_captain_phone_and_admin_contact(self):
         self.reserve()
@@ -202,7 +260,7 @@ class PrinterTests(unittest.TestCase):
         # Equivalent aware UTC instants and naive Beijing database values agree.
         from datetime import timezone
         utc_start = start.replace(tzinfo=api.TZ).astimezone(timezone.utc)
-        item = SimpleNamespace(id=999, printer_id=1, team_name="timezone",
+        item = SimpleNamespace(id=999, printer_id=3, team_name="timezone",
                                start_time=utc_start, end_time=end.replace(tzinfo=api.TZ),
                                status="reserved", checked_in_at=None, checked_out_at=None)
         with patch.object(api, "now", return_value=utc_start):
@@ -291,15 +349,16 @@ class PrinterTests(unittest.TestCase):
             db.commit()
         self.assertEqual(self.reserve().status_code, 404)
 
-    def test_same_team_six_machines_and_admin_add_delete(self):
-        for i in range(1, 7):
+    def test_same_team_five_machines_and_admin_add_delete(self):
+        # 下架设备不参与预约，其余五台仍允许同队同时使用。
+        for i in (2, 3, 4, 5, 6):
             self.assertEqual(self.reserve(printer_id=i).status_code, 200)
         self.assertIn(self.client.get("/api/v1/printers/admin/bookings").status_code, (401, 403))
         self.admin()
-        payload = {"captain_student_id": "2", "printer_id": 1, "start_time": self.future.isoformat(), "end_time": (self.future + timedelta(hours=1)).isoformat()}
+        payload = {"captain_student_id": "2", "printer_id": 3, "start_time": self.future.isoformat(), "end_time": (self.future + timedelta(hours=1)).isoformat()}
         self.assertEqual(self.post("/admin/bookings", payload).status_code, 409)
         rows = self.client.get("/api/v1/printers/admin/bookings").json()["data"]
-        self.assertEqual(len(rows), 6)
+        self.assertEqual(len(rows), 5)
         self.assertEqual(self.client.delete(f"/api/v1/printers/admin/bookings/{rows[0]['id']}").status_code, 200)
         payload["printer_id"] = rows[0]["printer_id"]
         self.assertEqual(self.post("/admin/bookings", payload).status_code, 200)
@@ -346,10 +405,10 @@ class PrinterTests(unittest.TestCase):
     def seed_use(self, t=None):
         t = t or api.now().replace(microsecond=0)
         with self.Session() as db:
-            prev = PrinterBooking(printer_id=1, competition_team_id=2, team_name="Previous actual team", captain_name="Previous captain", captain_student_id="2", start_time=t-timedelta(hours=4), end_time=t-timedelta(hours=3), status="completed", checked_in_at=t-timedelta(hours=4), checked_out_at=t-timedelta(hours=3))
-            unused = PrinterBooking(printer_id=1, competition_team_id=2, team_name="Never checked in", captain_name="Unused", captain_student_id="2", start_time=t-timedelta(hours=2), end_time=t-timedelta(hours=1), status="cancelled")
-            current = PrinterBooking(printer_id=1, competition_team_id=1, team_name="Team 1", captain_name="Captain 1", captain_student_id="1", start_time=t-timedelta(minutes=1), end_time=t+timedelta(minutes=30), status="reserved")
-            future = PrinterBooking(printer_id=1, competition_team_id=2, team_name="Future team", captain_name="Future", captain_student_id="2", start_time=t+timedelta(hours=1), end_time=t+timedelta(hours=2), status="reserved")
+            prev = PrinterBooking(printer_id=3, competition_team_id=2, team_name="Previous actual team", captain_name="Previous captain", captain_student_id="2", start_time=t-timedelta(hours=4), end_time=t-timedelta(hours=3), status="completed", checked_in_at=t-timedelta(hours=4), checked_out_at=t-timedelta(hours=3))
+            unused = PrinterBooking(printer_id=3, competition_team_id=2, team_name="Never checked in", captain_name="Unused", captain_student_id="2", start_time=t-timedelta(hours=2), end_time=t-timedelta(hours=1), status="cancelled")
+            current = PrinterBooking(printer_id=3, competition_team_id=1, team_name="Team 1", captain_name="Captain 1", captain_student_id="1", start_time=t-timedelta(minutes=1), end_time=t+timedelta(minutes=30), status="reserved")
+            future = PrinterBooking(printer_id=3, competition_team_id=2, team_name="Future team", captain_name="Future", captain_student_id="2", start_time=t+timedelta(hours=1), end_time=t+timedelta(hours=2), status="reserved")
             db.add_all([prev, unused, current, future])
             db.commit()
             return prev.id, current.id
@@ -361,10 +420,11 @@ class PrinterTests(unittest.TestCase):
         self.assertEqual(r.json()["data"]["responsible_team_name"], "Previous actual team")
         self.assertEqual(self.reserve().status_code, 409)
         self.admin()
-        self.assertEqual(self.client.put("/api/v1/printers/admin/printers/1", json={"status": "available"}).status_code, 409)
+        # 异常发生在 X2D；修复前禁止恢复，处理完成后才能重新开放。
+        self.assertEqual(self.client.put("/api/v1/printers/admin/printers/3", json={"status": "available"}).status_code, 409)
         incident_id = r.json()["data"]["id"]
         self.assertEqual(self.post(f"/admin/incidents/{incident_id}/resolve", {"resolution": "已检查并清理喷头"}).status_code, 200)
-        self.assertEqual(self.client.put("/api/v1/printers/admin/printers/1", json={"status": "available"}).status_code, 200)
+        self.assertEqual(self.client.put("/api/v1/printers/admin/printers/3", json={"status": "available"}).status_code, 200)
         self.assertEqual(self.post(f"/bookings/{current}/check-out").status_code, 200)
         self.assertEqual(self.post(f"/bookings/{current}/check-out").status_code, 409)
         records = self.client.get("/api/v1/printers/admin/incidents").json()["data"]
@@ -376,7 +436,7 @@ class PrinterTests(unittest.TestCase):
         start = moment + timedelta(minutes=1)
         end = moment + timedelta(minutes=20)
         other = {"Authorization": "Bearer " + api.create_access_token({"sub": "0", "scope": "printer_team", "competition_team_id": 2, "module_key": "bambu_cup", "captain_student_id": "2"})}
-        payload = {"printer_id": 1, "start_time": start.isoformat(), "end_time": end.isoformat()}
+        payload = {"printer_id": 3, "start_time": start.isoformat(), "end_time": end.isoformat()}
         with patch.object(api, "now", return_value=moment):
             self.assertEqual(self.post("/bookings", payload, other).status_code, 409)
             result = self.post(f"/bookings/{current}/check-out")
@@ -458,10 +518,11 @@ class PrinterTests(unittest.TestCase):
                 self.assertIsNone(row.checked_in_at)
 
     def test_adjacent_next_team_starts_automatically_at_handover(self):
+        # 首尾相接的预约按时交接，无需任何队伍确认。
         booking = self.reserve().json()["data"]
         end = self.future + timedelta(hours=1)
         other = {"Authorization": "Bearer " + api.create_access_token({"sub": "0", "scope": "printer_team", "competition_team_id": 2, "module_key": "bambu_cup", "captain_student_id": "2"})}
-        payload = {"printer_id": 1, "start_time": end.isoformat(), "end_time": (end + timedelta(minutes=30)).isoformat()}
+        payload = {"printer_id": 3, "start_time": end.isoformat(), "end_time": (end + timedelta(minutes=30)).isoformat()}
         next_booking = self.post("/bookings", payload, other)
         self.assertEqual(next_booking.status_code, 200, next_booking.text)
         next_id = next_booking.json()["data"]["id"]
@@ -496,6 +557,25 @@ class PrinterTests(unittest.TestCase):
                 api.sweep_lifecycle(db)
             with self.Session() as db:
                 self.assertEqual(db.get(PrinterBooking, later["id"]).status, "cancelled")
+
+    def test_background_sweep_starts_and_finishes_without_user_requests(self):
+        # 创建后不再调用预约接口，后台同步也必须独立完成整个预约周期。
+        booking_id = self.reserve().json()["data"]["id"]
+        cases = [
+            (self.future, "in_use"),
+            (self.future + timedelta(minutes=31), "in_use"),
+            (self.future + timedelta(hours=1), "completed"),
+        ]
+        for current, expected in cases:
+            with self.subTest(current=current):
+                with patch.object(api, "now", return_value=current):
+                    with self.Session() as db:
+                        api.sweep_lifecycle(db)
+                with self.Session() as db:
+                    booking = db.get(PrinterBooking, booking_id)
+                    self.assertEqual(booking.status, expected)
+                    self.assertIsNone(booking.checked_in_at)
+                    self.assertIsNone(booking.checked_out_at)
 
     def test_sweep_is_idempotent_and_safe_with_checkout_at_end(self):
         booking = self.reserve().json()["data"]
@@ -537,11 +617,12 @@ class PrinterTests(unittest.TestCase):
             with self.Session() as db:
                 with self.assertRaises(IntegrityError):
                     with api.transaction(db):
-                        db.add(Printer(id=1, name="duplicate", status="available"))
+                        # 使用仍在设备列表中的主键制造冲突，验证自动结束可独立提交。
+                        db.add(Printer(id=2, name="duplicate", status="available"))
                         db.flush()
             with self.Session() as db:
                 self.assertEqual(db.get(PrinterBooking, b["id"]).status, "completed")
-                self.assertEqual(db.get(Printer, 1).name, "五山 A1 单色")
+                self.assertEqual(db.get(Printer, 2).name, "五山 A1 多色")
 
     def test_concurrent_same_machine(self):
         gate = Barrier(2)

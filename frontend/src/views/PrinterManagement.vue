@@ -106,7 +106,7 @@
           />
         </div>
         <p class="hint">
-          管理员可以直接添加或删除预约，无需审批。同队可以同时预约不同设备；同机时间不能交叠。删除后释放时段，历史记录保留。
+          管理员可以直接添加或删除预约，无需审批。预约到点自动开始、到期自动结束，无需二次确认。同队可以同时预约不同设备；同机时间不能交叠。删除后释放时段，历史记录保留。
         </p>
         <el-form
           class="add-booking-form"
@@ -518,7 +518,9 @@ async function resolve(incident) {
   }
 }
 const printerName = (id) =>
-  config.value?.printers.find((p) => p.id === id)?.name || `打印机 ${id}`;
+  // 历史预约和异常仍可显示下架设备名称，不重新开放该设备。
+  config.value?.printers.find((p) => p.id === id)?.name ||
+  (config.value?.retired_printer_names?.[id] ? `${config.value.retired_printer_names[id]}（已下架）` : `打印机 ${id}`);
 const formatTime = (value) =>
   value ? String(value).replace("T", " ").slice(0, 16) : "—";
 onMounted(() => {

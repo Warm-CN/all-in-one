@@ -11,7 +11,7 @@
             <h1>打印机预约中心</h1>
           </div>
           <p>
-            预约到点自动开始和结束，提前用完可归还设备并释放剩余时段。
+            预约成功后无需再次确认，到点自动开始、到期自动结束；提前用完可归还设备。
           </p>
         </div>
         <aside class="hero-summary">
@@ -252,7 +252,7 @@
                 <div>
                   <h2>我的预约</h2>
                   <p>
-                    预约到点自动开始和结束。提前用完可归还设备，发现异常请及时报告。
+                    无需二次验证或确认开始，也不会因未确认而自动取消。到点自动开始、到期自动结束，提前用完可归还设备。
                   </p>
                 </div>
                 <el-button
@@ -728,7 +728,9 @@ const printerBookings = (id) =>
     )
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 const printerName = (id) =>
-  config.value.printers.find((p) => p.id === id)?.name || `打印机 ${id}`;
+  // 下架设备仅显示在历史记录中，名称由后端单独提供。
+  config.value.printers.find((p) => p.id === id)?.name ||
+  (config.value.retired_printer_names?.[id] ? `${config.value.retired_printer_names[id]}（已下架）` : `打印机 ${id}`);
 function fullTime(value) {
   if (!value) return "—";
   return String(value)
@@ -771,6 +773,7 @@ function statusType(s) {
 }
 onMounted(() => {
   loadAll();
+  // 本地时钟驱动状态和操作按钮，跨过起止时刻无需手动刷新。
   clock = window.setInterval(() => {
     currentTime.value = Date.now();
   }, 1000);

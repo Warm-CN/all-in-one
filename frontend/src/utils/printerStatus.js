@@ -1,4 +1,4 @@
-// Time limits also apply while a page is open, before the next server refresh.
+// 页面持续打开时也按起止时间更新，无需二次确认或等待接口刷新。
 export function usageStatus(booking) {
   return booking.usage_status ?? booking.status;
 }
@@ -10,6 +10,7 @@ const instant = (value) =>
 
 export function reservationStatus(booking, now = Date.now()) {
   const usage = usageStatus(booking);
+  // 主动取消、提前归还及历史完成状态优先，时钟不能重新激活这些预约。
   if (usage !== "reserved" && usage !== "in_use") return usage;
   if (now >= instant(booking.end_time)) return "completed";
   return now < instant(booking.start_time) ? "reserved" : "in_use";

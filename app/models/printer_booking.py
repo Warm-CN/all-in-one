@@ -47,6 +47,7 @@ class PrinterBooking(PrinterBase):
     end_time = Column(DateTime, nullable=False)
     purpose = Column(String(500), nullable=False, default="")
     status = Column(String(20), nullable=False, default="reserved")
+    # 兼容旧签到历史，自动开始流程不依赖或伪造该字段。
     checked_in_at = Column(DateTime, nullable=True)
     checked_out_at = Column(DateTime, nullable=True)
     previous_booking_id = Column(Integer, ForeignKey("printer_bookings.id"), nullable=True)
@@ -74,8 +75,9 @@ PRINTER_TABLES = [Printer.__table__, PrinterConfig.__table__, PrinterBooking.__t
 
 
 START_WINDOWS = (("09:00", "12:00"), ("14:00", "17:00"), ("19:00", "21:30"))
+# 五山下架单色 A1，保留多色 A1；设备 ID 不重排，避免历史关联错位。
+RETIRED_PRINTER_NAMES = {1: "五山 A1 单色"}
 PRINTER_NAMES = {
-    1: "五山 A1 单色",
     2: "五山 A1 多色",
     3: "五山 X2D",
     4: "大学城 A1",
@@ -99,6 +101,11 @@ def initialize_printers(db):
         db.add(cfg)
     cfg.opening_hours_enabled = True
     cfg.opening_hours = daily_opening_hours()
+    # 旧库只停用已有设备，新库不再创建；保留所有历史预约和异常记录。
+    for printer_id in RETIRED_PRINTER_NAMES:
+        printer = db.get(Printer, printer_id)
+        if printer is not None:
+            printer.status = "maintenance"
     for printer_id, name in PRINTER_NAMES.items():
         printer = db.get(Printer, printer_id)
         if printer is None:

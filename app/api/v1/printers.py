@@ -19,7 +19,7 @@ from app.core.security import create_access_token, decode_access_token
 from app.core.limiter import limiter
 from app.models.printer_booking import (
     Printer, PrinterConfig, PrinterBooking, PrinterIncident,
-    START_WINDOWS, daily_opening_hours,
+    RETIRED_PRINTER_NAMES, START_WINDOWS, daily_opening_hours,
 )
 from app.models.team import Team, TeamStatus
 from app.models.competition_event import CompetitionEvent
@@ -48,6 +48,7 @@ def fail(code, message):
 
 
 def effective_status(booking, current):
+    # 只按预约起止时间流转，无需签到或二次确认，也不会因未确认而取消。
     current = beijing_time(current)
     if booking.status in ("reserved", "in_use"):
         if current >= beijing_time(booking.end_time):
@@ -281,7 +282,10 @@ class Resolve(BaseModel):
 def public_config(db, admin=False):
     cfg = config(db)
     event = selected_event(db, cfg)
-    result = {"printers": [{"id": p.id, "name": p.name, "status": p.status} for p in db.query(Printer).order_by(Printer.id)],
+    # 直接过滤旧库中的下架设备；保留实体行，让历史预约和异常外键继续有效。
+    printers = db.query(Printer).filter(Printer.id.notin_(tuple(RETIRED_PRINTER_NAMES))).order_by(Printer.id)
+    result = {"printers": [{"id": p.id, "name": p.name, "status": p.status} for p in printers],
+              "retired_printer_names": RETIRED_PRINTER_NAMES,
               "opening_hours_enabled": True, "opening_hours": daily_opening_hours(),
               "start_windows": [{"start": start, "end": end} for start, end in START_WINDOWS],
               "admin_contact": cfg.admin_contact,
@@ -322,6 +326,9 @@ def add_booking(db, data, team):
     cfg = config(db, True)
     # Revalidate existing team within the transaction; no approval state required.
     team = active_team(db, cfg, team_id=team.id)
+    # 普通队伍与管理员共用此校验，防止绕过页面预约下架设备。
+    if data.printer_id in RETIRED_PRINTER_NAMES:
+        fail(409, "该打印机已下架，无法新增预约")
     p = machine(db, data.printer_id)
     if p.status != "available":
         fail(409, "打印机停机维护中")
@@ -470,6 +477,8 @@ def admin_delete_booking(booking_id: int, admin=Depends(require_admin), db: Sess
 
 @router.put("/admin/printers/{printer_id}")
 def update_machine(printer_id: int, data: MachineUpdate, admin=Depends(require_admin), db: Session = Depends(get_db)):
+    if printer_id in RETIRED_PRINTER_NAMES:
+        fail(409, "该打印机已下架")
     with transaction(db):
         config(db, True)
         p = machine(db, printer_id)
