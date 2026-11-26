@@ -79,7 +79,7 @@
                   <div>
                     <strong>每日可预约开始时段（北京时间）</strong>
                     <p>{{ openingText }}</p>
-                    <p>单次预约最长 8 小时，结束时间可跨时段或跨天。</p>
+                    <p>单次预约最长 4 小时，结束时间可跨时段或跨天。</p>
                     <p>
                       请在使用前检查设备。发现异常时，在对应预约中报告，由管理员核实处理。
                     </p>
@@ -235,7 +235,7 @@
                     /></el-form-item>
                   </div>
                   <p class="muted form-tip">
-                    每日可选的开始时段为 {{ openingText }}（右端时刻不含）。单次预约最长 8 小时，结束时间可跨时段或跨天。
+                    每日可选的开始时段为 {{ openingText }}（右端时刻不含）。单次预约最长 4 小时，结束时间可跨时段或跨天。
                   </p>
                   <el-button
                     type="primary"
@@ -638,8 +638,9 @@ async function reserve() {
     return ElMessage.warning("请选择设备、起止时间并填写打印用途");
   if (form.start_time >= form.end_time)
     return ElMessage.warning("结束时间必须晚于开始时间");
-  if (Date.parse(`${form.end_time}+08:00`) - Date.parse(`${form.start_time}+08:00`) > 8 * 3600000)
-    return ElMessage.warning("单次预约时长不能超过 8 小时");
+  // 与后端统一四小时边界，超过时先在页面阻止提交。
+  if (Date.parse(`${form.end_time}+08:00`) - Date.parse(`${form.start_time}+08:00`) > 4 * 3600000)
+    return ElMessage.warning("单次预约时长不能超过 4 小时");
   if (new Date(`${form.start_time}+08:00`).getTime() <= Date.now())
     return ElMessage.warning("开始时间必须晚于当前时间");
   const startTime = form.start_time.slice(11, 16);

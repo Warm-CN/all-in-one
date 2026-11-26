@@ -334,8 +334,9 @@ def add_booking(db, data, team):
         fail(409, "打印机停机维护中")
     if data.start_time < now() or data.end_time <= data.start_time:
         fail(400, "预约开始不能早于当前时间，结束必须晚于开始")
-    if data.end_time - data.start_time > timedelta(hours=8):
-        fail(400, "单次预约时长不能超过 8 小时")
+    # 两个预约入口共用四小时上限，正好四小时允许，超出即拒绝。
+    if data.end_time - data.start_time > timedelta(hours=4):
+        fail(400, "单次预约时长不能超过 4 小时")
     start_time = data.start_time.strftime("%H:%M")
     if not any(start <= start_time < end for start, end in START_WINDOWS):
         fail(400, "预约开始时间须在北京时间 09:00–12:00、14:00–17:00 或 19:00–21:30 内")

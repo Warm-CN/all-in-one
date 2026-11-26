@@ -56,7 +56,7 @@
       <section class="admin-card">
         <h2>绑定赛事与预约设置</h2>
         <p class="hint fixed-start-rule">
-          每日可选的开始时段为 {{ openingText }}（北京时间，右端时刻不含）。单次预约最长 8 小时，结束时间可跨时段或跨天。
+          每日可选的开始时段为 {{ openingText }}（北京时间，右端时刻不含）。单次预约最长 4 小时，结束时间可跨时段或跨天。
         </p>
         <el-form label-position="top" @submit.prevent="save">
           <div class="config-grid">
@@ -371,8 +371,9 @@ async function addBooking() {
     return ElMessage.warning("请填写队长学号、设备、起止时间与用途");
   if (newBooking.start_time >= newBooking.end_time)
     return ElMessage.warning("结束时间必须晚于开始时间");
-  if (Date.parse(`${newBooking.end_time}+08:00`) - Date.parse(`${newBooking.start_time}+08:00`) > 8 * 3600000)
-    return ElMessage.warning("单次预约时长不能超过 8 小时");
+  // 管理员新增也遵守四小时限制，避免与队伍预约规则不一致。
+  if (Date.parse(`${newBooking.end_time}+08:00`) - Date.parse(`${newBooking.start_time}+08:00`) > 4 * 3600000)
+    return ElMessage.warning("单次预约时长不能超过 4 小时");
   if (Date.parse(`${newBooking.start_time}+08:00`) <= Date.now())
     return ElMessage.warning("开始时间必须晚于当前时间");
   const startTime = newBooking.start_time.slice(11, 16);
